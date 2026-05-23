@@ -30,144 +30,6 @@ const auth = getAuth(app);
 const db   = getFirestore(app);
 const REGS_COL  = () => collection(db, "registros");
 const MODS_COL  = () => collection(db, "modelos");
-const TGTS_COL  = () => collection(db, "targets");
-
-async function loadMaquinasStatus(){
-  try{
-    const snap=await getDocs(collection(db,"maquinas_status"));
-    snap.docs.forEach(d=>{
-      const data=d.data();
-      const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
-      if(idx>=0){
-        MAQUINAS[idx].activa = data.activa!==false;
-        MAQUINAS[idx]._statusId = d.id;
-      }
-    });
-  }catch(e){console.error("Error cargando status maquinas:",e);}
-}
-
-async function saveMaquinaStatus(idx, activa){
-  const m=MAQUINAS[idx];
-  const data={nombre:m.nombre,activa,updatedAt:serverTimestamp()};
-  try{
-    if(m._statusId){
-      await updateDoc(doc(db,"maquinas_status",m._statusId),data);
-    } else {
-      const ref=await addDoc(collection(db,"maquinas_status"),data);
-      MAQUINAS[idx]._statusId=ref.id;
-    }
-    MAQUINAS[idx].activa=activa;
-    showToast(`${m.nombre} ${activa?"activada":"desactivada"}`,activa?"var(--green)":"var(--red)");
-    renderAdminMaquinas();
-    rHoy();
-  }catch(e){showToast("Error al guardar estado","var(--red)");console.error(e);}
-}
-window.saveMaquinaStatus=saveMaquinaStatus;
-
-function renderAdminMaquinas(){
-  const el=document.getElementById("admin-maquinas-grid");
-  if(!el)return;
-  el.innerHTML=MAQUINAS.map((m,i)=>{
-    const activa=m.activa!==false;
-    return `<div style="background:${activa?"var(--card2)":"#1a1117"};border:1px solid ${activa?"#2ecc7133":"#e74c3c33"};border-radius:9px;padding:12px;opacity:${activa?1:0.8}">
-      <div style="font-size:.9rem;font-weight:700;margin-bottom:3px">${m.nombre}</div>
-      <div style="margin-bottom:8px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
-      <div style="font-size:.62rem;margin-bottom:10px">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${activa?"#2ecc71":"#e74c3c"};margin-right:4px"></span>
-        ${activa?"Activa":"Inactiva"}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:.65rem;color:var(--muted)">Estado</span>
-        <div onclick="saveMaquinaStatus(${i},${!activa})"
-          style="width:36px;height:20px;border-radius:10px;background:${activa?"#2ecc71":"#444"};position:relative;cursor:pointer;transition:background .2s;">
-          <div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:3px;left:${activa?19:3}px;transition:left .2s;"></div>
-        </div>
-      </div>
-    </div>`;
-  }).join("");
-}
-window.renderAdminMaquinas=renderAdminMaquinas;
-
-async function loadTargetsFromDB(){
-  try{
-    const snap=await getDocs(TGTS_COL());
-    if(snap.empty)return;
-    snap.docs.forEach(d=>{
-      const data=d.data();
-      const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
-      if(idx<0)return;
-      const t=Number(data.target||data.A||0);
-      if(!t)return;
-      MAQUINAS[idx].target=t;
-      // Recalcular cortes proporcional
-      const m=MAQUINAS[idx];
-      const pcts={C1:0.2,C2:0.4,C3:0.4};
-      const otFixed=data.OT||m.cortes.OT;
-      m.cortes={
-        C1:Math.round(t*pcts.C1),
-        C2:Math.round(t*pcts.C2),
-        C3:Math.round(t*pcts.C3),
-        OT:otFixed
-      };
-      m._dbId=d.id;
-    });
-    console.log("Targets cargados desde Firestore");
-  }catch(e){console.error("Error cargando targets:",e);}
-}
-
-async function saveTargetToDB(maqIdx, targetVal){
-  const m=MAQUINAS[maqIdx];
-  const pcts={C1:0.2,C2:0.4,C3:0.4};
-  const data={
-    nombre:m.nombre,
-    target:targetVal,
-    C1:Math.round(targetVal*pcts.C1),
-    C2:Math.round(targetVal*pcts.C2),
-    C3:Math.round(targetVal*pcts.C3),
-    OT:m.cortes.OT,
-    updatedAt:serverTimestamp()
-  };
-  try{
-    if(m._dbId){
-      await updateDoc(doc(db,"targets",m._dbId),data);
-    } else {
-      const ref=await addDoc(TGTS_COL(),data);
-      MAQUINAS[maqIdx]._dbId=ref.id;
-    }
-    // Actualizar en memoria
-    MAQUINAS[maqIdx].target=targetVal;
-    MAQUINAS[maqIdx].cortes={C1:data.C1,C2:data.C2,C3:data.C3,OT:data.OT};
-    showToast("Target guardado ✓","var(--green)");
-    renderAdminTargets();
-  }catch(e){showToast("Error al guardar target","var(--red)");console.error(e);}
-}
-window.saveTargetToDB=saveTargetToDB;
-
-function renderAdminTargets(){
-  const el=document.getElementById("admin-targets-grid");
-  if(!el)return;
-  el.innerHTML=MAQUINAS.map((m,i)=>`
-    <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;">
-      <div style="font-size:.85rem;font-weight:700;margin-bottom:2px">${m.nombre}</div>
-      <div style="margin-bottom:10px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
-      <label style="font-size:.62rem;color:var(--muted);display:block;margin-bottom:3px">Target diario</label>
-      <input type="number" id="tgt-inp-${i}" value="${m.target}"
-        style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.85rem;font-family:'IBM Plex Mono',monospace;text-align:right;outline:none;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;">
-        ${Object.entries({Break:"C1",Lunch:"C2",Home:"C3",OT:"OT"}).map(([lbl,k])=>`
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:.6rem;">
-            <span style="color:var(--muted)">${lbl}</span>
-            <strong style="color:var(--accent);float:right">${(m.cortes[k]||0).toLocaleString()}</strong>
-          </div>`).join("")}
-      </div>
-      <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Cortes calculados automáticamente</div>
-      <button onclick="saveTargetToDB(${i},Number(document.getElementById('tgt-inp-${i}').value))"
-        style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px;font-size:.72rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;">
-        💾 Guardar ${m.nombre}
-      </button>
-    </div>`).join("");
-}
-window.renderAdminTargets=renderAdminTargets;
 let MODELOS_LIST = [];
 async function loadModelos(){
   try{
@@ -215,12 +77,11 @@ function buildCausasSelect(){
 }
 
 const CORTES = [
-  {id:"C1", label:"Break", hora:"7:00–8:45 AM",  icon:"🌅"},
-  {id:"C2", label:"Lunch", hora:"9:00–12:30 PM", icon:"☀️"},
-  {id:"C3", label:"Home", hora:"1:00–4:30 PM",  icon:"🌇"},
-  {id:"OT", label:"OT",hora:"4:45–6:25 PM",  icon:"⏰"},
+  {id:"C1", label:"Cut 1", hora:"7:00–8:45 AM",  icon:"🌅"},
+  {id:"C2", label:"Cut 2", hora:"9:00–12:30 PM", icon:"☀️"},
+  {id:"C3", label:"Cut 3", hora:"1:00–4:30 PM",  icon:"🌇"},
+  {id:"OT", label:"Cut OT",hora:"4:45–6:25 PM",  icon:"⏰"},
 ];
-// Estado activo/inactivo se carga desde Firestore
 const MAQUINAS = [
   {nombre:"S1",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
   {nombre:"S2",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
@@ -277,7 +138,7 @@ function showApp() {
   document.getElementById("login-view").style.display="none";
   document.getElementById("app").style.display="flex";
   document.getElementById("app").style.flexDirection="column";
-  applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos();});
+  applyRoleUI(); initApp(); startListener(); loadEmailsRep(); loadModelos();
 }
 function applyRoleUI() {
   const r=CURRENT_USER.rol;
@@ -397,302 +258,7 @@ window.enviar = async () => {
   btn.innerHTML="📤 Enviar al Dashboard";btn.disabled=false;
 };
 window.delReg = async (id) => { await deleteDoc(doc(db,"registros",id)); rRegs();rFeed();updateDashStats(); };
-
-// ── PLAN PRODUCCIÓN EN MES ──
-var mesPlanActivo = null;
-var mesPlanInvSnapshot = {}; // inventario al momento de publicar
-var unsubImsListener = null; // listener tiempo real
-
-async function loadMesPlan() {
-  try {
-    // 1. Cargar plan de Firestore
-    const snap = await getDocs(collection(db,'plan_produccion'));
-    let planDoc = null;
-    snap.forEach(d => { if(d.id==='plan_activo') planDoc = d.data(); });
-    if (!planDoc) {
-      document.getElementById('mesPlanEmpty').style.display='block';
-      document.getElementById('mesPlanContent').style.display='none';
-      return;
-    }
-    mesPlanActivo = planDoc;
-
-    // 2. Sync inventario actual del IMS
-    await sincronizarInvMES();
-
-    // 3. Renderizar con inventario fresco
-    renderMesPlan();
-    arrancarListenerIMS();
-    mostrarAlertaIMS([]); // limpiar banner
-  } catch(e) { console.log('loadMesPlan:', e.message); }
-}
-
-// Carga inventario actual del IMS — guarda por PN+DESC para distinguir Virgen vs Ranurado
-async function sincronizarInvMES() {
-  try {
-    const snap = await getDocs(collection(db, 'planta4_inventario'));
-    mesPlanInvSnapshot = {};
-    snap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pn = data.pn.trim().toUpperCase();
-      const desc = (data.desc || '').trim().toUpperCase();
-      if (desc) mesPlanInvSnapshot[pn + '||' + desc] = data.actual || 0;
-      mesPlanInvSnapshot[pn] = (mesPlanInvSnapshot[pn] || 0) + (data.actual || 0);
-    });
-  } catch(e) {}
-}
-
-// Busca inventario por PN + descripción (igual que BOM Simulator)
-function getInvMES(pn, desc) {
-  const pnUp = (pn || '').trim().toUpperCase();
-  const descUp = (desc || '').trim().toUpperCase();
-  const exactKey = pnUp + '||' + descUp;
-  if (mesPlanInvSnapshot[exactKey] !== undefined) return mesPlanInvSnapshot[exactKey];
-  const keywords = ['VIRGEN','VIRGIN','RANURADO','GROOVING','TOP','BOTTOM','BOT',
-    'BUNDLE','STRIP','PULP','SET PAD','BACK STICKER','GIFT BOX','LOWER BOX','SHEET'];
-  let bestKey = null, bestScore = 0;
-  Object.keys(mesPlanInvSnapshot).forEach(key => {
-    if (key.indexOf(pnUp + '||') === 0) {
-      const imsDesc = key.replace(pnUp + '||', '');
-      let score = 0;
-      keywords.forEach(kw => { if (descUp.includes(kw) && imsDesc.includes(kw)) score++; });
-      if (score > bestScore) { bestScore = score; bestKey = key; }
-    }
-  });
-  if (bestKey && bestScore > 0) return mesPlanInvSnapshot[bestKey];
-  return mesPlanInvSnapshot[pnUp] || 0;
-}
-
-async function actualizarSnapshotIMS() {
-  try {
-    const snap = await getDocs(collection(db, 'planta4_inventario'));
-    const invActual = {};
-    snap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pn = data.pn.trim().toUpperCase();
-      invActual[pn] = (invActual[pn] || 0) + (data.actual || 0);
-    });
-    // Actualizar snapshot solo para las partes del plan
-    Object.keys(mesPlanInvSnapshot).forEach(pn => {
-      if (invActual[pn] !== undefined) mesPlanInvSnapshot[pn] = invActual[pn];
-    });
-    mostrarAlertaIMS([]); // ocultar banner
-  } catch(e) {}
-}
-
-function renderMesPlan() {
-  if (!mesPlanActivo) return;
-  document.getElementById('mesPlanEmpty').style.display='none';
-  document.getElementById('mesPlanContent').style.display='block';
-  document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
-  document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
-
-  const colores = {'VC':'#FFBA00','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
-  const iconos = {'VC':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','ASSY1':'✅'};
-  const ordenLineas = ['VC','S1/S2','Zhongke','S3','S4','ASSY1'];
-  const lineas = mesPlanActivo.lineas || {};
-  const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
-
-  // Contar progreso
-  let totalLineas = 0, listasLineas = 0;
-  todasLineas.forEach(linea => {
-    const lineaData = lineas[linea];
-    if (!lineaData) return;
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    items.forEach(l => { if(l && (l.materiales?.length || l.cantidad > 0)) { totalLineas++; if(l.listo) listasLineas++; } });
-  });
-  const pct = totalLineas ? Math.round(listasLineas/totalLineas*100) : 0;
-  const canConfirm = CURRENT_USER?.rol === 'admin';
-
-  // Barra de progreso
-  const progressBar = `<div style="margin-bottom:.75rem;background:#0e1325;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.6rem .75rem">
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:.35rem">
-      <span>Líneas confirmadas</span>
-      <span style="color:${pct===100?'#00e676':'var(--fg)'}"><b>${listasLineas}</b> / ${totalLineas} &nbsp;(${pct}%)</span>
-    </div>
-    <div style="background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden">
-      <div style="width:${pct}%;height:100%;background:${pct===100?'#00e676':'#FFBA00'};border-radius:4px;transition:width .4s"></div>
-    </div>
-  </div>`;
-
-  let html = progressBar;
-  todasLineas.forEach(linea => {
-    const lineaData = lineas[linea];
-    if (!lineaData) return;
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    const color = colores[linea] || '#aaa';
-    const icon = iconos[linea] || '📦';
-    items.forEach((l, idx) => {
-      if (!l) return;
-      const mats = l.materiales || [];
-      if (!mats.length && !(l.cantidad > 0)) return;
-      const listo = l.listo || false;
-      const key = linea + '___' + idx;
-      const confirmadoPor = l.confirmadoPor ? `<span style="font-size:10px;color:#00e676;margin-left:6px">✓ ${l.confirmadoPor}</span>` : '';
-      const confirmadoEn = l.confirmadoEn ? `<span style="font-size:9px;color:var(--muted);margin-left:4px">${new Date(l.confirmadoEn).toLocaleString('es-MX',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})}</span>` : '';
-      const btnConfirm = canConfirm
-        ? `<button onclick="confirmarLinea('${key}')" style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.1);color:#00e676;cursor:pointer;font-weight:600">✓ Confirmar listo</button>`
-        : `<span style="font-size:10px;color:var(--muted);font-style:italic">Solo admin</span>`;
-      html += `
-      <div style="background:#0e1325;border:1px solid ${listo?'rgba(0,230,118,.3)':'rgba(255,186,0,.3)'};border-radius:10px;margin-bottom:.5rem;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:${listo?'rgba(0,230,118,.06)':'rgba(255,186,0,.06)'}">
-          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-            <span>${icon}</span>
-            <span style="font-weight:700;font-size:13px;color:${listo?'#00e676':'#FFBA00'}">${linea}</span>
-            <span style="font-size:11px;color:var(--muted)">· ${l.sm||''} · ${(l.cantidad||0).toLocaleString()} pzas</span>
-            ${listo ? confirmadoPor + confirmadoEn : ''}
-          </div>
-          ${listo
-            ? (canConfirm
-                ? `<button onclick="desconfirmarLinea('${key}')" style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,77,106,.3);background:rgba(255,77,106,.08);color:#ff4d6a;cursor:pointer">↩ Deshacer</button>`
-                : `<span style="font-size:11px;color:#00e676;font-weight:600">✓ Listo</span>`)
-            : btnConfirm
-          }
-        </div>
-        ${mats.length ? `<div style="padding:.4rem .75rem">
-          ${mats.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px">
-            <span style="color:${color};font-family:monospace">${m.pn||''}</span>
-            <span style="color:var(--muted);flex:1;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</span>
-            <span style="font-weight:600;color:var(--fg)">${(m.cant||0).toLocaleString()}</span>
-          </div>`).join('')}
-        </div>` : ''}
-      </div>`;
-    });
-  });
-
-  document.getElementById('mesPlanLineas').innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:1rem">Sin líneas en el plan</div>';
-}
-
-async function confirmarLinea(key) {
-  if (!mesPlanActivo) return;
-  const rol = CURRENT_USER?.rol;
-  if (rol !== 'admin') {
-    showToast('⚠️ Solo el administrador puede confirmar líneas', 'var(--red)');
-    return;
-  }
-  const parts = key.split('___');
-  const linea = parts[0];
-  const idx = parseInt(parts[1]);
-  if (!confirm('¿Confirmar que el material de ' + linea + ' ya está en la línea?')) return;
-  try {
-    const lineaData = mesPlanActivo.lineas[linea];
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    if (items[idx]) {
-      items[idx].listo = true;
-      items[idx].confirmadoPor = CURRENT_USER?.nombre || CURRENT_USER?.email || 'Supervisor';
-      items[idx].confirmadoEn = new Date().toISOString();
-      // Pre-llenar modelo en formulario
-      const modelo = items[idx].sm || '';
-      if (modelo) {
-        const ipModelo = document.getElementById('ip-modelo');
-        if (ipModelo) ipModelo.value = modelo;
-      }
-    }
-    await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
-    renderMesPlan();
-    showToast('✅ ' + linea + ' — confirmado por ' + (CURRENT_USER?.nombre || 'Supervisor'), 'var(--green)');
-  } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
-}
-async function desconfirmarLinea(key) {
-  if (!mesPlanActivo) return;
-  const rol = CURRENT_USER?.rol;
-  if (rol !== 'admin') return;
-  const parts = key.split('___');
-  const linea = parts[0];
-  const idx = parseInt(parts[1]);
-  if (!confirm('¿Deshacer la confirmación de ' + linea + '?')) return;
-  try {
-    const lineaData = mesPlanActivo.lineas[linea];
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    if (items[idx]) {
-      delete items[idx].listo;
-      delete items[idx].confirmadoPor;
-      delete items[idx].confirmadoEn;
-    }
-    await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
-    renderMesPlan();
-    showToast('↩ ' + linea + ' — confirmación deshecha', '#FFBA00');
-  } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
-}
-// ── LISTENER IMS EN TIEMPO REAL ──
-function arrancarListenerIMS() {
-  if (!mesPlanActivo) return;
-  // Solo admin ve la alerta
-  if (CURRENT_USER?.rol !== 'admin') return;
-  // Cancelar listener previo si existe
-  if (unsubImsListener) { unsubImsListener(); unsubImsListener = null; }
-
-  const pnsDelPlan = Object.keys(mesPlanInvSnapshot);
-  if (!pnsDelPlan.length) return;
-
-  unsubImsListener = onSnapshot(
-    collection(db, 'planta4_inventario'),
-    (snap) => {
-      // Construir inventario actual
-      const invActual = {};
-      snap.forEach(d => {
-        const data = d.data();
-        if (!data.pn) return;
-        const pn = data.pn.trim().toUpperCase();
-        invActual[pn] = (invActual[pn] || 0) + (data.actual || 0);
-      });
-
-      // Comparar contra snapshot del plan
-      const cambios = [];
-      pnsDelPlan.forEach(pn => {
-        const enPlan = mesPlanInvSnapshot[pn] || 0;
-        const ahora = invActual[pn] || 0;
-        if (ahora > enPlan) {
-          cambios.push({ pn, enPlan, ahora, diff: ahora - enPlan });
-        }
-      });
-
-      mostrarAlertaIMS(cambios);
-    },
-    (err) => { console.log('IMS listener error:', err.message); }
-  );
-}
-
-function mostrarAlertaIMS(cambios) {
-  let banner = document.getElementById('imsAlertaBanner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'imsAlertaBanner';
-    banner.style.cssText = 'display:none;position:sticky;top:0;z-index:99;margin-bottom:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.4);border-radius:10px;padding:.6rem .75rem';
-    const planContent = document.getElementById('mesPlanContent');
-    if (planContent) planContent.insertBefore(banner, planContent.firstChild);
-  }
-
-  if (!cambios.length) { banner.style.display = 'none'; return; }
-
-  const lista = cambios.map(c =>
-    `<span style="font-family:monospace;color:#FFBA00">${c.pn}</span>
-     <span style="color:var(--muted);font-size:10px"> +${(c.diff).toLocaleString()} pzas</span>`
-  ).join('<br>');
-
-  banner.style.display = 'block';
-  banner.innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem">
-      <div>
-        <div style="font-weight:700;font-size:12px;color:#FFBA00;margin-bottom:.3rem">
-          ⚠️ Llegó material nuevo — el plan puede estar desactualizado
-        </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">
-          Las siguientes partes tienen más inventario que cuando se publicó el plan:
-        </div>
-        <div style="font-size:11px;line-height:1.8">${lista}</div>
-      </div>
-      <button onclick="loadMesPlan()" style="white-space:nowrap;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid rgba(255,186,0,.4);background:rgba(255,186,0,.15);color:#FFBA00;cursor:pointer;font-weight:600;margin-top:2px">
-        🔄 Refrescar plan
-      </button>
-    </div>`;
-}
-window.loadMesPlan = loadMesPlan;
-window.confirmarLinea = confirmarLinea;
-window.desconfirmarLinea = desconfirmarLinea;
-
-window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
+window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.corte||"—",r.operador,r.empleado,r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
@@ -704,7 +270,7 @@ function initApp(){
 }
 function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.6rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.65rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
-window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
+window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();}if(m==="admin"){loadUsuarios();loadEmailsRep();}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
@@ -713,10 +279,7 @@ function gv(id){return parseFloat(document.getElementById(id)?.value)||0;}
 window.adj=(f,d)=>{const id=f==="p"?"ip-prod":f==="d"?"ip-def":"ip-scr";const el=document.getElementById(id);el.value=Math.max(0,(parseFloat(el.value)||0)+d);updK();};
 window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
 function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"📤 Enviar al Dashboard":"Siguiente →";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
-window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim().toUpperCase();
-      if(!modVal){showToast("Modelo es obligatorio","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      if(!modVal.startsWith("SM")&&!modVal.startsWith("CRN")){showToast("Modelo inválido — debe iniciar con SM o CRN","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N° Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}var pv=document.getElementById("ip-parte").value.trim();if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
 function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
 window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
@@ -724,8 +287,8 @@ window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const 
 
 /* ══ DASHBOARD ══ */
 function updateDashStats(){document.getElementById("cnt").textContent=`${REGISTROS.length} registros`;document.getElementById("lupd").textContent="Act. "+new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
-const DTABS=["hoy","feed","maq","tend","regs","plan"];
-window.showDT=(id)=>{document.querySelectorAll(".dtc").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("active"));document.getElementById("dtab-"+id).classList.add("active");document.querySelectorAll(".dtab")[DTABS.indexOf(id)].classList.add("active");if(id==="hoy")rHoy();if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="feed")rFeed();if(id==="regs")rRegs();if(id==="plan")loadMesPlan();};
+const DTABS=["hoy","feed","maq","tend","regs"];
+window.showDT=(id)=>{document.querySelectorAll(".dtc").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("active"));document.getElementById("dtab-"+id).classList.add("active");document.querySelectorAll(".dtab")[DTABS.indexOf(id)].classList.add("active");if(id==="hoy")rHoy();if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="feed")rFeed();if(id==="regs")rRegs();};
 
 function dRefresh(){
   updateDashStats();rHoy();rFeed();chkAlertas();
@@ -815,38 +378,30 @@ function rHoy(){
     tbParts.innerHTML="";
     let totalQty=0,totalDef=0,totalScrap=0;
     if(!data.length){
-      tbParts.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este período.</td></tr>';
+      tbParts.innerHTML='<tr><td colspan="10" class="empty">Sin registros para este período.</td></tr>';
     } else {
-            const maqModelMap={};
       data.forEach(r=>{
-        const key=r.maqIdx+"_"+(r.modelo||"—");
-        if(!maqModelMap[key]){maqModelMap[key]={maqNombre:r.maqNombre,maqTipo:r.maqTipo,modelo:r.modelo||"—",parte:r.parte||"—",turno:r.turno,prod:0,def:0,scrap:0,target:0};}
-        maqModelMap[key].prod+=r.prod||0;
-        maqModelMap[key].def+=r.def||0;
-        maqModelMap[key].scrap+=r.scrap||0;
-        maqModelMap[key].target+=r.target||0;
-        if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
-      });
-      Object.values(maqModelMap).forEach(m=>{
-        const pct=m.target>0?(m.prod/m.target*100):0;
+        const pct=r.pct||0;
         const cl=pct>=95?"green":pct>=80?"yellow":"red";
-        const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[m.turno]||"#7f8c9a";
+        const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";
+        const corteLabel={C1:"Break",C2:"Lunch",C3:"Home",OT:"OT"}[r.corte]||r.corte||"—";
         const tr=document.createElement("tr");
-        tr.innerHTML=`<td><strong>${m.maqNombre||"—"}</strong></td>
-          <td class="model-code">${m.modelo}</td>
-          <td><span class="tbadge ${m.maqTipo||""}">${m.maqTipo||"—"}</span></td>
-          <td style="font-size:.63rem;color:var(--muted)">${m.parte}</td>
-          <td style="color:${tCol};font-weight:700">${m.turno||"—"}</td>
-          <td class="blue">${m.prod.toLocaleString()}</td>
-          <td>${m.def.toLocaleString()}</td>
-          <td>${m.scrap.toLocaleString()}</td>
+        tr.innerHTML=`<td><strong>${r.maqNombre||"—"}</strong></td>
+          <td class="model-code">${r.modelo||"—"}</td>
+          <td><span class="tbadge ${r.maqTipo||""}">${r.maqTipo||"—"}</span></td>
+          <td style="font-size:.63rem;color:var(--muted)">${r.parte||"—"}</td>
+          <td style="color:${tCol};font-weight:700">${r.turno||"—"}</td>
+          <td style="font-size:.65rem;color:var(--muted)">${corteLabel}</td>
+          <td class="blue">${(r.prod||0).toLocaleString()}</td>
+          <td>${(r.def||0).toLocaleString()}</td>
+          <td>${(r.scrap||0).toLocaleString()}</td>
           <td class="${cl}">${pct.toFixed(1)}%</td>`;
         tbParts.appendChild(tr);
-        totalQty+=m.prod;totalDef+=m.def;totalScrap+=m.scrap;
+        totalQty+=r.prod||0;totalDef+=r.def||0;totalScrap+=r.scrap||0;
       });
       const trTot=document.createElement("tr");
       trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
-      trTot.innerHTML=`<td>TOTAL</td><td></td><td></td><td></td><td></td>
+      trTot.innerHTML=`<td>TOTAL</td><td></td><td></td><td></td><td></td><td></td>
         <td class="blue">${totalQty.toLocaleString()}</td>
         <td>${totalDef.toLocaleString()}</td>
         <td>${totalScrap.toLocaleString()}</td><td></td>`;
@@ -935,10 +490,10 @@ function chkAlertas(){
   const nowMin=hh*60+mm;
 
   const cutDeadlines=[
-    {id:"C1", label:"Break", endH:8,  endM:45},
-    {id:"C2", label:"Lunch", endH:12, endM:30},
-    {id:"C3", label:"Home", endH:16, endM:30},
-    {id:"OT", label:"OT",endH:18, endM:25},
+    {id:"C1", label:"Cut 1", endH:8,  endM:45},
+    {id:"C2", label:"Cut 2", endH:12, endM:30},
+    {id:"C3", label:"Cut 3", endH:16, endM:30},
+    {id:"OT", label:"Cut OT",endH:18, endM:25},
   ];
 
   cutDeadlines.forEach(c=>{
@@ -1350,9 +905,6 @@ select,input[type=date]{background:var(--card2);border:1px solid var(--border);c
 .tbl-parts-wrap{overflow-x:auto;margin-top:0;}
 .tbl-parts-wrap table{min-width:700px;}
 .model-code{font-size:.63rem;color:var(--accent);letter-spacing:.5px;font-family:'IBM Plex Mono',monospace;}
-.model-pill{display:inline-block;background:#0d2a3a;border:1px solid #00d4ff33;border-radius:4px;padding:2px 6px;font-size:.58rem;color:var(--accent);white-space:nowrap;margin:1px 0;}
-.model-stack{display:flex;flex-direction:column;gap:2px;align-items:center;}
-.model-divider{width:80%;border-top:1px dashed var(--border);margin:1px auto;}
 canvas{width:100%!important;}
 /* ══ MODO TV ══ */
 body.tv-mode .topbar{padding:6px 16px;}
@@ -1392,7 +944,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES · Production System</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><button class="logout-btn" onclick="logout()">⏏ Salir</button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin')">⚙️ Admin</button></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -1417,10 +969,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
         <div class="oct" style="margin-top:12px">⏱ Production Cut</div>
         <div class="tgrid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">🌅</div><div class="tlbl">Break</div><div class="tsub">7:00–8:45 AM</div></div>
-          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Lunch</div><div class="tsub">9:00–12:30 PM</div></div>
-          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">🌇</div><div class="tlbl">Home</div><div class="tsub">1:00–4:30 PM</div></div>
-          <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">⏰</div><div class="tlbl">OT</div><div class="tsub">4:45–6:25 PM</div></div>
+          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">🌅</div><div class="tlbl">Cut 1</div><div class="tsub">7:00–8:45 AM</div></div>
+          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Cut 2</div><div class="tsub">9:00–12:30 PM</div></div>
+          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">🌇</div><div class="tlbl">Cut 3</div><div class="tsub">1:00–4:30 PM</div></div>
+          <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">⏰</div><div class="tlbl">Cut OT</div><div class="tsub">4:45–6:25 PM</div></div>
         </div>
       </div>
     </div>
@@ -1466,7 +1018,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   <!-- DASHBOARD -->
   <div class="view" id="view-dash"><div class="dw">
     <div class="dh"><h2>🏭 Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div>EN VIVO</div><span class="bsm" id="lupd">–</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">📺 TV</button></div></div>
-    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" onclick="showDT('feed')">📡 Feed</div><div class="dtab" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" onclick="showDT('regs')">🗂 Registros</div><div class="dtab" onclick="showDT('plan')" style="color:#FFBA00">📋 Plan</div></div>
+    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" onclick="showDT('feed')">📡 Feed</div><div class="dtab" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" onclick="showDT('regs')">🗂 Registros</div></div>
 
     <div id="dtab-hoy" class="dtc active">
       <div class="ctrl">
@@ -1488,12 +1040,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
         <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub">minutes</div></div>
       </div>
-      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span></div><canvas id="chP" height="200"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Cut 1</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Cut 2</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Cut 3</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>Cut OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
         <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Cut</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
     </div>
 
     <div id="dtab-feed" class="dtc">
@@ -1539,23 +1091,6 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div class="dc"><h3 id="tt-comp">Comparativo</h3><canvas id="tComp" height="130"></canvas></div>
     </div>
 
-    <div id="dtab-plan" class="dtc">
-  <div id="mesPlanEmpty" style="text-align:center;padding:3rem;color:var(--muted)">
-    <div style="font-size:36px;margin-bottom:.5rem">📋</div>
-    <div style="font-weight:600;margin-bottom:.25rem">Sin plan activo</div>
-    <div style="font-size:12px">Publica el plan desde el BOM Simulator</div>
-  </div>
-  <div id="mesPlanContent" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;margin-bottom:.5rem">
-      <div>
-        <div style="font-weight:700;font-size:15px" id="mesPlanTitulo">Plan activo</div>
-        <div style="font-size:11px;color:var(--muted)" id="mesPlanFecha"></div>
-      </div>
-      <button onclick="loadMesPlan()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer">🔄 Actualizar</button>
-    </div>
-    <div id="mesPlanLineas"></div>
-  </div>
-</div>
     <div id="dtab-regs" class="dtc">
       <div class="ctrl">
         <input type="date" id="freg" onchange="rRegs()">
@@ -1590,16 +1125,6 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     </div>
     <div class="acard"><h3>👥 Usuarios (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
     <div class="acard"><h3>🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
-    <div class="acard">
-      <h3>🖥️ Estado de Máquinas</h3>
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Activa o desactiva máquinas — las inactivas se muestran en gris en el dashboard.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;" id="admin-maquinas-grid"></div>
-    </div>
-    <div class="acard">
-      <h3>🎯 Targets por Máquina</h3>
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Modifica el target diario — los cortes se calculan automáticamente.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;" id="admin-targets-grid"></div>
-    </div>
     <div class="acard">
       <h3>📧 Reportes por Email</h3>
       <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px">Reportes automáticos: <strong style="color:var(--green)">Diario 4:30pm · Viernes 4:30pm · 1° de mes 4:30pm</strong></div>

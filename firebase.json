@@ -1,0 +1,1 @@
+{ "hosting": { "target": "mes", "public": "public", "ignore": ["firebase.json",".firebaserc","*.log","*.cache","index_backup*"], "rewrites": [{"source":"**","destination":"/index.html"}] } } 

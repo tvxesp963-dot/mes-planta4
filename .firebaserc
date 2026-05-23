@@ -1,0 +1,1 @@
+{ "projects": { "default": "mes-production-esp" }, "targets": { "mes-production-esp": { "hosting": { "mes": ["mes-production-esp"], "ims": ["ims-planta4"] } } }, "etags": {} } 

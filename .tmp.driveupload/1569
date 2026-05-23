@@ -1,0 +1,98 @@
+[debug] [2026-05-23T15:54:07.451Z] ----------------------------------------------------------------------
+[debug] [2026-05-23T15:54:07.453Z] Command:       C:\Program Files\nodejs\node.exe C:\Users\Octavio\AppData\Roaming\npm\node_modules\firebase-tools\lib\bin\firebase.js deploy --only hosting:ims
+[debug] [2026-05-23T15:54:07.454Z] CLI Version:   15.16.0
+[debug] [2026-05-23T15:54:07.454Z] Platform:      win32
+[debug] [2026-05-23T15:54:07.454Z] Node Version:  v24.15.0
+[debug] [2026-05-23T15:54:07.454Z] Time:          Sat May 23 2026 08:54:07 GMT-0700 (Pacific Daylight Time)
+[debug] [2026-05-23T15:54:07.454Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2026-05-23T15:54:09.236Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2026-05-23T15:54:09.236Z] > authorizing via signed-in user (tvxesp963@gmail.com)
+[debug] [2026-05-23T15:54:09.236Z] [iam] checking project mes-production-esp for permissions ["firebase.projects.get","firebasehosting.sites.update"]
+[debug] [2026-05-23T15:54:09.237Z] Checked if tokens are valid: false, expires at: 1779552431972
+[debug] [2026-05-23T15:54:09.238Z] Checked if tokens are valid: false, expires at: 1779552431972
+[debug] [2026-05-23T15:54:09.238Z] > refreshing access token with scopes: []
+[debug] [2026-05-23T15:54:09.241Z] >>> [apiv2][query] POST https://www.googleapis.com/oauth2/v3/token [none]
+[debug] [2026-05-23T15:54:09.242Z] >>> [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-05-23T15:54:09.567Z] <<< [apiv2][status] POST https://www.googleapis.com/oauth2/v3/token 200
+[debug] [2026-05-23T15:54:09.567Z] <<< [apiv2][body] POST https://www.googleapis.com/oauth2/v3/token [omitted]
+[debug] [2026-05-23T15:54:09.585Z] >>> [apiv2][query] POST https://cloudresourcemanager.googleapis.com/v1/projects/mes-production-esp:testIamPermissions [none]
+[debug] [2026-05-23T15:54:09.585Z] >>> [apiv2][(partial)header] POST https://cloudresourcemanager.googleapis.com/v1/projects/mes-production-esp:testIamPermissions  x-goog-user-project=mes-production-esp
+[debug] [2026-05-23T15:54:09.586Z] >>> [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mes-production-esp:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-05-23T15:54:09.889Z] <<< [apiv2][status] POST https://cloudresourcemanager.googleapis.com/v1/projects/mes-production-esp:testIamPermissions 200
+[debug] [2026-05-23T15:54:09.889Z] <<< [apiv2][body] POST https://cloudresourcemanager.googleapis.com/v1/projects/mes-production-esp:testIamPermissions {"permissions":["firebase.projects.get","firebasehosting.sites.update"]}
+[debug] [2026-05-23T15:54:09.891Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:09.891Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:09.892Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/mes-production-esp [none]
+[debug] [2026-05-23T15:54:10.278Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/mes-production-esp 200
+[debug] [2026-05-23T15:54:10.278Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/mes-production-esp {"projectId":"mes-production-esp","projectNumber":"165168379582","displayName":"Mes-production esp","name":"projects/mes-production-esp","resources":{"hostingSite":"mes-production-esp"},"state":"ACTIVE","etag":"1_e181872e-351b-4731-89a0-9849cc5f9144"}
+[info] 
+[info] === Deploying to 'mes-production-esp'...
+[info] 
+[info] i  deploying hosting 
+[debug] [2026-05-23T15:54:10.283Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:10.284Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:10.284Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/mes-production-esp/sites/ims-planta4 [none]
+[debug] [2026-05-23T15:54:11.022Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/mes-production-esp/sites/ims-planta4 200
+[debug] [2026-05-23T15:54:11.023Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/mes-production-esp/sites/ims-planta4 {"name":"projects/mes-production-esp/sites/ims-planta4","defaultUrl":"https://ims-planta4.web.app","type":"USER_SITE"}
+[debug] [2026-05-23T15:54:11.025Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:11.025Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:11.026Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions [none]
+[debug] [2026-05-23T15:54:11.026Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions {"status":"CREATED","labels":{"deployment-tool":"cli-firebase"}}
+[debug] [2026-05-23T15:54:11.728Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions 200
+[debug] [2026-05-23T15:54:11.728Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions {"name":"projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032","status":"CREATED","config":{},"labels":{"deployment-tool":"cli-firebase"}}
+[info] i  hosting[ims-planta4]: beginning deploy... 
+[info] i  hosting[ims-planta4]: found 14 files in public 
+[debug] [2026-05-23T15:54:11.750Z] [hosting] uploading with 200 concurrency
+[debug] [2026-05-23T15:54:11.764Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:11.764Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:11.765Z] [hosting] hash cache [cHVibGlj] stored for 14 files
+[debug] [2026-05-23T15:54:11.765Z] [hosting][hash queue][FINAL] {"max":9,"min":0,"avg":0.6428571428571429,"active":0,"complete":14,"success":14,"errored":0,"retried":0,"total":14,"elapsed":12}
+[debug] [2026-05-23T15:54:11.765Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032:populateFiles [none]
+[debug] [2026-05-23T15:54:11.766Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032:populateFiles {"files":{"/index_current.html":"80d265cba9c499d4d1d356e547b3133b9926ec37625bb68cad4cd9b2fd0029d6","/index_backup_14may_carga_excel.html":"dee96e9026d58353c58cbdaeb3af2723f6feff904a47db3a0f8904867021b2fe","/index_backup.html":"1837ce54bba904877fff37b1be32f143f1086907f51ff0db26e2c4b19829c762","/index_backup-_11may.html":"4f3ab1ff527be0222424451a64275af6f31426173764a21277ae2a5171f15e4c","/index9.html":"0e7155e8df62e48081a29c668ab3f35d55209e997118f1b49021433e0dfba197","/index8.html":"27aa6c59a94f91a34beeb3fae9e14ac90cbb17ab22629e1abea8845e29d1e0f2","/index7.html":"5e68cd8896b29cccadfae6c2f5ed61294898f39664871e08e9a70da83b5383a1","/index5.html":"266603a567f9dee7d446738584052999297bf22e1b0c01121916a8ed47e64da2","/index3.html":"30a9568ed3c732f8a9892e9d7a98b1cdebd97e51fb3d901ade5519c5709d1cfa","/index2.html":"dee96e9026d58353c58cbdaeb3af2723f6feff904a47db3a0f8904867021b2fe","/index10.html":"fbd0362f72a0c0cb73619187bd5e8c33009f55f74180868d709e2fb6b90873b7","/index1.html":"4f3ab1ff527be0222424451a64275af6f31426173764a21277ae2a5171f15e4c","/404.html":"30a9568ed3c732f8a9892e9d7a98b1cdebd97e51fb3d901ade5519c5709d1cfa","/index.html":"9c53d2728a9a3b3d847483c30675a979572eb0a2509e47e22f5cb12dd6c0e07b"}}
+[debug] [2026-05-23T15:54:12.251Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032:populateFiles 200
+[debug] [2026-05-23T15:54:12.251Z] <<< [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032:populateFiles {"uploadUrl":"https://upload-firebasehosting.googleapis.com/upload/sites/ims-planta4/versions/8d50e00a38507032/files"}
+[debug] [2026-05-23T15:54:12.252Z] [hosting][populate queue][FINAL] {"max":488,"min":488,"avg":488,"active":0,"complete":1,"success":1,"errored":0,"retried":0,"total":1,"elapsed":488}
+[debug] [2026-05-23T15:54:12.252Z] [hosting] uploads queued: 0
+[debug] [2026-05-23T15:54:12.253Z] [hosting][upload queue][FINAL] {"max":0,"min":9999999999,"avg":0,"active":0,"complete":0,"success":0,"errored":0,"retried":0,"total":0,"elapsed":1779551652253}
+[info] +  hosting[ims-planta4]: file upload complete 
+[debug] [2026-05-23T15:54:12.257Z] [hosting] deploy completed after 525ms
+[debug] [2026-05-23T15:54:12.258Z] [
+  {
+    "config": {
+      "target": "ims",
+      "public": "public",
+      "ignore": [
+        "firebase.json",
+        ".firebaserc",
+        "*.log",
+        "*.cache",
+        "DEPLOY_GUIA*",
+        "test*",
+        "copy*"
+      ],
+      "rewrites": [
+        {
+          "source": "**",
+          "destination": "/index.html"
+        }
+      ],
+      "site": "ims-planta4"
+    },
+    "version": "projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032"
+  }
+]
+[info] i  hosting[ims-planta4]: finalizing version... 
+[debug] [2026-05-23T15:54:12.265Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:12.266Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:12.266Z] >>> [apiv2][query] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions/8d50e00a38507032 updateMask=status%2Cconfig
+[debug] [2026-05-23T15:54:12.267Z] >>> [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions/8d50e00a38507032 {"status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]}}
+[debug] [2026-05-23T15:54:12.864Z] <<< [apiv2][status] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions/8d50e00a38507032 200
+[debug] [2026-05-23T15:54:12.865Z] <<< [apiv2][body] PATCH https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/versions/8d50e00a38507032 {"name":"projects/165168379582/sites/ims-planta4/versions/8d50e00a38507032","status":"FINALIZED","config":{"rewrites":[{"glob":"**","path":"/index.html"}]},"labels":{"deployment-tool":"cli-firebase"},"createTime":"2026-05-23T15:54:11.298370Z","createUser":{"email":"tvxesp963@gmail.com"},"finalizeTime":"2026-05-23T15:54:12.778380Z","finalizeUser":{"email":"tvxesp963@gmail.com"}}
+[debug] [2026-05-23T15:54:12.865Z] [hosting] finalized version for ims-planta4:[object Object]
+[info] +  hosting[ims-planta4]: version finalized 
+[info] i  hosting[ims-planta4]: releasing new version... 
+[debug] [2026-05-23T15:54:12.868Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:12.868Z] Checked if tokens are valid: true, expires at: 1779555248567
+[debug] [2026-05-23T15:54:12.869Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/channels/live/releases versionName=projects%2F165168379582%2Fsites%2Fims-planta4%2Fversions%2F8d50e00a38507032
+[debug] [2026-05-23T15:54:12.869Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/channels/live/releases {}

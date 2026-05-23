@@ -1,0 +1,406 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Manufacturing MES · Dashboard Público · Eunsung Printing Mex</title>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getFirestore, collection, query, orderBy, onSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef"
+};
+
+const app = initializeApp(firebaseConfig);
+const db  = getFirestore(app);
+
+const MAQUINAS = [
+  {nombre:"S1",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
+  {nombre:"S2",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
+  {nombre:"S3",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
+  {nombre:"S4",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
+  {nombre:"Zhongke",tipo:"AUTO",target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:2000}},
+  {nombre:"ASSY1", tipo:"ASSY", target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
+  {nombre:"VC",    tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+];
+const CORTES = [
+  {id:"C1", label:"Break"},
+  {id:"C2", label:"Lunch"},
+  {id:"C3", label:"Home"},
+  {id:"OT", label:"OT"},
+];
+
+let REGISTROS = [], charts = {};
+
+// ══ CLAVE DE ACCESO ══
+const CLAVE = "Mes2026!";
+
+function checkClave() {
+  const inp = document.getElementById("clave-inp");
+  const err = document.getElementById("clave-err");
+  if(inp.value === CLAVE) {
+    sessionStorage.setItem("mes-pub-auth","1");
+    document.getElementById("clave-view").style.display = "none";
+    document.getElementById("dash-view").style.display  = "block";
+    iniciarDatos();
+  } else {
+    err.style.display = "block";
+    inp.value = "";
+    inp.focus();
+    setTimeout(()=> err.style.display="none", 3000);
+  }
+}
+window.checkClave = checkClave;
+
+function iniciarDatos() {
+
+// HOY en timezone Mexico
+function getHoy() {
+  const d = new Date();
+  const offset = d.getTimezoneOffset() * 60000;
+  const local = new Date(d.getTime() - offset);
+  return local.toISOString().slice(0,10);
+}
+const HOY = getHoy();
+
+// Pre-set fecha de hoy
+document.getElementById("fhoy").value = HOY;
+
+// Listener en tiempo real — sin autenticación (reglas Firestore deben permitir lectura)
+const q = query(collection(db,"registros"), orderBy("tsLocal","desc"));
+onSnapshot(q, (snap) => {
+  REGISTROS = snap.docs.map(d => ({id:d.id, ...d.data()}));
+  document.getElementById("lupd").textContent = "Act. " + new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+  document.getElementById("cnt").textContent = REGISTROS.length + " registros";
+  rHoy();
+});
+
+function filt(data, fecha, turno) {
+  let d = data;
+  if(fecha) d = d.filter(r => r.fecha === fecha);
+  if(turno && turno !== "todos") d = d.filter(r => String(r.turno).trim() === String(turno).trim());
+  return d;
+}
+
+function sem(p) { return p>=95?"green":p>=80?"yellow":"red"; }
+
+function setKPI(id, val, cls) {
+  const el = document.getElementById(id);
+  el.textContent = val;
+  el.className = "val " + cls;
+}
+
+function rHoy() {
+  const fecha = document.getElementById("fhoy").value;
+  const turno = document.getElementById("thoy").value;
+  const data  = filt(REGISTROS, fecha, turno);
+
+  const agg = MAQUINAS.map((m,i) => {
+    const r = data.filter(x => parseInt(x.maqIdx) === i);
+    return {...m, prod:r.reduce((s,x)=>s+x.prod,0), def:r.reduce((s,x)=>s+x.def,0), scrap:r.reduce((s,x)=>s+x.scrap,0)};
+  });
+
+  const tP = agg.reduce((s,m)=>s+m.prod,0);
+  const tT = agg.reduce((s,m)=>s+m.target,0);
+  const tS = agg.reduce((s,m)=>s+m.scrap,0);
+  const tD = agg.reduce((s,m)=>s+m.def,0);
+  const cumpl   = tT>0?(tP/tT*100):0;
+  const scrapP  = tP>0?(tS/tP*100):0;
+  const defP    = tP>0?(tD/tP*100):0;
+  const totalParo = data.reduce((s,r)=>s+(r.minParo||0),0);
+
+  setKPI("k-p", tP.toLocaleString(), "blue");
+  setKPI("k-c", cumpl.toFixed(1)+"%", sem(cumpl));
+  document.getElementById("k-cs").textContent = "target " + tT.toLocaleString();
+  setKPI("k-s", scrapP.toFixed(1)+"%", scrapP>5?"red":scrapP>2?"yellow":"green");
+  setKPI("k-d", defP.toFixed(1)+"%",   defP>5?"red":defP>2?"yellow":"green");
+  setKPI("k-dt", totalParo+" min",     totalParo>60?"red":totalParo>30?"yellow":"green");
+
+  // Tabla máquinas
+  const tb = document.getElementById("tb-hoy");
+  tb.innerHTML = "";
+  agg.forEach(m => {
+    const pct = m.target>0?(m.prod/m.target*100):0;
+    const tr = document.createElement("tr");
+    tr.innerHTML = `<td><strong>${m.nombre}</strong></td>
+      <td><span class="tbadge ${m.tipo}">${m.tipo}</span></td>
+      <td>${m.target.toLocaleString()}</td>
+      <td>${m.prod.toLocaleString()}</td>
+      <td>${m.def.toLocaleString()}</td>
+      <td>${m.scrap.toLocaleString()}</td>
+      <td class="${sem(pct)}">${pct.toFixed(1)}%</td>
+      <td>${pct>=95?"✅":pct>=80?"⚠️":"🔴"}</td>`;
+    tb.appendChild(tr);
+  });
+
+  // Tabla downtime
+  const SHIFT_MIN = 525;
+  const tbDt = document.getElementById("tb-dt");
+  if(tbDt) {
+    const dtRows = MAQUINAS.map((m,i) => {
+      const regs   = data.filter(r => parseInt(r.maqIdx)===i && r.minParo>0);
+      const mins   = regs.reduce((s,r)=>s+(r.minParo||0),0);
+      const causas = [...new Set(regs.map(r=>r.causaParo).filter(Boolean))].join(", ")||"—";
+      const pct    = SHIFT_MIN>0?(mins/SHIFT_MIN*100).toFixed(1):0;
+      const status = mins===0?"ok":mins<=20?"normal":mins<=45?"warning":"critical";
+      const statusColor = {ok:"#2ecc71",normal:"#2ecc71",warning:"#f1c40f",critical:"#e74c3c"}[status];
+      const statusLabel = {ok:"OK",normal:"Normal",warning:"Warning",critical:"Critical"}[status];
+      return {m, mins, causas, pct, statusColor, statusLabel};
+    });
+    tbDt.innerHTML = dtRows.map(r=>`<tr>
+      <td style="font-weight:500">${r.m.nombre}</td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.causas}</td>
+      <td style="text-align:right;font-weight:500;color:${r.mins>0?r.statusColor:"var(--muted)"}">${r.mins}</td>
+      <td style="text-align:right;color:var(--muted);font-size:.75rem">${r.pct}%</td>
+      <td style="text-align:right"><span style="font-size:.65rem;padding:2px 7px;border-radius:10px;background:${r.statusColor}22;color:${r.statusColor};font-weight:500">${r.statusLabel}</span></td>
+    </tr>`).join("") + `<tr style="border-top:1.5px solid var(--border);font-weight:500">
+      <td>TOTAL</td><td></td>
+      <td style="text-align:right;color:${totalParo>60?"#e74c3c":totalParo>30?"#f1c40f":"#2ecc71"}">${totalParo}</td>
+      <td style="text-align:right;color:var(--muted);font-size:.75rem">${(totalParo/SHIFT_MIN*100).toFixed(1)}%</td>
+      <td></td>
+    </tr>`;
+  }
+
+  // Gráfica cumplimiento
+  const pcts = agg.map(m => m.target>0?+(m.prod/m.target*100).toFixed(1):0);
+  const cols  = pcts.map(p => p>=95?"#2ecc71":p>=80?"#f1c40f":"#e74c3c");
+  rebuildChart("chC", {type:"bar", data:{labels:MAQUINAS.map(m=>m.nombre), datasets:[{label:"% Cumpl", data:pcts, backgroundColor:cols, borderRadius:6}]},
+    options:{responsive:true, plugins:{legend:{display:false}, tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},
+    scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
+
+  // Gráfica producción por corte
+  const corteColors = {C1:"#4f8ef7",C2:"#2ecc71",C3:"#f1c40f",OT:"#e67e22"};
+  const corteDatasets = CORTES.map(c => ({
+    label: c.label,
+    data: MAQUINAS.map((m,i) => {
+      const regs = data.filter(r => parseInt(r.maqIdx)===i && r.corte===c.id);
+      return regs.reduce((s,r)=>s+r.prod,0);
+    }),
+    backgroundColor: corteColors[c.id],
+    borderRadius: 0,
+  }));
+  const targetDataset={label:"Target",data:MAQUINAS.map(m=>m.target),backgroundColor:"#2e334766",borderRadius:4,type:"bar",stack:"target",order:2};
+  const prodDatasets=corteDatasets.map(d=>({...d,stack:"prod",order:1}));
+  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+c.parsed.y.toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
+  const tbParts=document.getElementById("tb-parts");
+  if(tbParts){
+    tbParts.innerHTML="";
+    let totalQty=0,totalDef=0,totalScrap=0;
+    if(!data.length){
+      tbParts.innerHTML='<tr><td colspan="10" class="empty">Sin registros para este período.</td></tr>';
+    } else {
+      data.forEach(r=>{
+        const pct=r.pct||0;
+        const cl=pct>=95?"green":pct>=80?"yellow":"red";
+        const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";
+        const corteLabel={C1:"Break",C2:"Lunch",C3:"Home",OT:"OT"}[r.corte]||r.corte||"—";
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td><strong>${r.maqNombre||"—"}</strong></td>
+          <td class="model-code">${r.modelo||"—"}</td>
+          <td><span class="tbadge ${r.maqTipo||""}">${r.maqTipo||"—"}</span></td>
+          <td style="font-size:.63rem;color:var(--muted)">${r.parte||"—"}</td>
+          <td style="color:${tCol};font-weight:700">${r.turno||"—"}</td>
+          <td style="font-size:.65rem;color:var(--muted)">${corteLabel}</td>
+          <td class="blue">${(r.prod||0).toLocaleString()}</td>
+          <td>${(r.def||0).toLocaleString()}</td>
+          <td>${(r.scrap||0).toLocaleString()}</td>
+          <td class="${cl}">${pct.toFixed(1)}%</td>`;
+        tbParts.appendChild(tr);
+        totalQty+=r.prod||0;totalDef+=r.def||0;totalScrap+=r.scrap||0;
+      });
+      const trTot=document.createElement("tr");
+      trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
+      trTot.innerHTML=`<td>TOTAL</td><td></td><td></td><td></td><td></td><td></td>
+        <td class="blue">${totalQty.toLocaleString()}</td>
+        <td>${totalDef.toLocaleString()}</td>
+        <td>${totalScrap.toLocaleString()}</td><td></td>`;
+      tbParts.appendChild(trTot);
+    }
+  }
+
+}
+
+function rebuildChart(id, cfg) {
+  if(charts[id]){ charts[id].destroy(); delete charts[id]; }
+  const c = document.getElementById(id);
+  if(!c) return;
+  charts[id] = new Chart(c.getContext("2d"), cfg);
+}
+
+window.rHoy = rHoy;
+
+// Reloj
+setInterval(()=>{
+  const el = document.getElementById("clk");
+  if(el) el.textContent = new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});
+}, 1000);
+
+} // fin iniciarDatos
+
+// Al cargar: si ya autenticó en esta sesión, ir directo al dashboard
+if(sessionStorage.getItem("mes-pub-auth")==="1"){
+  document.getElementById("clave-view").style.display = "none";
+  document.getElementById("dash-view").style.display  = "block";
+  iniciarDatos();
+}
+</script>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+:root{
+  --bg:#0f1117;--card:#1a1d27;--card2:#21263a;--border:#2e3347;
+  --text:#e8eaf0;--muted:#7f8c9a;--accent:#00d4ff;
+  --green:#2ecc71;--yellow:#f1c40f;--red:#e74c3c;--purple:#9b59b6;
+}
+*{box-sizing:border-box;margin:0;padding:0;}
+body{background:var(--bg);color:var(--text);font-family:'IBM Plex Sans','Segoe UI',sans-serif;min-height:100vh;}
+#clave-view{display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;}
+#dash-view{display:none;}
+.clave-box{background:var(--card);border:1px solid var(--border);border-radius:16px;padding:36px 32px;width:100%;max-width:360px;text-align:center;}
+.clave-logo{font-size:2.5rem;margin-bottom:10px;}
+.clave-title{font-size:1.1rem;font-weight:700;color:var(--accent);margin-bottom:4px;}
+.clave-sub{font-size:.75rem;color:var(--muted);margin-bottom:24px;}
+.clave-box input{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:12px 14px;font-size:1rem;outline:none;text-align:center;letter-spacing:2px;margin-bottom:12px;}
+.clave-box input:focus{border-color:var(--accent);}
+.clave-btn{width:100%;padding:12px;background:var(--accent);color:#000;border:none;border-radius:9px;font-size:.9rem;font-weight:700;cursor:pointer;}
+.clave-btn:hover{opacity:.85;}
+.clave-err{display:none;margin-top:10px;background:#3d1a1a;color:var(--red);border:1px solid var(--red);border-radius:8px;padding:8px 12px;font-size:.78rem;}
+.topbar{display:flex;justify-content:space-between;align-items:center;padding:9px 16px;background:var(--card);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:100;}
+.topbar h1{font-size:.88rem;font-weight:700;display:flex;align-items:center;gap:8px;}
+.tright{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
+#clk{font-size:.73rem;color:var(--muted);}
+.live{display:flex;align-items:center;gap:4px;font-size:.67rem;color:var(--green);}
+.ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
+@keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
+.bsm{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:.63rem;color:var(--muted);}
+.cb{background:#1a3a5c;color:#4f8ef7;border-radius:20px;padding:2px 9px;font-size:.65rem;font-weight:700;}
+.public-badge{background:#1a3d2b;color:var(--green);border:1px solid var(--green);border-radius:20px;padding:2px 9px;font-size:.63rem;font-weight:700;}
+.dw{padding:11px;max-width:1100px;margin:0 auto;}
+.dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:6px;}
+.dh h2{font-size:.93rem;color:var(--accent);}
+.ctrl{display:flex;align-items:center;gap:5px;margin-bottom:7px;flex-wrap:wrap;}
+select,input[type=date]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 7px;font-size:.72rem;}
+.kgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px;}
+.kpi{background:var(--card);border-radius:10px;padding:10px;border:1px solid var(--border);text-align:center;}
+.kpi .lbl{font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+.kpi .val{font-size:1.4rem;font-weight:700;}.kpi .sub{font-size:.57rem;color:var(--muted);margin-top:1px;}
+.dc{background:var(--card);border-radius:10px;padding:11px;border:1px solid var(--border);margin-bottom:8px;}
+.dc h3{font-size:.69rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
+table{width:100%;border-collapse:collapse;font-size:.74rem;}
+th{background:var(--card2);color:var(--muted);font-size:.61rem;text-transform:uppercase;padding:6px 5px;text-align:center;}
+td{padding:5px 5px;text-align:center;border-bottom:1px solid var(--border);}
+tr:last-child td{border-bottom:none;}
+tbody tr:hover{background:var(--card2);}
+.tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.59rem;font-weight:600;}
+.TOP{background:#1a3a5c;color:#4f8ef7;}.BOT{background:#1a3d2b;color:#2ecc71;}
+.AUTO{background:#3d2b1a;color:#e67e22;}.ASSY{background:#3d1a3a;color:#9b59b6;}.VC{background:#1a3d3d;color:#1abc9c;}
+.green{color:var(--green);}.yellow{color:var(--yellow);}.red{color:var(--red);}.blue{color:var(--accent);}
+
+.tbl-parts-wrap{overflow-x:auto;margin-top:0;}
+.tbl-parts-wrap table{min-width:700px;}
+.model-code{font-size:.63rem;color:var(--accent);letter-spacing:.5px;font-family:'IBM Plex Mono',monospace;}
+canvas{width:100%!important;}
+.hr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
+.footer{text-align:center;font-size:.65rem;color:var(--muted);padding:20px;border-top:1px solid var(--border);margin-top:12px;}
+@media(max-width:700px){.kgrid{grid-template-columns:repeat(2,1fr);}.g2{grid-template-columns:1fr;}}
+</style>
+</head>
+<body>
+
+<!-- PANTALLA DE CLAVE -->
+<div id="clave-view">
+  <div class="clave-box">
+    <div class="clave-logo">🏭</div>
+    <div class="clave-title">Manufacturing MES · Eunsung Printing Mex</div>
+    <div class="clave-sub">Dashboard de Producción · Acceso restringido</div>
+    <input type="password" id="clave-inp" placeholder="Clave de acceso"
+      onkeydown="if(event.key==='Enter')checkClave()">
+    <button class="clave-btn" onclick="checkClave()">🔓 Acceder al Dashboard</button>
+    <div class="clave-err" id="clave-err">❌ Clave incorrecta. Intenta de nuevo.</div>
+  </div>
+</div>
+
+<!-- DASHBOARD -->
+<div id="dash-view">
+<div class="topbar">
+  <h1>🏭 Manufacturing MES · Eunsung Printing Mex · Dashboard</h1>
+  <div class="tright">
+    <span id="clk"></span>
+    <div class="live"><div class="ldot"></div>EN VIVO</div>
+    <span class="bsm" id="lupd">Conectando...</span>
+    <span class="cb" id="cnt">– registros</span>
+    <span class="public-badge">👁 Solo lectura</span>
+  </div>
+</div>
+
+<div class="dw">
+  <div class="dh">
+    <h2>📊 Producción del Día</h2>
+    <div class="hr">
+      <input type="date" id="fhoy" onchange="rHoy()">
+      <select id="thoy" onchange="rHoy()">
+        <option value="todos">Todos los turnos</option>
+        <option value="A">Turno A</option>
+        <option value="B">Tiempo Extra</option>
+        <option value="C">Sábado TE</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- KPIs -->
+  <div class="kgrid">
+    <div class="kpi"><div class="lbl">Production</div><div class="val blue" id="k-p">–</div><div class="sub">units</div></div>
+    <div class="kpi"><div class="lbl">Compliance</div><div class="val blue" id="k-c">–</div><div class="sub" id="k-cs">–</div></div>
+    <div class="kpi"><div class="lbl">Scrap %</div><div class="val blue" id="k-s">–</div><div class="sub">vs prod</div></div>
+    <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
+    <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub">minutes</div></div>
+  </div>
+
+  <!-- Gráficas -->
+  <div class="g2">
+    <div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div>
+    <div class="dc">
+      <h3>Production by cut</h3>
+      <div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)">
+        <span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT</span>
+        <span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span>
+      </div>
+      <canvas id="chP" height="200"></canvas>
+    </div>
+  </div>
+
+  <!-- Tablas -->
+  <div class="g2">
+    <div class="dc">
+      <h3>Machine detail</h3>
+      <table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead>
+      <tbody id="tb-hoy"></tbody></table>
+    </div>
+    <div class="dc">
+      <h3>Downtime detail</h3>
+      <table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead>
+      <tbody id="tb-dt"></tbody></table>
+    </div>
+  </div>
+  <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Cut</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+
+  <div class="footer">MES · Sistema de Producción · Eunsung Printing Mex · Vista pública de solo lectura</div>
+</div>
+</div><!-- fin dash-view -->
+
+</body>
+</html>

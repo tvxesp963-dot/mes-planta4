@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IMS · Guía de Configuración</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@600;700&family=DM+Sans:wght@400;500;600&display=swap');
+:root{--bg:#080c18;--bg2:#0e1325;--bg3:#141929;--accent:#4da6ff;--green:#00e676;--amber:#ffb300;--red:#ff4444;--text:#dde3f5;--text2:#7a88b8;--border:#1e2a4a;}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'DM Sans',sans-serif;background:var(--bg);color:var(--text);padding:1.5rem 1rem 4rem;max-width:680px;margin:0 auto}
+h1{font-family:'Rajdhani',sans-serif;font-size:28px;font-weight:700;color:var(--accent);letter-spacing:1.5px;margin-bottom:.3rem}
+.sub{font-size:13px;color:var(--text2);margin-bottom:2rem}
+.phase{margin-bottom:2.5rem}
+.phase-header{display:flex;align-items:center;gap:12px;margin-bottom:1.2rem;padding-bottom:.8rem;border-bottom:1px solid var(--border)}
+.phase-num{width:38px;height:38px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700;flex-shrink:0}
+.pn-1{background:rgba(77,166,255,.15);border:2px solid var(--accent);color:var(--accent)}
+.pn-2{background:rgba(0,230,118,.15);border:2px solid var(--green);color:var(--green)}
+.pn-3{background:rgba(255,179,0,.15);border:2px solid var(--amber);color:var(--amber)}
+.pn-4{background:rgba(77,166,255,.15);border:2px solid #9b59b6;color:#c39bd3}
+.phase-title{font-family:'Rajdhani',sans-serif;font-size:18px;font-weight:700}
+.phase-sub{font-size:12px;color:var(--text2);margin-top:2px}
+.step{background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1rem 1.1rem;margin-bottom:.7rem}
+.step-header{display:flex;align-items:center;gap:10px;margin-bottom:.5rem}
+.step-icon{font-size:20px}
+.step-title{font-size:14px;font-weight:600}
+.step-desc{font-size:12px;color:var(--text2);line-height:1.6}
+.code{background:#020408;border:1px solid #162030;border-radius:8px;padding:.7rem .9rem;font-family:monospace;font-size:11px;color:#7ec8ff;margin:.5rem 0;overflow-x:auto;line-height:1.7}
+.code .comment{color:#3d6080}
+.code .key{color:#ffd700}
+.code .val{color:#98c379}
+.code .kw{color:#c678dd}
+.tip{background:rgba(77,166,255,.06);border:1px solid rgba(77,166,255,.2);border-radius:8px;padding:.7rem .9rem;font-size:11px;color:var(--text2);margin:.5rem 0;line-height:1.6}
+.tip strong{color:var(--accent)}
+.warn{background:rgba(255,179,0,.06);border:1px solid rgba(255,179,0,.25);border-radius:8px;padding:.7rem .9rem;font-size:11px;color:#d4a800;margin:.5rem 0;line-height:1.6}
+.success{background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.25);border-radius:8px;padding:.8rem 1rem;font-size:12px;color:var(--green);margin-top:.5rem;line-height:1.7}
+.files-grid{display:grid;grid-template-columns:1fr 1fr;gap:.6rem;margin:.8rem 0}
+.file-card{background:var(--bg3);border:1px solid var(--border);border-radius:9px;padding:.7rem .9rem}
+.file-name{font-family:monospace;font-size:12px;color:var(--accent);font-weight:600;margin-bottom:.3rem}
+.file-desc{font-size:10px;color:var(--text2)}
+a{color:var(--accent);text-decoration:none}
+a:hover{text-decoration:underline}
+.badge{display:inline-block;font-size:10px;padding:2px 8px;border-radius:6px;font-weight:600;margin-left:6px;vertical-align:middle}
+.b-req{background:rgba(255,68,68,.15);color:var(--red)}
+.b-opt{background:rgba(255,179,0,.15);color:var(--amber)}
+.divider{height:1px;background:var(--border);margin:2rem 0}
+</style>
+</head>
+<body>
+
+<h1>📦 IMS — Guía de Configuración</h1>
+<div class="sub">Sigue estos pasos para activar Firebase, multi-usuario y la conexión con tu MES</div>
+
+<!-- ARCHIVOS -->
+<div class="step" style="margin-bottom:1.5rem">
+  <div class="step-header"><div class="step-icon">📁</div><div class="step-title">Archivos que recibiste</div></div>
+  <div class="files-grid">
+    <div class="file-card"><div class="file-name">IMS_Firebase_Planta4.html</div><div class="file-desc">Sistema principal completo — ábrelo en el navegador</div></div>
+    <div class="file-card"><div class="file-name">firebase-config.js</div><div class="file-desc">Aquí pegas tus credenciales de Firebase</div></div>
+    <div class="file-card"><div class="file-name">GUIA_Configuracion.html</div><div class="file-desc">Este archivo — instrucciones paso a paso</div></div>
+  </div>
+  <div class="tip"><strong>Importante:</strong> Los 3 archivos deben estar en la misma carpeta para que funcionen juntos.</div>
+</div>
+
+<!-- FASE 1 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num pn-1">1</div>
+    <div><div class="phase-title">☁️ Configurar Google Firebase</div><div class="phase-sub">Base de datos en la nube — gratis para tu caso de uso</div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">🌐</div><div class="step-title">Crear proyecto Firebase</div></div>
+    <div class="step-desc">
+      1. Ve a <a href="https://console.firebase.google.com" target="_blank">console.firebase.google.com</a><br>
+      2. Haz clic en <strong>"Agregar proyecto"</strong><br>
+      3. Nombre del proyecto: <strong>ims-planta4</strong><br>
+      4. Desactiva Google Analytics (no es necesario) → <strong>Crear proyecto</strong>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">🔑</div><div class="step-title">Obtener credenciales</div></div>
+    <div class="step-desc">
+      1. En tu proyecto → icono ⚙️ → <strong>Configuración del proyecto</strong><br>
+      2. Baja hasta <strong>"Tus apps"</strong> → clic en el icono <strong>&lt;/&gt;</strong> (Web)<br>
+      3. Nombre de la app: <strong>IMS Web</strong> → <strong>Registrar app</strong><br>
+      4. Copia el bloque <code>firebaseConfig = { ... }</code><br>
+      5. Pégalo en el archivo <strong>firebase-config.js</strong> reemplazando los valores de ejemplo
+    </div>
+    <div class="code">
+<span class="comment">// Ejemplo de cómo debe quedar firebase-config.js:</span>
+<span class="kw">const</span> <span class="key">firebaseConfig</span> = {
+  <span class="key">apiKey</span>: <span class="val">"AIzaSyD-tu-clave-real-aqui"</span>,
+  <span class="key">authDomain</span>: <span class="val">"ims-planta4.firebaseapp.com"</span>,
+  <span class="key">projectId</span>: <span class="val">"ims-planta4"</span>,
+  <span class="key">storageBucket</span>: <span class="val">"ims-planta4.appspot.com"</span>,
+  <span class="key">messagingSenderId</span>: <span class="val">"987654321"</span>,
+  <span class="key">appId</span>: <span class="val">"1:987654321:web:abc123def456"</span>
+};
+initFirebase(firebaseConfig); <span class="comment">// No borres esta línea</span>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">👥</div><div class="step-title">Activar Authentication (Login de usuarios)</div></div>
+    <div class="step-desc">
+      1. Menú izquierdo → <strong>Authentication</strong> → <strong>Comenzar</strong><br>
+      2. Pestaña <strong>"Sign-in method"</strong> → <strong>Correo electrónico/Contraseña</strong> → Habilitar ✓<br>
+      3. Pestaña <strong>"Usuarios"</strong> → <strong>Agregar usuario</strong><br>
+      4. Agrega uno por uno los correos y contraseñas de tu equipo (6-15 personas)<br>
+      <br>
+      <strong>Roles sugeridos:</strong><br>
+      — Administrador: tú + supervisores<br>
+      — Operador: personal de línea
+    </div>
+    <div class="tip"><strong>Tip:</strong> El sistema asigna el rol (Admin/Operador) al momento de iniciar sesión desde el selector en la pantalla de login. Puedes cambiar esto en cualquier momento.</div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">🗄️</div><div class="step-title">Activar Firestore Database</div></div>
+    <div class="step-desc">
+      1. Menú izquierdo → <strong>Firestore Database</strong> → <strong>Crear base de datos</strong><br>
+      2. Selecciona <strong>"Modo producción"</strong> → Siguiente<br>
+      3. Ubicación: <strong>us-central1</strong> (recomendado para México) → Listo<br>
+      4. Ve a la pestaña <strong>"Reglas"</strong> y reemplaza todo con esto:
+    </div>
+    <div class="code">
+rules_version = <span class="val">'2'</span>;
+service cloud.firestore {
+  match /databases/{database}/documents {
+    match /{document=**} {
+      allow read, write: <span class="kw">if</span> request.auth != <span class="kw">null</span>;
+    }
+  }
+}
+    </div>
+    <div class="tip">Haz clic en <strong>Publicar</strong> después de pegar las reglas.</div>
+  </div>
+
+  <div class="success">
+    ✅ <strong>Firebase listo.</strong> Ahora todos los movimientos se sincronizan automáticamente entre todos los usuarios en tiempo real. Cuando un operador registre una salida en su celular, el dashboard del supervisor se actualiza en segundos.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- FASE 2 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num pn-2">2</div>
+    <div><div class="phase-title">🔗 Conectar con tu MES</div><div class="phase-sub">Sincronización bidireccional de datos de producción</div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">⚙️</div><div class="step-title">Configurar el endpoint desde la app</div></div>
+    <div class="step-desc">
+      1. Abre <strong>IMS_Firebase_Planta4.html</strong> → inicia sesión como <strong>Administrador</strong><br>
+      2. Ve a <strong>Admin ⚙️</strong> → sección <strong>"Integración MES"</strong><br>
+      3. Ingresa la URL de tu API (pregúntale al desarrollador de tu MES cuál es el endpoint)<br>
+      4. Ingresa el API Key o token si tu MES lo requiere<br>
+      5. Clic en <strong>"Probar conexión"</strong> — el log te mostrará si funciona<br>
+      6. Clic en <strong>"Guardar configuración"</strong>
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">📡</div><div class="step-title">¿Qué datos se intercambian con el MES?</div></div>
+    <div class="step-desc">
+      <strong>IMS → MES</strong> (cada movimiento registrado):<br>
+      — Tipo de movimiento (Entrada/Salida/Traslado)<br>
+      — Part Number, cantidad, ubicación<br>
+      — Usuario responsable, fecha/hora, OC de referencia<br><br>
+      <strong>MES → IMS</strong> (al sincronizar):<br>
+      — Producción del día por máquina (S1, S2, S3, S4, ASSY1, VC)<br>
+      — Consumo de materiales por línea<br>
+      — Estatus de órdenes de producción
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">🗺️</div><div class="step-title">Mapeo de campos (opcional)</div></div>
+    <div class="step-desc">Si tu MES usa nombres de campos diferentes, configura el mapeo en formato JSON:</div>
+    <div class="code">
+<span class="comment">// Ejemplo: tu MES llama "qty_produced" lo que IMS llama "produccion"</span>
+{
+  <span class="key">"produccion"</span>: <span class="val">"qty_produced"</span>,
+  <span class="key">"maquina"</span>: <span class="val">"machine_id"</span>,
+  <span class="key">"turno"</span>: <span class="val">"shift_name"</span>,
+  <span class="key">"fecha"</span>: <span class="val">"production_date"</span>
+}
+    </div>
+  </div>
+
+  <div class="warn">
+    ⚠️ <strong>Necesitas saber de tu MES:</strong> la URL del endpoint, el método (GET/POST), el formato de autenticación (Bearer token, API Key, Basic Auth) y los nombres de los campos. Pídele esta información al desarrollador de tu sistema MES actual.
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- FASE 3 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num pn-3">3</div>
+    <div><div class="phase-title">🔔 Alertas y notificaciones</div><div class="phase-sub">Stock mínimo y notificaciones automáticas</div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">⚠️</div><div class="step-title">Configurar stock mínimo por PN</div></div>
+    <div class="step-desc">
+      1. En la app → pestaña <strong>🔔 Alertas</strong><br>
+      2. En la sección <strong>"Umbral de stock mínimo"</strong>:<br>
+      — Escribe el Part Number (ej: GH69-46036A)<br>
+      — Escribe la cantidad mínima (ej: 1000)<br>
+      — Clic en <strong>"+ Agregar"</strong><br>
+      3. El sistema generará una alerta automática cuando el stock caiga por debajo del mínimo<br>
+      4. La campana 🔔 del topbar mostrará el número de alertas activas
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">📲</div><div class="step-title">Instalar la app en el celular (sin App Store)</div></div>
+    <div class="step-desc">
+      Los operadores pueden instalar el sistema como una app en su celular:<br><br>
+      <strong>En Android (Chrome):</strong><br>
+      1. Abre el archivo HTML en Chrome<br>
+      2. Menú ⋮ → <strong>"Agregar a pantalla de inicio"</strong><br>
+      3. Aparece como app con ícono propio<br><br>
+      <strong>En iPhone (Safari):</strong><br>
+      1. Abre en Safari<br>
+      2. Botón compartir □↑ → <strong>"Agregar a pantalla de inicio"</strong>
+    </div>
+    <div class="tip"><strong>Para que funcione en red local:</strong> Sube el archivo HTML a un servidor interno o usa Google Drive → Compartir → "Cualquiera con el enlace" para que todos accedan desde su celular.</div>
+  </div>
+</div>
+
+<div class="divider"></div>
+
+<!-- FASE 4 -->
+<div class="phase">
+  <div class="phase-header">
+    <div class="phase-num pn-4">4</div>
+    <div><div class="phase-title">🏭 Arranque en planta</div><div class="phase-sub">Checklist para el primer día de operación</div></div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">✅</div><div class="step-title">Checklist antes de arrancar</div></div>
+    <div class="step-desc">
+      □ Firebase configurado y probado<br>
+      □ Usuarios creados en Firebase Auth (uno por persona)<br>
+      □ MES endpoint configurado y probado<br>
+      □ Stock mínimos definidos para los PN críticos<br>
+      □ QR generados e impresos para cada Part Number<br>
+      □ QR pegados en las cajas/racks de cada material<br>
+      □ Operadores capacitados en el flujo: escanear → cantidad → confirmar<br>
+      □ Archivo compartido con todos los usuarios (Drive / servidor)
+    </div>
+  </div>
+
+  <div class="step">
+    <div class="step-header"><div class="step-icon">📷</div><div class="step-title">Imprimir los QR codes</div></div>
+    <div class="step-desc">
+      1. Abre la app → pestaña <strong>📷 QR</strong><br>
+      2. Busca cada Part Number → genera su QR<br>
+      3. Clic en <strong>"🖨️ Imprimir"</strong><br>
+      4. Pega el QR en la caja, rack o bolsa de ese material<br><br>
+      <strong>Recomendación:</strong> Usa papel adhesivo o plástico transparente para proteger los QR en planta
+    </div>
+  </div>
+
+  <div class="success">
+    🚀 <strong>¡Listo para producción!</strong><br>
+    Una vez completados estos pasos, tu sistema IMS estará completamente integrado:<br>
+    📦 Inventario en tiempo real → 🔄 Sincronizado entre 6-15 usuarios → 🔗 Conectado al MES → 🔔 Alertas automáticas
+  </div>
+</div>
+
+<div style="background:var(--bg2);border:1px solid var(--border);border-radius:12px;padding:1.2rem;margin-top:1rem;text-align:center">
+  <div style="font-family:'Rajdhani',sans-serif;font-size:15px;color:var(--accent);font-weight:700;margin-bottom:.4rem">¿Tienes dudas?</div>
+  <div style="font-size:12px;color:var(--text2);line-height:1.7">
+    Regresa al chat con Claude y describe exactamente en qué paso tienes el problema.<br>
+    Por ejemplo: "Firebase dice error auth/invalid-api-key" o "el endpoint del MES devuelve 401".<br>
+    <strong style="color:var(--text)">Se puede resolver paso a paso.</strong>
+  </div>
+</div>
+
+</body>
+</html>
