@@ -96,3 +96,4 @@
 [debug] [2026-05-23T15:54:12.868Z] Checked if tokens are valid: true, expires at: 1779555248567
 [debug] [2026-05-23T15:54:12.869Z] >>> [apiv2][query] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/channels/live/releases versionName=projects%2F165168379582%2Fsites%2Fims-planta4%2Fversions%2F8d50e00a38507032
 [debug] [2026-05-23T15:54:12.869Z] >>> [apiv2][body] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/channels/live/releases {}
+[debug] [2026-05-23T15:54:13.585Z] <<< [apiv2][status] POST https://firebasehosting.googleapis.com/v1beta1/projects/-/sites/ims-planta4/channels/live/releases 200
