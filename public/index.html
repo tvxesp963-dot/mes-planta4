@@ -140,8 +140,8 @@ async function editarRegistro(id) {
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
     const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const maquinas = Object.keys(MAQUINAS||{}).join(',') || 'VC,S1,S2,S3,S4,Zhongke,ASSY1';
-    const opcMaq = maquinas.split(',').map(m=>`<option value="${m.trim()}" ${reg.maquina===m.trim()?'selected':''}>${m.trim()}</option>`).join('');
+    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
     const modal = document.createElement('div');
@@ -952,7 +952,20 @@ function rHoy(){
         maqModelMap[key].target+=r.target||0;
         if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
       });
-      Object.values(maqModelMap).forEach(m=>{
+      // Ordenar: VC → S1 → S2 → S3 → S4 → Zhongke → ASSY1
+      const ordenMaq = ['VC','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
+      const getOrden = nombre => {
+        const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
+        return idx >= 0 ? idx : ordenMaq.length;
+      };
+      const sortedRows = Object.values(maqModelMap).sort((a,b) => {
+        const oa = getOrden(a.maqNombre);
+        const ob = getOrden(b.maqNombre);
+        if (oa !== ob) return oa - ob;
+        return (a.modelo||'').localeCompare(b.modelo||'');
+      });
+
+      sortedRows.forEach(m=>{
         const pct=m.target>0?(m.prod/m.target*100):0;
         const cl=pct>=95?"green":pct>=80?"yellow":"red";
         const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[m.turno]||"#7f8c9a";
