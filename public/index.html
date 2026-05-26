@@ -104,32 +104,48 @@ async function buscarRegistrosEdit() {
     });
     if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
     regs.sort((a,b) => (b.ts?.seconds||0)-(a.ts?.seconds||0));
-    tabla.innerHTML = `<table style="width:100%;border-collapse:collapse;font-size:11px">
-      <thead><tr style="font-size:10px;color:var(--muted)">
-        <th style="text-align:left;padding:4px 6px">Hora</th>
-        <th style="text-align:left;padding:4px 6px">Máquina</th>
-        <th style="text-align:left;padding:4px 6px">Modelo</th>
-        <th style="text-align:left;padding:4px 6px">Tipo</th>
-        <th style="text-align:right;padding:4px 6px">Qty</th>
-        <th style="text-align:center;padding:4px 6px">Turno</th>
-        <th style="text-align:center;padding:4px 6px"></th>
+    // Ordenar igual que Production Summary
+    const ordenMaqEdit = ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const getOrdenEdit = n => { const i = ordenMaqEdit.findIndex(o=>(n||'').toUpperCase().includes(o.toUpperCase())); return i>=0?i:ordenMaqEdit.length; };
+    regs.sort((a,b) => {
+      const om = getOrdenEdit(a.maquina||a.maqNombre) - getOrdenEdit(b.maquina||b.maqNombre);
+      if (om !== 0) return om;
+      return (a.modelo||'').localeCompare(b.modelo||'');
+    });
+    tabla.innerHTML = `<div class="tbl-parts-wrap"><table><thead><tr>
+        <th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th>
+        <th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th><th>Hora</th><th></th>
       </tr></thead><tbody>
       ${regs.map(r => {
         const hora = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.hora||'—');
-        return `<tr style="border-bottom:1px solid var(--border)">
-          <td style="padding:5px 6px">${hora}</td>
-          <td style="padding:5px 6px"><span style="color:var(--amber);font-weight:600">${r.maquina||'—'}</span></td>
-          <td style="padding:5px 6px;color:var(--accent)">${r.modelo||'—'}</td>
-          <td style="padding:5px 6px">${r.tipo||'—'}</td>
-          <td style="padding:5px 6px;text-align:right;font-weight:600">${(r.qty||0).toLocaleString()}</td>
-          <td style="padding:5px 6px;text-align:center">${r.turno||'—'}</td>
-          <td style="padding:5px 6px;text-align:center">
-            <button onclick="editarRegistro('${r.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">✏️ Editar</button>
-            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:10px;padding:3px 8px;border-radius:6px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:4px">🗑️ Eliminar</button>
+        const maq = r.maquina || r.maqNombre || '—';
+        const tipo = r.tipo || r.maqTipo || '—';
+        const parte = r.parte || r.pn || r.partNo || '—';
+        const qty = r.qty || r.prod || 0;
+        const def = r.defectos || r.def || 0;
+        const scrap = r.scrap || 0;
+        const target = r.target || 0;
+        const pct = target > 0 ? (qty/target*100) : 0;
+        const cl = pct>=95?'green':pct>=80?'yellow':'red';
+        const tCol = {A:'#4f8ef7',B:'#2ecc71',C:'#e67e22'}[r.turno]||'#7f8c9a';
+        return `<tr>
+          <td><strong>${maq}</strong></td>
+          <td class="model-code">${r.modelo||'—'}</td>
+          <td><span class="tbadge ${tipo}">${tipo}</span></td>
+          <td style="font-size:.63rem;color:var(--muted)">${parte}</td>
+          <td style="color:${tCol};font-weight:700">${r.turno||'—'}</td>
+          <td class="blue">${qty.toLocaleString()}</td>
+          <td>${def.toLocaleString()}</td>
+          <td>${scrap.toLocaleString()}</td>
+          <td class="${cl}">${target>0?pct.toFixed(1)+'%':'—'}</td>
+          <td style="font-size:.63rem;color:var(--muted)">${hora}</td>
+          <td style="white-space:nowrap">
+            <button onclick="editarRegistro('${r.id}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">✏️</button>
+            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:3px">🗑️</button>
           </td>
         </tr>`;
       }).join('')}
-      </tbody></table>`;
+      </tbody></table></div>`;
   } catch(e) { tabla.innerHTML = '<div style="color:var(--red);font-size:12px">Error: '+e.message+'</div>'; }
 }
 
@@ -140,7 +156,7 @@ async function editarRegistro(id) {
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
     const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
@@ -209,6 +225,86 @@ async function eliminarRegistroEdit(id) {
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
 }
 window.eliminarRegistroEdit=eliminarRegistroEdit;
+// ── CIERRE DE JORNADA ──
+async function calcularCierreJornada() {
+  const fecha = document.getElementById('cj-fecha').value;
+  if (!fecha) { showToast('Selecciona la fecha','var(--red)'); return; }
+  const div = document.getElementById('cj-resultado');
+  div.innerHTML = '<div style="color:var(--muted);font-size:12px">Calculando...</div>';
+  try {
+    const snap = await getDocs(collection(db,'registros'));
+    const assy1Regs = [];
+    snap.forEach(d => {
+      const r = d.data();
+      const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
+      if (fechaReg === fecha && (r.maquina === 'ASSY1' || r.tipo === 'ASSY')) assy1Regs.push({id:d.id,...r});
+    });
+    if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
+    const planSnap = await getDocs(collection(db,'plan_produccion'));
+    let planActivo = null;
+    planSnap.forEach(d => { if(d.id==='plan_activo') planActivo = d.data(); });
+    const imsSnap = await getDocs(collection(db,'planta4_inventario'));
+    const imsMap = {};
+    imsSnap.forEach(d => { const data = d.data(); if(data.pn) imsMap[d.id] = {...data, _docId:d.id}; });
+    const descuentos = {};
+    const resumenModelos = [];
+    assy1Regs.forEach(r => {
+      const modelo = r.modelo||''; const qty = r.qty||0;
+      if (!modelo || !qty) return;
+      if (!planActivo?.lineas) return;
+      let matsModelo = [];
+      Object.entries(planActivo.lineas).forEach(([linea,arr]) => {
+        (Array.isArray(arr)?arr:[arr]).forEach(item => {
+          if (item && item.sm === modelo) (item.materiales||[]).forEach(m => matsModelo.push({pn:m.pn,desc:m.desc,qty}));
+        });
+      });
+      resumenModelos.push({modelo,qty,mats:matsModelo});
+      matsModelo.forEach(m => {
+        if (!descuentos[m.pn]) descuentos[m.pn] = {pn:m.pn,desc:m.desc,total:0};
+        descuentos[m.pn].total += qty;
+      });
+    });
+    const totalPzas = assy1Regs.reduce((s,r)=>s+(r.qty||0),0);
+    let html = `<div style="margin-bottom:.75rem;padding:.5rem .75rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px"><span style="color:var(--green);font-weight:700">ASSY1 producido el ${fecha}:</span><span style="margin-left:8px">${totalPzas.toLocaleString()} pzas en ${assy1Regs.length} registros</span></div>`;
+    const descList = Object.values(descuentos);
+    if (descList.length) {
+      html += `<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR</div>`;
+      html += `<table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="font-size:10px;color:var(--muted)"><th style="text-align:left;padding:4px 6px">N° Parte</th><th style="text-align:left;padding:4px 6px">Descripción</th><th style="text-align:right;padding:4px 6px">Inv. Actual</th><th style="text-align:right;padding:4px 6px">A Descontar</th><th style="text-align:right;padding:4px 6px">Nuevo Inv.</th></tr>`;
+      descList.forEach(d => {
+        const imsDoc = Object.values(imsMap).find(i=>i.pn===d.pn);
+        const invAct = imsDoc?(imsDoc.actual||0):0;
+        const nuevoInv = invAct - d.total;
+        html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:4px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:4px 6px;color:var(--muted)">${d.desc||''}</td><td style="padding:4px 6px;text-align:right">${invAct.toLocaleString()}</td><td style="padding:4px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:4px 6px;text-align:right;color:${nuevoInv<0?'var(--red)':'var(--fg)'};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
+      });
+      html += '</table>';
+      window._cierreDescuentos = {fecha,descuentos:descList,imsMap};
+      html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:10px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
+    } else {
+      html += '<div style="color:var(--muted);font-size:12px;margin-top:.5rem">No se encontraron materiales en el plan para estos registros</div>';
+    }
+    div.innerHTML = html;
+  } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; }
+}
+async function confirmarCierreJornada() {
+  if (!window._cierreDescuentos) return;
+  if (!confirm('¿Confirmar descuento de materiales en el IMS?')) return;
+  const {descuentos,imsMap} = window._cierreDescuentos;
+  try {
+    let actualizados = 0;
+    for (const d of descuentos) {
+      const imsDoc = Object.values(imsMap).find(i=>i.pn===d.pn);
+      if (!imsDoc) continue;
+      const nuevoActual = Math.max(0,(imsDoc.actual||0)-d.total);
+      await updateDoc(doc(db,'planta4_inventario',imsDoc._docId),{actual:nuevoActual,ultimoMovimiento:window._cierreDescuentos.fecha,ultimaModificacion:new Date().toISOString()});
+      actualizados++;
+    }
+    showToast(`✅ IMS actualizado — ${actualizados} partes descontadas`,'var(--green)');
+    document.getElementById('cj-resultado').innerHTML = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700">✅ Cierre aplicado — ${actualizados} materiales descontados del IMS</div>`;
+    window._cierreDescuentos = null;
+  } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
+}
+window.calcularCierreJornada=calcularCierreJornada;
+window.confirmarCierreJornada=confirmarCierreJornada;
 window.buscarRegistrosEdit=buscarRegistrosEdit;
 window.editarRegistro=editarRegistro;
 window.guardarRegistroEdit=guardarRegistroEdit;
@@ -353,7 +449,8 @@ const MAQUINAS = [
   {nombre:"S4",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
   {nombre:"Zhongke",tipo:"AUTO",target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:2000}},
   {nombre:"ASSY1", tipo:"ASSY", target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
-  {nombre:"VC",    tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"VC1",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"VC2",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
 ];
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
@@ -548,6 +645,8 @@ async function loadMesPlan() {
     renderMesPlan();
     arrancarListenerIMS();
     mostrarAlertaIMS([]); // limpiar banner
+    // Actualizar chart con línea de plan
+    if (typeof rHoy === 'function') rHoy();
   } catch(e) { console.log('loadMesPlan:', e.message); }
 }
 
@@ -613,9 +712,9 @@ function renderMesPlan() {
   document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
   document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
 
-  const colores = {'VC':'#FFBA00','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
-  const iconos = {'VC':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','ASSY1':'✅'};
-  const ordenLineas = ['VC','S1/S2','Zhongke','S3','S4','ASSY1'];
+  const colores = {'VC1':'#FFBA00','VC2':'#00B8A0','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
+  const iconos = {'VC1':'⚙️','VC2':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','ASSY1':'✅'};
+  const ordenLineas = ['VC1','VC2','S1/S2','Zhongke','S3','S4','ASSY1'];
   const lineas = mesPlanActivo.lineas || {};
   const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
 
@@ -933,7 +1032,22 @@ function rHoy(){
   }));
   const targetDataset={label:"Target",data:MAQUINAS.map(m=>m.target),backgroundColor:"#2e334766",borderRadius:4,type:"bar",stack:"target",order:2};
   const prodDatasets=corteDatasets.map(d=>({...d,stack:"prod",order:1}));
-  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+c.parsed.y.toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
+
+  // Plan del BOM Simulator por máquina
+  const planPorMaquina = MAQUINAS.map(m => {
+    if (!mesPlanActivo?.lineas) return null;
+    let totalPlan = 0;
+    Object.entries(mesPlanActivo.lineas).forEach(([linea, arr]) => {
+      const nl = linea.toUpperCase(), nm = (m.nombre||'').toUpperCase();
+      if (nl===nm || nl.includes(nm) || nm.includes(nl)) {
+        (Array.isArray(arr)?arr:[arr]).forEach(item => { if(item) totalPlan+=(item.cantidad||0); });
+      }
+    });
+    return totalPlan > 0 ? totalPlan : null;
+  });
+  const planDataset={label:"Prod Plan",data:planPorMaquina,type:"line",borderColor:"#FFBA00",backgroundColor:"transparent",borderWidth:2,borderDash:[5,3],pointBackgroundColor:"#FFBA00",pointRadius:4,pointHoverRadius:6,order:0,fill:false};
+
+  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets,planDataset]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
   // Tabla producción por modelo y parte
   const tbParts=document.getElementById("tb-parts");
   if(tbParts){
@@ -953,7 +1067,7 @@ function rHoy(){
         if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
       });
       // Ordenar: VC → S1 → S2 → S3 → S4 → Zhongke → ASSY1
-      const ordenMaq = ['VC','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
+      const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
       const getOrden = nombre => {
         const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
         return idx >= 0 ? idx : ordenMaq.length;
@@ -1626,7 +1740,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
         <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub">minutes</div></div>
       </div>
-      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span></div><canvas id="chP" height="200"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
         <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
@@ -1751,6 +1865,18 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <button class="abtn" style="background:#1a1a3d;color:#4f8ef7;border:1px solid #4f8ef7" onclick="enviarReporteAhora('semanal')">📤 Enviar reporte semanal ahora</button>
       </div>
     </div>
+  <div class="acard">
+    <h3>🔒 Cierre de Jornada — Descuento IMS</h3>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 del inventario IMS.</div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
+      <div>
+        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
+        <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
+      </div>
+      <button class="abtn abtn-add" onclick="calcularCierreJornada()">📊 Calcular descuentos</button>
+    </div>
+    <div id="cj-resultado"></div>
+  </div>
   <div class="acard">
     <h3>✏️ Corregir Registros</h3>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
