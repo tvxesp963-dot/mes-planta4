@@ -264,24 +264,21 @@ async function calcularCierreJornada() {
 
     // 4. Leer inventario IMS
     const imsSnap = await getDocs(collection(db,'planta4_inventario'));
-    const imsMap = {}; // por PN
+    const imsMap = {};
     imsSnap.forEach(d => { const data = d.data(); if(data.pn) imsMap[(data.pn||'').toUpperCase()] = {...data, _docId:d.id}; });
 
     // 5. Calcular descuentos consolidados (qty + defectos + scrap)
-    const descuentos = {}; // por PN
-    const resumenModelos = [];
+    const descuentos = {};
     let totalPiezasConsumo = 0;
     assy1Regs.forEach(r => {
       const modelo = (r.modelo||'').trim();
       const qty = Number(r.qty)||0;
       const defectos = Number(r.defectos)||0;
       const scrap = Number(r.scrap)||0;
-      const consumo = qty + defectos + scrap; // total piezas físicas consumidas
+      const consumo = qty + defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      // Buscar componentes del modelo en el BOM
       const compsModelo = BOM.filter(b => b.pn && b.sm && b.sm.trim() === modelo);
-      resumenModelos.push({modelo, qty, defectos, scrap, consumo, mats: compsModelo.length});
       compsModelo.forEach(c => {
         const pnKey = (c.pn||'').toUpperCase();
         if (!descuentos[pnKey]) descuentos[pnKey] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0};
@@ -294,7 +291,7 @@ async function calcularCierreJornada() {
     const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos)||0),0);
     const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
 
-    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--text)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
+    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
 
     const descList = Object.values(descuentos);
     if (!descList.length) {
@@ -313,7 +310,7 @@ async function calcularCierreJornada() {
       const sinIMS = imsDoc === undefined;
       const negativo = nuevoInv < 0;
       if (sinIMS || negativo) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--text)';
+      const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--fg)';
       const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:10px">no existe</span>':invAct.toLocaleString();
       html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
     });
@@ -330,86 +327,82 @@ async function calcularCierreJornada() {
 async function confirmarCierreJornada() {
   if (!window._cierreDescuentos) return;
   const cd = window._cierreDescuentos;
-  if (!confirm(`Confirmar cierre de jornada del ${cd.fecha}?\n\n• ${cd.descuentos.length} componentes a descontar\n• Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\n• Esta acción NO se puede deshacer fácilmente.`)) return;
+  const modoSim = document.getElementById('cj-modoSim') && document.getElementById('cj-modoSim').checked;
+  const msgConfirm = modoSim
+    ? `MODO SIMULACIÓN — NO se tocará Firebase.\n\nSe mostrará lo que pasaría si se descontaran:\n• ${cd.descuentos.length} componentes\n• Consumo: ${cd.totalConsumo.toLocaleString()} pzas\n\n¿Ejecutar simulación?`
+    : `Confirmar cierre de jornada del ${cd.fecha}?\n\n• ${cd.descuentos.length} componentes a descontar\n• Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\n• Esta acción NO se puede deshacer fácilmente.`;
+  if (!confirm(msgConfirm)) return;
   const div = document.getElementById('cj-resultado');
-  div.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳ Procesando descuentos...</div>';
+  div.innerHTML = `<div style="color:var(--muted);font-size:12px">⏳ ${modoSim?'Simulando':'Procesando'} descuentos...</div>`;
   try {
     const fechaISO = new Date().toISOString();
     const userActual = (typeof currentUser!=='undefined' && currentUser && currentUser.email) ? currentUser.email : (window._userEmail || 'Sistema MES');
-    let actualizados = 0, faltantes = 0, creados = 0, movimientos = 0;
+    let actualizados = 0, faltantes = 0, movimientos = 0;
     const detalleFaltantes = [];
+    const detalleSim = [];
 
     for (const d of cd.descuentos) {
       const imsDoc = cd.imsMap[(d.pn||'').toUpperCase()];
       const refTxt = `Descuento ASSY1 ${cd.fecha} (${cd.semanaRef||'BOM'})`;
       if (!imsDoc) {
-        // No existe en IMS: registrar faltante en log
         faltantes++;
         detalleFaltantes.push(`${d.pn}: ${d.total} no descontado (no existe en IMS)`);
+        if (modoSim) detalleSim.push(`❌ ${d.pn} → no existe en IMS, NO se podría descontar ${d.total}`);
         continue;
       }
       const invAnterior = Number(imsDoc.actual)||0;
       const salidasAnt = Number(imsDoc.salidas)||0;
       const nuevoActual = invAnterior - d.total;
-      const histEntry = {
-        tipo: 'OUT',
-        fecha: fechaISO,
-        qty: d.total,
-        loc: imsDoc.ubicacion||'Almacén',
-        user: userActual,
-        ref: refTxt
-      };
+
+      if (modoSim) {
+        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ⚠️ NEGATIVO':''}`);
+        actualizados++; movimientos++;
+        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedaría en ${nuevoActual}`); }
+        continue;
+      }
+
+      // ── MODO REAL ──
+      const histEntry = { tipo:'OUT', fecha:fechaISO, qty:d.total, loc:imsDoc.ubicacion||'Almacén', user:userActual, ref:refTxt };
       const nuevoHist = (Array.isArray(imsDoc.historial)?imsDoc.historial:[]).concat([histEntry]);
       await updateDoc(doc(db,'planta4_inventario',imsDoc._docId), {
-        actual: nuevoActual,
-        salidas: salidasAnt + d.total,
-        historial: nuevoHist,
-        ultimoMovimiento: cd.fecha,
-        ultimaModificacion: fechaISO
+        actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
+        ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
       });
       if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: queda en ${nuevoActual}`); }
-      // Crear movimiento en planta4_movimientos
       await addDoc(collection(db,'planta4_movimientos'), {
-        tipo: 'OUT',
-        pn: d.pn,
-        desc: d.desc||'',
-        familia: d.familia||'',
-        cantidad: d.total,
-        fecha: fechaISO,
-        fechaProduccion: cd.fecha,
-        ubicacion: imsDoc.ubicacion||'Almacén',
-        usuario: userActual,
-        referencia: refTxt,
-        origen: 'CIERRE_JORNADA_MES'
+        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total,
+        fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
+        usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
       });
-      movimientos++;
-      actualizados++;
+      movimientos++; actualizados++;
     }
 
-    // Guardar registro del cierre (idempotencia)
-    await setDoc(doc(db,'cierres_jornada',cd.fecha), {
-      fecha: cd.fecha,
-      fechaCierre: fechaISO,
-      usuario: userActual,
-      semanaRef: cd.semanaRef||'',
-      totalRegistros: cd.totalRegs,
-      totalConsumo: cd.totalConsumo,
-      totalQty: cd.totalQty,
-      totalDef: cd.totalDef,
-      totalScr: cd.totalScr,
-      componentesDescontados: actualizados,
-      faltantes: faltantes,
-      movimientosCreados: movimientos
-    });
+    if (!modoSim) {
+      await setDoc(doc(db,'cierres_jornada',cd.fecha), {
+        fecha:cd.fecha, fechaCierre:fechaISO, usuario:userActual, semanaRef:cd.semanaRef||'',
+        totalRegistros:cd.totalRegs, totalConsumo:cd.totalConsumo, totalQty:cd.totalQty,
+        totalDef:cd.totalDef, totalScr:cd.totalScr, componentesDescontados:actualizados,
+        faltantes:faltantes, movimientosCreados:movimientos
+      });
+    }
 
-    let resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">✅ Cierre aplicado — ${actualizados} componentes descontados</div>`;
-    resumen += `<div style="font-size:11px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--text)">${movimientos}</b><br>• Total consumo: <b style="color:var(--text)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
-    if (faltantes > 0) {
-      resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:11px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
+    let resumen;
+    if (modoSim) {
+      resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">🧪 SIMULACIÓN COMPLETA — Firebase NO se modificó</div>`;
+      resumen += `<div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">• Componentes que SÍ se podrían descontar: <b style="color:var(--fg)">${actualizados}</b><br>• Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>• Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
+      resumen += `<div style="font-size:11px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÍNEA POR LÍNEA</div>`;
+      resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:10px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
+      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:11px">💡 Para ejecutar de verdad: desmarca <b>"Modo simulación"</b> y vuelve a calcular.</div>`;
+    } else {
+      resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">✅ Cierre aplicado — ${actualizados} componentes descontados</div>`;
+      resumen += `<div style="font-size:11px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>• Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
+      if (faltantes > 0) {
+        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:11px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
+      }
     }
     div.innerHTML = resumen;
-    showToast(`✅ IMS actualizado — ${actualizados} partes`,'var(--green)');
-    window._cierreDescuentos = null;
+    if (!modoSim) { showToast(`✅ IMS actualizado — ${actualizados} partes`,'var(--green)'); window._cierreDescuentos = null; }
+    else { showToast(`🧪 Simulación completa — ${actualizados} descuentos posibles`,'#5BA3FF'); }
   } catch(e) {
     div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
     console.error('confirmarCierreJornada:', e);
@@ -1980,13 +1973,17 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     </div>
   <div class="acard">
     <h3>🔒 Cierre de Jornada — Descuento IMS</h3>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 del inventario IMS.</div>
+    <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
       <div>
         <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
         <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
       <button class="abtn abtn-add" onclick="calcularCierreJornada()">📊 Calcular descuentos</button>
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.78rem;color:#5BA3FF;font-weight:600" title="Si está activo, NO toca Firebase. Solo simula el resultado.">
+        <input type="checkbox" id="cj-modoSim" checked style="cursor:pointer;accent-color:#5BA3FF">
+        🧪 Modo simulación (NO toca Firebase)
+      </label>
     </div>
     <div id="cj-resultado"></div>
   </div>
