@@ -1023,6 +1023,15 @@ window.confirmarLinea = confirmarLinea;
 window.desconfirmarLinea = desconfirmarLinea;
 
 window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
+
+// ── Envío a SHIPQR (conexión pendiente con sistema externo) ──
+window.enviarShipqr=(modeloEnc,parteEnc,prod)=>{
+  const modelo=decodeURIComponent(modeloEnc);
+  const parte=decodeURIComponent(parteEnc);
+  const msg=`📱 Enviar a SHIPQR:\n\nModelo: ${modelo}\nPart Number: ${parte}\nProducción: ${prod.toLocaleString()} pzas\n\n(La conexión con el sistema SHIPQR aún no está implementada. Solo se está validando que la tabla del MES capture bien los datos.)`;
+  alert(msg);
+  console.log('[SHIPQR pendiente]', {modelo, parte, prod});
+};
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
@@ -1209,6 +1218,52 @@ function rHoy(){
         <td>${totalDef.toLocaleString()}</td>
         <td>${totalScrap.toLocaleString()}</td><td></td>`;
       tbParts.appendChild(trTot);
+    }
+  }
+
+  // ── Tabla Material listo para SHIPQR (solo ASSY1 + HOY) ──
+  const tbShipqr=document.getElementById("tb-shipqr");
+  if(tbShipqr){
+    tbShipqr.innerHTML="";
+    const HOY=new Date().toISOString().slice(0,10);
+    const assyHoy=REGISTROS.filter(r=>{
+      const fecha=r.fecha||"";
+      const esASSY=(r.maqNombre||"").toUpperCase().includes("ASSY")||(r.maqTipo||"").toUpperCase()==="ASSY";
+      return fecha===HOY && esASSY;
+    });
+    if(!assyHoy.length){
+      tbShipqr.innerHTML='<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px">Sin producción de ASSY1 hoy.</td></tr>';
+    } else {
+      const modPnMap={};
+      assyHoy.forEach(r=>{
+        const modelo=r.modelo||"—";
+        const parte=r.parte||"—";
+        const key=modelo+"||"+parte;
+        if(!modPnMap[key]){modPnMap[key]={modelo,parte,prod:0};}
+        modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
+      });
+      const rows=Object.values(modPnMap).sort((a,b)=>(a.modelo||"").localeCompare(b.modelo||""));
+      let totalShip=0;
+      rows.forEach(m=>{
+        totalShip+=m.prod;
+        const tr=document.createElement("tr");
+        tr.innerHTML=`<td class="model-code">${m.modelo}</td>
+          <td style="color:var(--accent);font-family:monospace;font-size:.7rem">${m.parte}</td>
+          <td class="blue" style="text-align:right;font-weight:600">${m.prod.toLocaleString()}</td>
+          <td style="text-align:center">
+            <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod})"
+              style="background:rgba(77,166,255,.12);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
+              📱 SHIPQR
+            </button>
+          </td>`;
+        tbShipqr.appendChild(tr);
+      });
+      const trTot=document.createElement("tr");
+      trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
+      trTot.innerHTML=`<td colspan="2">TOTAL</td>
+        <td class="blue" style="text-align:right">${totalShip.toLocaleString()}</td>
+        <td></td>`;
+      tbShipqr.appendChild(trTot);
     }
   }
 
@@ -1852,6 +1907,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
       <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><h3>📦 Material listo para SHIPQR <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px">Hoy · ASSY1</span></h3>
+        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Producción de ASSY1 del día, agrupada por modelo SM y Part Number. Click en SHIPQR para enviar al sistema.</div>
+        <div class="tbl-parts-wrap"><table><thead><tr><th>Modelo SM</th><th>Part Number</th><th style="text-align:right">Producción</th><th style="text-align:center">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
+      </div>
     </div>
 
     <div id="dtab-feed" class="dtc">
