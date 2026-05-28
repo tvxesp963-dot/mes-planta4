@@ -72,12 +72,12 @@ function renderAdminMaquinas(){
     return `<div style="background:${activa?"var(--card2)":"#1a1117"};border:1px solid ${activa?"#2ecc7133":"#e74c3c33"};border-radius:9px;padding:12px;opacity:${activa?1:0.8}">
       <div style="font-size:.9rem;font-weight:700;margin-bottom:3px">${m.nombre}</div>
       <div style="margin-bottom:8px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
-      <div style="font-size:.62rem;margin-bottom:10px">
+      <div style="font-size:.75rem;margin-bottom:10px">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${activa?"#2ecc71":"#e74c3c"};margin-right:4px"></span>
         ${activa?"Activa":"Inactiva"}
       </div>
       <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:.65rem;color:var(--muted)">Estado</span>
+        <span style="font-size:.8rem;color:var(--muted)">Estado</span>
         <div onclick="saveMaquinaStatus(${i},${!activa})"
           style="width:36px;height:20px;border-radius:10px;background:${activa?"#2ecc71":"#444"};position:relative;cursor:pointer;transition:background .2s;">
           <div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:3px;left:${activa?19:3}px;transition:left .2s;"></div>
@@ -132,16 +132,16 @@ async function buscarRegistrosEdit() {
           <td><strong>${maq}</strong></td>
           <td class="model-code">${r.modelo||'—'}</td>
           <td><span class="tbadge ${tipo}">${tipo}</span></td>
-          <td style="font-size:.63rem;color:var(--muted)">${parte}</td>
+          <td style="font-size:.8rem;color:var(--muted)">${parte}</td>
           <td style="color:${tCol};font-weight:700">${r.turno||'—'}</td>
           <td class="blue">${qty.toLocaleString()}</td>
           <td>${def.toLocaleString()}</td>
           <td>${scrap.toLocaleString()}</td>
           <td class="${cl}">${target>0?pct.toFixed(1)+'%':'—'}</td>
-          <td style="font-size:.63rem;color:var(--muted)">${hora}</td>
+          <td style="font-size:.8rem;color:var(--muted)">${hora}</td>
           <td style="white-space:nowrap">
-            <button onclick="editarRegistro('${r.id}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">✏️</button>
-            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:10px;padding:2px 7px;border-radius:4px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:3px">🗑️</button>
+            <button onclick="editarRegistro('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">✏️</button>
+            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:3px">🗑️</button>
           </td>
         </tr>`;
       }).join('')}
@@ -166,23 +166,23 @@ async function editarRegistro(id) {
       <div style="font-weight:700;margin-bottom:14px;font-size:14px">✏️ Editar Registro — ${hora}</div>
       <div style="display:grid;gap:10px">
         <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Máquina</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Máquina</div>
           <select id="er-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
         </div>
         <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Modelo</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
           <input id="er-modelo" value="${reg.modelo||''}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
         </div>
         <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Tipo</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tipo</div>
           <select id="er-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
         </div>
         <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Cantidad</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Cantidad</div>
           <input id="er-qty" type="number" value="${reg.qty||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
         </div>
         <div>
-          <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Turno</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
           <select id="er-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
         </div>
       </div>
@@ -301,8 +301,8 @@ async function calcularCierreJornada() {
     }
 
     let conFaltante = 0;
-    html += `<div style="font-size:11px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
-    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:11px"><tr style="font-size:10px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
+    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
+    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
     descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
       const imsDoc = imsMap[(d.pn||'').toUpperCase()];
       const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
@@ -311,12 +311,12 @@ async function calcularCierreJornada() {
       const negativo = nuevoInv < 0;
       if (sinIMS || negativo) conFaltante++;
       const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--fg)';
-      const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:10px">no existe</span>':invAct.toLocaleString();
+      const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
       html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
     });
     html += '</table></div>';
     if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:11px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (registrará faltante).</div>`;
+      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (registrará faltante).</div>`;
     }
     window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
     html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
@@ -389,15 +389,15 @@ async function confirmarCierreJornada() {
     let resumen;
     if (modoSim) {
       resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">🧪 SIMULACIÓN COMPLETA — Firebase NO se modificó</div>`;
-      resumen += `<div style="font-size:11px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">• Componentes que SÍ se podrían descontar: <b style="color:var(--fg)">${actualizados}</b><br>• Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>• Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
-      resumen += `<div style="font-size:11px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÍNEA POR LÍNEA</div>`;
-      resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:10px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
-      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:11px">💡 Para ejecutar de verdad: desmarca <b>"Modo simulación"</b> y vuelve a calcular.</div>`;
+      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">• Componentes que SÍ se podrían descontar: <b style="color:var(--fg)">${actualizados}</b><br>• Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>• Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
+      resumen += `<div style="font-size:12px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÍNEA POR LÍNEA</div>`;
+      resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:12px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
+      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">💡 Para ejecutar de verdad: desmarca <b>"Modo simulación"</b> y vuelve a calcular.</div>`;
     } else {
       resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">✅ Cierre aplicado — ${actualizados} componentes descontados</div>`;
-      resumen += `<div style="font-size:11px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>• Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
+      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>• Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
       if (faltantes > 0) {
-        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:11px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
+        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
       }
     }
     div.innerHTML = resumen;
@@ -477,19 +477,19 @@ function renderAdminTargets(){
     <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;">
       <div style="font-size:.85rem;font-weight:700;margin-bottom:2px">${m.nombre}</div>
       <div style="margin-bottom:10px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
-      <label style="font-size:.62rem;color:var(--muted);display:block;margin-bottom:3px">Target diario</label>
+      <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Target diario</label>
       <input type="number" id="tgt-inp-${i}" value="${m.target}"
         style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.85rem;font-family:'IBM Plex Mono',monospace;text-align:right;outline:none;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;">
         ${Object.entries({Break:"C1",Lunch:"C2",Home:"C3",OT:"OT"}).map(([lbl,k])=>`
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:.6rem;">
+          <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:.75rem;">
             <span style="color:var(--muted)">${lbl}</span>
             <strong style="color:var(--accent);float:right">${(m.cortes[k]||0).toLocaleString()}</strong>
           </div>`).join("")}
       </div>
-      <div style="font-size:.6rem;color:var(--muted);text-align:center;margin-top:4px">Cortes calculados automáticamente</div>
+      <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px">Cortes calculados automáticamente</div>
       <button onclick="saveTargetToDB(${i},Number(document.getElementById('tgt-inp-${i}').value))"
-        style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px;font-size:.72rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;">
+        style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px;font-size:.85rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;">
         💾 Guardar ${m.nombre}
       </button>
     </div>`).join("");
@@ -681,13 +681,13 @@ function renderAdmin() {
     const regs=REGISTROS.filter(r=>r.userId===u.uid).length;
     const isMe=u.uid===CURRENT_USER.uid;
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${u.email}</td><td><strong>${u.nombre}</strong><br><span style="font-size:.65rem;color:var(--muted)">${u.empleado||""}</span></td>
+    tr.innerHTML=`<td>${u.email}</td><td><strong>${u.nombre}</strong><br><span style="font-size:.8rem;color:var(--muted)">${u.empleado||""}</span></td>
       <td><span class="role-badge role-${u.rol}">${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[u.rol]}</span></td>
       <td>${u.activo?'<span class="dot-on"></span> Activo':'<span class="dot-off"></span> Inactivo'}</td>
       <td>${regs}</td>
       <td>${!isMe?`<button class="abtn abtn-edit" onclick="toggleUser('${u.docId}',${u.activo})">${u.activo?"Desactivar":"Activar"}</button>
         <button class="abtn abtn-del" onclick="delUser('${u.docId}','${u.nombre}')" style="margin-left:4px">✕</button>`
-        :"<span style='font-size:.68rem;color:var(--muted)'>Tú</span>"}</td>`;
+        :"<span style='font-size:.8rem;color:var(--muted)'>Tú</span>"}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -837,7 +837,7 @@ function renderMesPlan() {
 
   // Barra de progreso
   const progressBar = `<div style="margin-bottom:.75rem;background:#0e1325;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.6rem .75rem">
-    <div style="display:flex;justify-content:space-between;font-size:11px;color:var(--muted);margin-bottom:.35rem">
+    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:.35rem">
       <span>Líneas confirmadas</span>
       <span style="color:${pct===100?'#00e676':'var(--fg)'}"><b>${listasLineas}</b> / ${totalLineas} &nbsp;(${pct}%)</span>
     </div>
@@ -859,29 +859,29 @@ function renderMesPlan() {
       if (!mats.length && !(l.cantidad > 0)) return;
       const listo = l.listo || false;
       const key = linea + '___' + idx;
-      const confirmadoPor = l.confirmadoPor ? `<span style="font-size:10px;color:#00e676;margin-left:6px">✓ ${l.confirmadoPor}</span>` : '';
+      const confirmadoPor = l.confirmadoPor ? `<span style="font-size:12px;color:#00e676;margin-left:6px">✓ ${l.confirmadoPor}</span>` : '';
       const confirmadoEn = l.confirmadoEn ? `<span style="font-size:9px;color:var(--muted);margin-left:4px">${new Date(l.confirmadoEn).toLocaleString('es-MX',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})}</span>` : '';
       const btnConfirm = canConfirm
-        ? `<button onclick="confirmarLinea('${key}')" style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.1);color:#00e676;cursor:pointer;font-weight:600">✓ Confirmar listo</button>`
-        : `<span style="font-size:10px;color:var(--muted);font-style:italic">Solo admin</span>`;
+        ? `<button onclick="confirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.1);color:#00e676;cursor:pointer;font-weight:600">✓ Confirmar listo</button>`
+        : `<span style="font-size:12px;color:var(--muted);font-style:italic">Solo admin</span>`;
       html += `
       <div style="background:#0e1325;border:1px solid ${listo?'rgba(0,230,118,.3)':'rgba(255,186,0,.3)'};border-radius:10px;margin-bottom:.5rem;overflow:hidden">
         <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:${listo?'rgba(0,230,118,.06)':'rgba(255,186,0,.06)'}">
           <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
             <span>${icon}</span>
             <span style="font-weight:700;font-size:13px;color:${listo?'#00e676':'#FFBA00'}">${linea}</span>
-            <span style="font-size:11px;color:var(--muted)">· ${l.sm||''} · ${(l.cantidad||0).toLocaleString()} pzas</span>
+            <span style="font-size:12px;color:var(--muted)">· ${l.sm||''} · ${(l.cantidad||0).toLocaleString()} pzas</span>
             ${listo ? confirmadoPor + confirmadoEn : ''}
           </div>
           ${listo
             ? (canConfirm
-                ? `<button onclick="desconfirmarLinea('${key}')" style="font-size:10px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,77,106,.3);background:rgba(255,77,106,.08);color:#ff4d6a;cursor:pointer">↩ Deshacer</button>`
-                : `<span style="font-size:11px;color:#00e676;font-weight:600">✓ Listo</span>`)
+                ? `<button onclick="desconfirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,77,106,.3);background:rgba(255,77,106,.08);color:#ff4d6a;cursor:pointer">↩ Deshacer</button>`
+                : `<span style="font-size:12px;color:#00e676;font-weight:600">✓ Listo</span>`)
             : btnConfirm
           }
         </div>
         ${mats.length ? `<div style="padding:.4rem .75rem">
-          ${mats.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:11px">
+          ${mats.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px">
             <span style="color:${color};font-family:monospace">${m.pn||''}</span>
             <span style="color:var(--muted);flex:1;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</span>
             <span style="font-weight:600;color:var(--fg)">${(m.cant||0).toLocaleString()}</span>
@@ -998,7 +998,7 @@ function mostrarAlertaIMS(cambios) {
 
   const lista = cambios.map(c =>
     `<span style="font-family:monospace;color:#FFBA00">${c.pn}</span>
-     <span style="color:var(--muted);font-size:10px"> +${(c.diff).toLocaleString()} pzas</span>`
+     <span style="color:var(--muted);font-size:12px"> +${(c.diff).toLocaleString()} pzas</span>`
   ).join('<br>');
 
   banner.style.display = 'block';
@@ -1008,12 +1008,12 @@ function mostrarAlertaIMS(cambios) {
         <div style="font-weight:700;font-size:12px;color:#FFBA00;margin-bottom:.3rem">
           ⚠️ Llegó material nuevo — el plan puede estar desactualizado
         </div>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:.4rem">
+        <div style="font-size:12px;color:var(--muted);margin-bottom:.4rem">
           Las siguientes partes tienen más inventario que cuando se publicó el plan:
         </div>
-        <div style="font-size:11px;line-height:1.8">${lista}</div>
+        <div style="font-size:12px;line-height:1.8">${lista}</div>
       </div>
-      <button onclick="loadMesPlan()" style="white-space:nowrap;font-size:11px;padding:5px 12px;border-radius:6px;border:1px solid rgba(255,186,0,.4);background:rgba(255,186,0,.15);color:#FFBA00;cursor:pointer;font-weight:600;margin-top:2px">
+      <button onclick="loadMesPlan()" style="white-space:nowrap;font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid rgba(255,186,0,.4);background:rgba(255,186,0,.15);color:#FFBA00;cursor:pointer;font-weight:600;margin-top:2px">
         🔄 Refrescar plan
       </button>
     </div>`;
@@ -1041,7 +1041,7 @@ function initApp(){
   buildMaqGrid();buildSelects();showStep(0);
   loadCausasParo();
 }
-function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.6rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.65rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
+function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
 window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
@@ -1059,7 +1059,7 @@ window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
 function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
 window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
-window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.78rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.67rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
+window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
 /* ══ DASHBOARD ══ */
 function updateDashStats(){document.getElementById("cnt").textContent=`${REGISTROS.length} registros`;document.getElementById("lupd").textContent="Act. "+new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
@@ -1118,10 +1118,10 @@ function rHoy(){
 
     tbDt.innerHTML=dtRows.map(r=>`<tr>
       <td style="font-weight:500">${r.m.nombre}</td>
-      <td style="font-size:.72rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.causas}</td>
+      <td style="font-size:.85rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.causas}</td>
       <td style="text-align:right;font-weight:500;color:${r.mins>0?r.statusColor:"var(--muted)"}">${r.mins}</td>
       <td style="text-align:right;color:var(--muted);font-size:.75rem">${r.pct}%</td>
-      <td style="text-align:right"><span style="font-size:.65rem;padding:2px 7px;border-radius:10px;background:${r.statusColor}22;color:${r.statusColor};font-weight:500">${r.statusLabel}</span></td>
+      <td style="text-align:right"><span style="font-size:.8rem;padding:2px 7px;border-radius:10px;background:${r.statusColor}22;color:${r.statusColor};font-weight:500">${r.statusLabel}</span></td>
     </tr>`).join("")+`<tr style="border-top:1.5px solid var(--border);font-weight:500">
       <td>TOTAL</td><td></td>
       <td style="text-align:right;color:${totalParo>60?"#e74c3c":totalParo>30?"#f1c40f":"#2ecc71"}">${totalParo}</td>
@@ -1202,7 +1202,7 @@ function rHoy(){
         tr.innerHTML=`<td><strong>${m.maqNombre||"—"}</strong></td>
           <td class="model-code">${m.modelo}</td>
           <td><span class="tbadge ${m.maqTipo||""}">${m.maqTipo||"—"}</span></td>
-          <td style="font-size:.63rem;color:var(--muted)">${m.parte}</td>
+          <td style="font-size:.8rem;color:var(--muted)">${m.parte}</td>
           <td style="color:${tCol};font-weight:700">${m.turno||"—"}</td>
           <td class="blue">${m.prod.toLocaleString()}</td>
           <td>${m.def.toLocaleString()}</td>
@@ -1247,12 +1247,12 @@ function rHoy(){
       rows.forEach(m=>{
         totalShip+=m.prod;
         const tr=document.createElement("tr");
-        tr.innerHTML=`<td class="model-code">${m.modelo}</td>
-          <td style="color:var(--accent);font-family:monospace;font-size:.7rem">${m.parte}</td>
-          <td class="blue" style="text-align:right;font-weight:600">${m.prod.toLocaleString()}</td>
-          <td style="text-align:center">
+        tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
+          <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
+          <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
+          <td style="text-align:center;padding:10px 6px">
             <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod})"
-              style="background:rgba(77,166,255,.12);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:6px;padding:4px 10px;font-size:11px;font-weight:600;cursor:pointer">
+              style="background:rgba(77,166,255,.12);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
               📱 SHIPQR
             </button>
           </td>`;
@@ -1260,8 +1260,8 @@ function rHoy(){
       });
       const trTot=document.createElement("tr");
       trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
-      trTot.innerHTML=`<td colspan="2">TOTAL</td>
-        <td class="blue" style="text-align:right">${totalShip.toLocaleString()}</td>
+      trTot.innerHTML=`<td colspan="2" style="font-size:.9rem;padding:10px 6px">TOTAL</td>
+        <td class="blue" style="text-align:right;font-size:.95rem;padding:10px 6px">${totalShip.toLocaleString()}</td>
         <td></td>`;
       tbShipqr.appendChild(trTot);
     }
@@ -1275,9 +1275,9 @@ function rFeed(){
   const fb=document.getElementById("feed-body");
   if(!data.length){fb.innerHTML='<div class="empty">Sin capturas.</div>';return;}
   fb.innerHTML=data.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";const corteLabel=r.corte?` · ${r.corte}`:"";const cl=sem(r.pct);
-    return`<div class="fi"><div><div class="fo">${r.operador||"—"} <span style="color:${tCol};font-size:.65rem;font-weight:700">${r.turno}</span></div><div class="fm">🔧 ${r.maqNombre}${r.parte?` · 🔩 ${r.parte}`:""} · ⏱ ${tSince(r.tsLocal)}${r.notas?` · 📝 ${r.notas.slice(0,35)}`:""}</div></div><div style="text-align:right;flex-shrink:0"><div class="fp ${cl}">${r.pct}%</div><div class="fq">${r.prod.toLocaleString()} pzas</div></div></div>`;}).join("");
+    return`<div class="fi"><div><div class="fo">${r.operador||"—"} <span style="color:${tCol};font-size:.8rem;font-weight:700">${r.turno}</span></div><div class="fm">🔧 ${r.maqNombre}${r.parte?` · 🔩 ${r.parte}`:""} · ⏱ ${tSince(r.tsLocal)}${r.notas?` · 📝 ${r.notas.slice(0,35)}`:""}</div></div><div style="text-align:right;flex-shrink:0"><div class="fp ${cl}">${r.pct}%</div><div class="fq">${r.prod.toLocaleString()} pzas</div></div></div>`;}).join("");
   const ops=[...new Set(filt(REGISTROS,fecha,"todos").map(r=>r.operador))].filter(Boolean);
-  document.getElementById("ops-body").innerHTML=ops.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${ops.map(o=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.72rem">👷 ${o}</span>`).join("")}</div>`:'<div class="empty">Sin operadores.</div>';
+  document.getElementById("ops-body").innerHTML=ops.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${ops.map(o=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.85rem">👷 ${o}</span>`).join("")}</div>`:'<div class="empty">Sin operadores.</div>';
 }
 
 async function enviarAlertaScrap(maquina, scrapPct){
@@ -1417,12 +1417,12 @@ function rRegs(){
     const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";
     const tr=document.createElement("tr");
     tr.innerHTML=`<td>${r.fecha}</td><td style="color:${tCol};font-weight:700">${r.turno}</td><td>${r.operador||"—"}</td>
-    <td style="font-size:.66rem;color:var(--muted)">${r.parte||"—"}</td>
+    <td style="font-size:.8rem;color:var(--muted)">${r.parte||"—"}</td>
     <td><span class="tbadge ${r.maqTipo}">${r.maqNombre}</span></td>
     <td>${r.prod.toLocaleString()}</td><td>${r.def.toLocaleString()}</td><td>${r.scrap.toLocaleString()}</td>
     <td class="${sem(r.pct)}">${r.pct}%</td>
-    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.66rem;color:var(--muted)">${r.causaParo?(r.causaParo+(r.minParo?" ("+r.minParo+"m)":"")):"—"}</td>
-    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.66rem;color:var(--muted)">${r.notas||"—"}</td>
+    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.causaParo?(r.causaParo+(r.minParo?" ("+r.minParo+"m)":"")):"—"}</td>
+    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.notas||"—"}</td>
     <td><button class="dbtn ddl" onclick="delReg('${r.id}')">✕</button></td>`;
     tb.appendChild(tr);
   });
@@ -1645,23 +1645,23 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:32px 28px;width:100%;max-width:380px;}
 .login-logo{text-align:center;margin-bottom:6px;}
 .login-title{text-align:center;font-size:1.05rem;font-weight:700;color:var(--accent);margin-bottom:3px;}
-.login-sub{text-align:center;font-size:.73rem;color:var(--muted);margin-bottom:22px;}
-.lfield{margin-bottom:13px;}.lfield label{display:block;font-size:.74rem;color:var(--muted);margin-bottom:4px;}
+.login-sub{text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:22px;}
+.lfield{margin-bottom:13px;}.lfield label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px;}
 .lfield input{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 13px;font-size:.92rem;outline:none;}
 .lfield input:focus{border-color:var(--accent);}
 .lbtn{width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;cursor:pointer;margin-top:4px;}
 .lbtn:hover{opacity:.9;}
-.lerr{background:#1a0a0a;border:1px solid var(--red);border-radius:8px;padding:8px 12px;font-size:.76rem;color:var(--red);margin-top:10px;display:none;text-align:center;}
-.role-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.67rem;font-weight:700;}
+.lerr{background:#1a0a0a;border:1px solid var(--red);border-radius:8px;padding:8px 12px;font-size:.85rem;color:var(--red);margin-top:10px;display:none;text-align:center;}
+.role-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.8rem;font-weight:700;}
 .role-admin{background:#3d1a3a;color:#9b59b6;}.role-supervisor{background:#1a3d2b;color:#2ecc71;}.role-operador{background:#1a3a5c;color:#4f8ef7;}
 #app{display:none;flex-direction:column;min-height:100vh;}
 .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px;position:sticky;top:0;z-index:200;}
 .topbar h1{font-size:.9rem;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:8px;}
 .tright{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.user-chip{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:.73rem;}
-.logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.7rem;cursor:pointer;}
+.user-chip{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:.85rem;}
+.logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.85rem;cursor:pointer;}
 .logout-btn:hover{border-color:var(--red);color:var(--red);}
-#clk{font-size:.73rem;color:var(--muted);}
+#clk{font-size:.85rem;color:var(--muted);}
 .modebar{display:flex;background:var(--card);border-bottom:2px solid var(--border);}
 .mbtn{flex:1;padding:11px;text-align:center;cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;transition:all .2s;}
 .mbtn.active{color:var(--accent);border-bottom-color:var(--accent);}
@@ -1674,33 +1674,33 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .screen{display:none;padding:12px;animation:fi .2s ease;}.screen.active{display:block;}
 @keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;}}
 .oc{background:var(--card);border-radius:12px;padding:13px;border:1px solid var(--border);margin-bottom:9px;}
-.oct{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
-.field{margin-bottom:10px;}.field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:3px;}
+.oct{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.field{margin-bottom:10px;}.field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px;}
 .field input,.field select,.field textarea{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 11px;font-size:.9rem;outline:none;-webkit-appearance:none;}
 .field input:focus,.field select:focus{border-color:var(--accent);}
 .field textarea{resize:none;height:65px;font-size:.8rem;}
 .tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .tc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;}
 .tc.selA{border-color:#4f8ef7;background:#0d1f35;}.tc.selB{border-color:#2ecc71;background:#0d2518;}.tc.selC{border-color:#e67e22;background:#2a1a0a;}.tc.selCorte{border-color:#9b59b6;background:#1a0d2a;color:#9b59b6;}
-.ticon{font-size:1.3rem;margin-bottom:2px;}.tlbl{font-size:.73rem;font-weight:700;}.tsub{font-size:.59rem;color:var(--muted);}
+.ticon{font-size:1.3rem;margin-bottom:2px;}.tlbl{font-size:.85rem;font-weight:700;}.tsub{font-size:.75rem;color:var(--muted);}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
 .mc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;}
 .mc.sel{border-color:var(--accent);background:#0d1f35;}.mc-done{opacity:0.5;border-color:#2ecc71!important;cursor:not-allowed!important;}.mn{font-size:.86rem;font-weight:700;}
-.tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.59rem;font-weight:600;margin-top:3px;}
+.tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.75rem;font-weight:600;margin-top:3px;}
 .TOP{background:#1a3a5c;color:#4f8ef7;}.BOT{background:#1a3d2b;color:#2ecc71;}.AUTO{background:#3d2b1a;color:#e67e22;}.ASSY{background:#3d1a3a;color:#9b59b6;}.VC{background:#1a3d3d;color:#1abc9c;}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
 .km{background:var(--card2);border-radius:8px;padding:7px;text-align:center;}
-.km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.58rem;color:var(--muted);margin-top:1px;}
-.nf{margin-bottom:9px;}.nf label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:3px;}
+.km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.75rem;color:var(--muted);margin-top:1px;}
+.nf{margin-bottom:9px;}.nf label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px;}
 .nw{display:flex;align-items:center;gap:6px;}
 .nw input{flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:11px;font-size:1.25rem;text-align:center;outline:none;}
 .nw input:focus{border-color:var(--accent);}
 .nb{width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pw{background:var(--card2);border-radius:4px;height:7px;margin-top:4px;}
 .pb{height:7px;border-radius:4px;transition:width .4s;}
-.sr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.78rem;}.sr:last-child{border:none;}
+.sr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;}.sr:last-child{border:none;}
 .si{font-size:3rem;text-align:center;margin:14px 0 6px;}.st{font-size:1.05rem;font-weight:700;text-align:center;color:var(--green);}
-.ss{font-size:.76rem;color:var(--muted);text-align:center;margin-top:5px;}
+.ss{font-size:.85rem;color:var(--muted);text-align:center;margin-top:5px;}
 .bottom{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:9px 14px;display:flex;gap:7px;max-width:480px;margin:0 auto;}
 .btn{flex:1;padding:11px;border-radius:10px;border:none;font-size:.83rem;font-weight:700;cursor:pointer;}.btn:active{opacity:.75;}
 .bprev{background:var(--card2);color:var(--muted);}.bnext{background:var(--accent);color:#fff;}.bsend{background:var(--green);color:#fff;}
@@ -1708,62 +1708,62 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .ahead{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;flex-wrap:wrap;gap:7px;}
 .ahead h2{font-size:.95rem;color:var(--purple);}
 .acard{background:var(--card);border-radius:12px;padding:13px;border:1px solid var(--border);margin-bottom:11px;}
-.acard h3{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px;}
+.acard h3{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px;}
 .agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px;}
 .astat{background:var(--card2);border-radius:10px;padding:11px;text-align:center;}
-.astat .av{font-size:1.5rem;font-weight:700;}.astat .al{font-size:.63rem;color:var(--muted);margin-top:2px;}
+.astat .av{font-size:1.5rem;font-weight:700;}.astat .al{font-size:.8rem;color:var(--muted);margin-top:2px;}
 .form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:7px;align-items:end;margin-bottom:9px;}
-.form-field label{display:block;font-size:.71rem;color:var(--muted);margin-bottom:3px;}
-.form-field input,.form-field select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:.78rem;outline:none;}
+.form-field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px;}
+.form-field input,.form-field select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:.85rem;outline:none;}
 .form-field input:focus,.form-field select:focus{border-color:var(--accent);}
-.abtn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.76rem;font-weight:700;}
-.abtn-add{background:var(--accent);color:#fff;}.abtn-del{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.67rem;padding:3px 7px;}.abtn-edit{background:transparent;color:var(--accent);border:1px solid var(--accent);font-size:.67rem;padding:3px 7px;}
-table{width:100%;border-collapse:collapse;font-size:.74rem;}
-th{background:var(--card2);color:var(--muted);font-size:.61rem;text-transform:uppercase;padding:6px 5px;text-align:center;}
+.abtn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.85rem;font-weight:700;}
+.abtn-add{background:var(--accent);color:#fff;}.abtn-del{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.8rem;padding:3px 7px;}.abtn-edit{background:transparent;color:var(--accent);border:1px solid var(--accent);font-size:.8rem;padding:3px 7px;}
+table{width:100%;border-collapse:collapse;font-size:.85rem;}
+th{background:var(--card2);color:var(--muted);font-size:.75rem;text-transform:uppercase;padding:6px 5px;text-align:center;}
 td{padding:5px 5px;text-align:center;border-bottom:1px solid var(--border);}tr:last-child td{border-bottom:none;}tbody tr:hover{background:var(--card2);}
 .dot-on{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;}.dot-off{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;}
 .dw{padding:11px;}
 .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:6px;}
 .dh h2{font-size:.93rem;color:var(--accent);}
 .hr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.live{display:flex;align-items:center;gap:4px;font-size:.67rem;color:var(--green);}
+.live{display:flex;align-items:center;gap:4px;font-size:.8rem;color:var(--green);}
 .ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.bsm{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:.63rem;color:var(--muted);}
-.cb{background:#1a3a5c;color:#4f8ef7;border-radius:20px;padding:2px 9px;font-size:.65rem;font-weight:700;}
+.bsm{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:.8rem;color:var(--muted);}
+.cb{background:#1a3a5c;color:#4f8ef7;border-radius:20px;padding:2px 9px;font-size:.8rem;font-weight:700;}
 .dtabs{display:flex;gap:3px;margin-bottom:8px;flex-wrap:wrap;}
-.dtab{padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.7rem;font-weight:600;transition:all .2s;}
+.dtab{padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.85rem;font-weight:600;transition:all .2s;}
 .dtab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .dtc{display:none;}.dtc.active{display:block;}
 .kgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px;}
 .kpi{background:var(--card);border-radius:10px;padding:10px;border:1px solid var(--border);text-align:center;}
-.kpi .lbl{font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
-.kpi .val{font-size:1.4rem;font-weight:700;}.kpi .sub{font-size:.57rem;color:var(--muted);margin-top:1px;}
+.kpi .lbl{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+.kpi .val{font-size:1.4rem;font-weight:700;}.kpi .sub{font-size:.75rem;color:var(--muted);margin-top:1px;}
 .dc{background:var(--card);border-radius:10px;padding:11px;border:1px solid var(--border);margin-bottom:8px;}
-.dc h3{font-size:.69rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+.dc h3{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
 .fi{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);gap:7px;}.fi:last-child{border:none;}
-.fo{font-size:.78rem;font-weight:600;}.fm{font-size:.64rem;color:var(--muted);margin-top:1px;}
-.fp{font-size:.85rem;font-weight:700;}.fq{font-size:.61rem;color:var(--muted);}
+.fo{font-size:.85rem;font-weight:600;}.fm{font-size:.8rem;color:var(--muted);margin-top:1px;}
+.fp{font-size:.85rem;font-weight:700;}.fq{font-size:.75rem;color:var(--muted);}
 .ctrl{display:flex;align-items:center;gap:5px;margin-bottom:7px;flex-wrap:wrap;}
-select,input[type=date]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 7px;font-size:.72rem;}
-.dbtn{padding:4px 10px;border-radius:7px;border:none;cursor:pointer;font-size:.7rem;font-weight:600;}
-.dex{background:#1a3d2b;color:var(--green);border:1px solid var(--green);}.dcs{background:#0a2233;color:#4f8ef7;border:1px solid #4f8ef7;}.drf{background:var(--card2);color:var(--muted);border:1px solid var(--border);}.ddl{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.62rem;padding:2px 5px;}
-.rb{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.65rem;}.rb.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+select,input[type=date]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 7px;font-size:.85rem;}
+.dbtn{padding:4px 10px;border-radius:7px;border:none;cursor:pointer;font-size:.85rem;font-weight:600;}
+.dex{background:#1a3d2b;color:var(--green);border:1px solid var(--green);}.dcs{background:#0a2233;color:#4f8ef7;border:1px solid #4f8ef7;}.drf{background:var(--card2);color:var(--muted);border:1px solid var(--border);}.ddl{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.75rem;padding:2px 5px;}
+.rb{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.8rem;}.rb.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .rbs{display:flex;gap:3px;flex-wrap:wrap;}
-.empty{color:var(--muted);text-align:center;padding:16px;font-size:.78rem;}
+.empty{color:var(--muted);text-align:center;padding:16px;font-size:.85rem;}
 .green{color:var(--green);}.yellow{color:var(--yellow);}.red{color:var(--red);}.blue{color:var(--accent);}
 #alp{position:fixed;top:54px;right:10px;z-index:9999;display:flex;flex-direction:column;gap:4px;max-width:250px;}
-.alerta{background:#1a1a1a;border:1px solid var(--red);border-radius:7px;padding:8px 12px;font-size:.72rem;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.alerta{background:#1a1a1a;border:1px solid var(--red);border-radius:7px;padding:8px 12px;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
 .ac{cursor:pointer;color:var(--red);}
-.toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:9px;font-size:.78rem;font-weight:600;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:9px;font-size:.85rem;font-weight:600;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px;}
 @keyframes sp{to{transform:rotate(360deg);}}
 
 .tbl-parts-wrap{overflow-x:auto;margin-top:0;}
 .tbl-parts-wrap table{min-width:700px;}
-.model-code{font-size:.63rem;color:var(--accent);letter-spacing:.5px;font-family:'IBM Plex Mono',monospace;}
-.model-pill{display:inline-block;background:#0d2a3a;border:1px solid #00d4ff33;border-radius:4px;padding:2px 6px;font-size:.58rem;color:var(--accent);white-space:nowrap;margin:1px 0;}
+.model-code{font-size:.8rem;color:var(--accent);letter-spacing:.5px;font-family:'IBM Plex Mono',monospace;}
+.model-pill{display:inline-block;background:#0d2a3a;border:1px solid #00d4ff33;border-radius:4px;padding:2px 6px;font-size:.75rem;color:var(--accent);white-space:nowrap;margin:1px 0;}
 .model-stack{display:flex;flex-direction:column;gap:2px;align-items:center;}
 .model-divider{width:80%;border-top:1px dashed var(--border);margin:1px auto;}
 canvas{width:100%!important;}
@@ -1820,7 +1820,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <input type="text" id="ip-modelo" placeholder="Ej. SM2F976UZKAATT" autocomplete="off" list="modelos-dl" oninput="this.value=this.value.toUpperCase()">
           <datalist id="modelos-dl"></datalist>
         </div>
-        <div class="field"><label>🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.68rem;min-height:13px;margin-top:2px"></div>
+        <div class="field"><label>🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
       </div>
       <div class="oc"><div class="oct">⏰ Turno</div>
         <div class="tgrid">
@@ -1862,7 +1862,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     </div>
     <div class="screen" id="scr3">
       <div class="oc"><div class="oct">📋 Confirma tu registro</div><div id="res-body"></div></div>
-      <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">📝 Notas</div><div id="res-notas" style="font-size:.78rem;color:var(--muted)"></div></div>
+      <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">📝 Notas</div><div id="res-notas" style="font-size:.85rem;color:var(--muted)"></div></div>
     </div>
     <div class="screen" id="scr4">
       <div class="si">✅</div><div class="st">¡Enviado al Dashboard!</div>
@@ -1901,15 +1901,15 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
         <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub">minutes</div></div>
       </div>
-      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
         <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
       <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
-      <div class="dc"><h3>📦 Material listo para SHIPQR <span style="font-size:11px;color:var(--muted);font-weight:400;margin-left:8px">Hoy · ASSY1</span></h3>
-        <div style="font-size:11px;color:var(--muted);margin-bottom:8px">Producción de ASSY1 del día, agrupada por modelo SM y Part Number. Click en SHIPQR para enviar al sistema.</div>
-        <div class="tbl-parts-wrap"><table><thead><tr><th>Modelo SM</th><th>Part Number</th><th style="text-align:right">Producción</th><th style="text-align:center">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
+      <div class="dc"><h3>📦 Material listo para SHIPQR <span style="font-size:13px;color:var(--muted);font-weight:400;margin-left:8px">Hoy · ASSY1</span></h3>
+        <div style="font-size:13px;color:var(--muted);margin-bottom:8px">Producción de ASSY1 del día, agrupada por modelo SM y Part Number. Click en SHIPQR para enviar al sistema.</div>
+        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">Producción</th><th style="text-align:center;padding:10px 6px">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
       </div>
     </div>
 
@@ -1966,9 +1966,9 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;margin-bottom:.5rem">
       <div>
         <div style="font-weight:700;font-size:15px" id="mesPlanTitulo">Plan activo</div>
-        <div style="font-size:11px;color:var(--muted)" id="mesPlanFecha"></div>
+        <div style="font-size:12px;color:var(--muted)" id="mesPlanFecha"></div>
       </div>
-      <button onclick="loadMesPlan()" style="font-size:11px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer">🔄 Actualizar</button>
+      <button onclick="loadMesPlan()" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer">🔄 Actualizar</button>
     </div>
     <div id="mesPlanLineas"></div>
   </div>
@@ -2003,18 +2003,18 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="form-field"><label>Rol</label><select id="nu-rol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
       </div>
       <button class="abtn abtn-add" onclick="addUser()">➕ Crear usuario</button>
-      <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.72rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
+      <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
     </div>
     <div class="acard"><h3>👥 Usuarios (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
     <div class="acard"><h3>🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
       <h3>🖥️ Estado de Máquinas</h3>
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Activa o desactiva máquinas — las inactivas se muestran en gris en el dashboard.</div>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva máquinas — las inactivas se muestran en gris en el dashboard.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;" id="admin-maquinas-grid"></div>
     </div>
     <div class="acard">
       <h3>🎯 Targets por Máquina</h3>
-      <div style="font-size:.72rem;color:var(--muted);margin-bottom:12px">Modifica el target diario — los cortes se calculan automáticamente.</div>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Modifica el target diario — los cortes se calculan automáticamente.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;" id="admin-targets-grid"></div>
     </div>
     <div class="acard">
@@ -2032,14 +2032,14 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     </div>
   <div class="acard">
     <h3>🔒 Cierre de Jornada — Descuento IMS</h3>
-    <div style="font-size:11px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
       <div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
         <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
       <button class="abtn abtn-add" onclick="calcularCierreJornada()">📊 Calcular descuentos</button>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.78rem;color:#5BA3FF;font-weight:600" title="Si está activo, NO toca Firebase. Solo simula el resultado.">
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.85rem;color:#5BA3FF;font-weight:600" title="Si está activo, NO toca Firebase. Solo simula el resultado.">
         <input type="checkbox" id="cj-modoSim" checked style="cursor:pointer;accent-color:#5BA3FF">
         🧪 Modo simulación (NO toca Firebase)
       </label>
@@ -2050,7 +2050,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <h3>✏️ Corregir Registros</h3>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
       <div>
-        <div style="font-size:10px;color:var(--muted);margin-bottom:4px">Fecha</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
         <input type="date" id="edit-reg-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
       <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">🔍 Buscar</button>
