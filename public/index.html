@@ -174,10 +174,6 @@ async function editarRegistro(id) {
           <input id="er-modelo" value="${reg.modelo||''}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
         </div>
         <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N° Parte</div>
-          <input id="er-parte" value="${reg.parte||reg.pn||reg.partNo||''}" maxlength="11" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-        </div>
-        <div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tipo</div>
           <select id="er-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
         </div>
@@ -205,7 +201,6 @@ async function guardarRegistroEdit(id, btn) {
   try {
     const maq = document.getElementById('er-maq').value;
     const modelo = document.getElementById('er-modelo').value.trim().toUpperCase();
-    const parte = document.getElementById('er-parte').value.trim().toUpperCase();
     const tipo = document.getElementById('er-tipo').value;
     const qty = parseInt(document.getElementById('er-qty').value)||0;
     const turno = document.getElementById('er-turno').value;
@@ -222,7 +217,7 @@ async function guardarRegistroEdit(id, btn) {
     // Buscar idx y nombre de la máquina seleccionada
     const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
     const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
-    const updateData = {maquina:maq, maqNombre:maq, maqTipo:tipo, modelo, tipo, qty, prod:qty, turno, parte};
+    const updateData = {maquina:maq, maqNombre:maq, maqTipo:tipo, modelo, tipo, qty, prod:qty, turno};
     if (maqIdx !== null) updateData.maqIdx = maqIdx;
     await setDoc(doc(db,'registros',id), updateData, {merge:true});
     btn.closest('div[style*=fixed]').remove();
@@ -240,6 +235,94 @@ async function eliminarRegistroEdit(id) {
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
 }
 window.eliminarRegistroEdit=eliminarRegistroEdit;
+
+// ── AGREGAR REGISTRO MANUAL ──
+window.abrirNuevoRegistro = function() {
+  const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
+  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+  const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
+  const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const modal = document.createElement('div');
+  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
+  modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border);max-height:90vh;overflow-y:auto">
+    <div style="font-weight:700;margin-bottom:14px;font-size:14px">➕ Agregar Registro</div>
+    <div style="display:grid;gap:10px">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
+        <input id="nr-fecha" type="date" value="${fecha}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Máquina</div>
+        <select id="nr-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
+        <input id="nr-modelo" placeholder="SM-XXXXXXXXXXX o CRNXXX" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N° Parte</div>
+        <input id="nr-parte" maxlength="11" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tipo</div>
+        <select id="nr-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
+        <select id="nr-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Cantidad</div>
+        <input id="nr-qty" type="number" min="0" value="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Defectos</div>
+        <input id="nr-def" type="number" min="0" value="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Scrap</div>
+        <input id="nr-scrap" type="number" min="0" value="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">Cancelar</button>
+      <button onclick="guardarNuevoRegistro(this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer">💾 Guardar</button>
+    </div>
+  </div>`;
+  document.body.appendChild(modal);
+};
+
+window.guardarNuevoRegistro = async function(btn) {
+  btn.textContent = 'Guardando...'; btn.disabled = true;
+  try {
+    const fecha  = document.getElementById('nr-fecha').value;
+    const maq    = document.getElementById('nr-maq').value;
+    const modelo = document.getElementById('nr-modelo').value.trim().toUpperCase();
+    const parte  = document.getElementById('nr-parte').value.trim().toUpperCase();
+    const tipo   = document.getElementById('nr-tipo').value;
+    const turno  = document.getElementById('nr-turno').value;
+    const qty    = parseInt(document.getElementById('nr-qty').value)||0;
+    const def    = parseInt(document.getElementById('nr-def').value)||0;
+    const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
+    if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
+    const maqObj = (typeof MAQUINAS!=='undefined'?MAQUINAS:[]).find(m=>m.nombre===maq);
+    const maqIdx = maqObj ? MAQUINAS.indexOf(maqObj) : null;
+    const target = maqObj ? (maqObj.target||0) : 0;
+    const pct    = target>0 ? +(qty/target*100).toFixed(2) : 0;
+    const newReg = {
+      fecha, maquina:maq, maqNombre:maq, maqTipo:tipo, tipo,
+      modelo, parte, turno, qty, prod:qty, def, defectos:def, scrap,
+      target, pct, uid: CURRENT_USER?.uid||'', operador: CURRENT_USER?.nombre||'Admin',
+      tsLocal: new Date().toISOString(), ts: serverTimestamp()
+    };
+    if (maqIdx!==null) newReg.maqIdx = maqIdx;
+    await addDoc(collection(db,'registros'), newReg);
+    btn.closest('div[style*=fixed]').remove();
+    showToast('✅ Registro agregado correctamente','var(--green)');
+    buscarRegistrosEdit();
+  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; }
+};
 
 // ── CORREGIR MODELOS EN LOTE ──
 async function previewCorregirModelo() {
@@ -2163,6 +2246,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <input type="date" id="edit-reg-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
       <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">🔍 Buscar</button>
+      <button class="abtn abtn-add" onclick="abrirNuevoRegistro()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">➕ Agregar Registro</button>
     </div>
     <div id="edit-reg-tabla"></div>
   </div>
