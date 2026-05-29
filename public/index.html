@@ -200,10 +200,20 @@ async function guardarRegistroEdit(id, btn) {
   btn.disabled = true;
   try {
     const maq = document.getElementById('er-maq').value;
-    const modelo = document.getElementById('er-modelo').value.trim();
+    const modelo = document.getElementById('er-modelo').value.trim().toUpperCase();
     const tipo = document.getElementById('er-tipo').value;
     const qty = parseInt(document.getElementById('er-qty').value)||0;
     const turno = document.getElementById('er-turno').value;
+    // Validación de modelo: SM-XXXXXXXXXXX (14 con guión) o CRNXXX (6 sin guión)
+    if (modelo) {
+      const esSMValido = modelo.startsWith("SM") && modelo.length===14 && modelo.includes("-");
+      const esCRNValido = modelo.startsWith("CRN") && modelo.length===6 && !modelo.includes("-");
+      if (!esSMValido && !esCRNValido) {
+        showToast('Modelo inválido — SM: 14 chars con guión o CRN: 6 chars sin guión','var(--red)');
+        btn.textContent='💾 Guardar'; btn.disabled=false;
+        return;
+      }
+    }
     // Buscar idx y nombre de la máquina seleccionada
     const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
     const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
@@ -225,6 +235,71 @@ async function eliminarRegistroEdit(id) {
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
 }
 window.eliminarRegistroEdit=eliminarRegistroEdit;
+
+// ── CORREGIR MODELOS EN LOTE ──
+async function previewCorregirModelo() {
+  const malo = (document.getElementById('cm-malo').value||'').trim().toUpperCase();
+  const bueno = (document.getElementById('cm-bueno').value||'').trim().toUpperCase();
+  const div = document.getElementById('cm-resultado');
+  if (!malo || !bueno) { div.innerHTML='<div style="color:var(--red)">❌ Captura ambos modelos</div>'; return; }
+  if (malo === bueno) { div.innerHTML='<div style="color:var(--red)">❌ Los modelos son iguales</div>'; return; }
+  // Validar que el modelo BUENO cumpla el formato
+  const esSM = bueno.startsWith("SM") && bueno.length===14 && bueno.includes("-");
+  const esCRN = bueno.startsWith("CRN") && bueno.length===6 && !bueno.includes("-");
+  if (!esSM && !esCRN) { div.innerHTML='<div style="color:var(--red)">❌ Modelo correcto inválido — debe ser SM-XXXXXXXXXXX (14 con guión) o CRNXXX (6 sin guión)</div>'; return; }
+  div.innerHTML='<div style="color:var(--muted)">⏳ Buscando...</div>';
+  try {
+    const snap = await getDocs(collection(db,'registros'));
+    const matches = [];
+    snap.forEach(d => {
+      const r = d.data();
+      if ((r.modelo||'').trim().toUpperCase() === malo) matches.push({id:d.id, ...r});
+    });
+    if (!matches.length) { div.innerHTML='<div style="color:var(--muted)">Sin registros con modelo "'+malo+'"</div>'; return; }
+    // Agrupar por fecha
+    const porFecha = {};
+    matches.forEach(r => { const f=r.fecha||'?'; porFecha[f]=(porFecha[f]||0)+1; });
+    const fechas = Object.entries(porFecha).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
+    let html = `<div style="padding:10px 12px;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;line-height:1.6">
+      <b style="color:var(--amber)">⚠️ Vista previa</b><br>
+      Se encontraron <b style="color:var(--text)">${matches.length} registros</b> con modelo "<b style="font-family:monospace;color:var(--text)">${malo}</b>".<br>
+      Se cambiarán a "<b style="font-family:monospace;color:var(--green)">${bueno}</b>".<br>
+      <span style="color:var(--muted);font-size:11px;display:block;margin-top:6px">
+        Distribución (últimas 5 fechas): ${fechas.map(([f,c])=>f+' ('+c+')').join(' · ')}<br>
+        ⚠️ Esta acción NO se puede deshacer. Haz click en <b>Ejecutar reemplazo</b> cuando estés seguro.
+      </span>
+    </div>`;
+    div.innerHTML = html;
+    window._cmPreview = {malo, bueno, total: matches.length, ids: matches.map(r=>r.id)};
+  } catch(e) { div.innerHTML='<div style="color:var(--red)">Error: '+e.message+'</div>'; }
+}
+window.previewCorregirModelo = previewCorregirModelo;
+
+async function ejecutarCorregirModelo() {
+  const div = document.getElementById('cm-resultado');
+  if (!window._cmPreview) { showToast('Primero haz "Vista previa"','var(--red)'); return; }
+  const {malo, bueno, total, ids} = window._cmPreview;
+  if (!confirm(`¿Reemplazar "${malo}" por "${bueno}" en ${total} registros?\n\nEsta acción NO se puede deshacer.`)) return;
+  div.innerHTML='<div style="color:var(--muted)">⏳ Actualizando '+total+' registros...</div>';
+  try {
+    let ok=0, errs=0;
+    for (const id of ids) {
+      try {
+        await setDoc(doc(db,'registros',id), {modelo: bueno}, {merge:true});
+        ok++;
+      } catch(e) { errs++; console.error('Error en',id,e); }
+    }
+    div.innerHTML=`<div style="padding:10px 12px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700">✅ Reemplazo completado<br><span style="font-size:11px;color:var(--muted);font-weight:400">Actualizados: ${ok} · Errores: ${errs}</span></div>`;
+    showToast('✅ '+ok+' registros corregidos','var(--green)');
+    window._cmPreview = null;
+    document.getElementById('cm-malo').value='';
+    document.getElementById('cm-bueno').value='';
+    // Refrescar dashboard si hace falta
+    if (typeof rRegs==='function') rRegs();
+  } catch(e) { div.innerHTML='<div style="color:var(--red)">Error: '+e.message+'</div>'; }
+}
+window.ejecutarCorregirModelo = ejecutarCorregirModelo;
+
 // ── CIERRE DE JORNADA ──
 async function calcularCierreJornada() {
   const fecha = document.getElementById('cj-fecha').value;
@@ -1055,6 +1130,10 @@ function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_
 window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim().toUpperCase();
       if(!modVal){showToast("Modelo es obligatorio","var(--red)");document.getElementById("ip-modelo").focus();return;}
       if(!modVal.startsWith("SM")&&!modVal.startsWith("CRN")){showToast("Modelo inválido — debe iniciar con SM o CRN","var(--red)");document.getElementById("ip-modelo").focus();return;}
+      // Validación estricta de formato
+      const esSMValido = modVal.startsWith("SM") && modVal.length===14 && modVal.includes("-");
+      const esCRNValido = modVal.startsWith("CRN") && modVal.length===6 && !modVal.includes("-");
+      if(!esSMValido && !esCRNValido){showToast("Modelo inválido — SM: 14 chars con guión (SM-XXXXXXXXXXX) o CRN: 6 chars sin guión (CRNXXX)","var(--red)");document.getElementById("ip-modelo").focus();return;}
       document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N° Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
 function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
@@ -1242,10 +1321,11 @@ function renderShipqr(){
   const assyRango=REGISTROS.filter(r=>{
     const fecha=r.fecha||"";
     const esASSY=(r.maqNombre||"").toUpperCase().includes("ASSY")||(r.maqTipo||"").toUpperCase()==="ASSY";
-    return esASSY && fecha>=desde && fecha<=hasta;
+    const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
+    return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción de ASSY1 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
     return;
   }
   const modPnMap={};
@@ -2080,6 +2160,25 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">🔍 Buscar</button>
     </div>
     <div id="edit-reg-tabla"></div>
+  </div>
+  <div class="acard">
+    <h3>🔄 Corregir modelos en lote</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Reemplaza un modelo incorrecto por uno correcto en TODOS los registros de la base. Útil para corregir modelos mal capturados que no cumplen el formato (SM-XXXXXXXXXXX o CRNXXX).</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo incorrecto (buscar)</div>
+        <input type="text" id="cm-malo" placeholder="Ej. SMG766UZKDN33" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;text-transform:uppercase;box-sizing:border-box" oninput="this.value=this.value.toUpperCase().trim()">
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo correcto (reemplazar por)</div>
+        <input type="text" id="cm-bueno" placeholder="Ej. SM-G766UZKDN33" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;text-transform:uppercase;box-sizing:border-box" oninput="this.value=this.value.toUpperCase().trim()">
+      </div>
+    </div>
+    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
+      <button onclick="previewCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(255,186,0,.12);color:#FFBA00;border:1px solid rgba(255,186,0,.4);border-radius:8px;cursor:pointer">🔍 Vista previa</button>
+      <button onclick="ejecutarCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:8px;cursor:pointer">✅ Ejecutar reemplazo</button>
+    </div>
+    <div id="cm-resultado" style="font-size:13px"></div>
   </div>
   </div></div>
 </div>
