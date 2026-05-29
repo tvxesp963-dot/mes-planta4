@@ -243,6 +243,12 @@ window.abrirNuevoRegistro = function() {
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const opcCorte = [
+    {id:'C1',label:'Break (7:00–8:45 AM)'},
+    {id:'C2',label:'Lunch (9:00–12:30 PM)'},
+    {id:'C3',label:'Home (1:00–4:30 PM)'},
+    {id:'OT',label:'OT (4:45–6:25 PM)'}
+  ].map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border);max-height:90vh;overflow-y:auto">
@@ -271,6 +277,10 @@ window.abrirNuevoRegistro = function() {
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
         <select id="nr-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
+      </div>
+      <div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Corte</div>
+        <select id="nr-corte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcCorte}</select>
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Cantidad</div>
@@ -302,17 +312,19 @@ window.guardarNuevoRegistro = async function(btn) {
     const parte  = document.getElementById('nr-parte').value.trim().toUpperCase();
     const tipo   = document.getElementById('nr-tipo').value;
     const turno  = document.getElementById('nr-turno').value;
+    const corte  = document.getElementById('nr-corte').value;
     const qty    = parseInt(document.getElementById('nr-qty').value)||0;
     const def    = parseInt(document.getElementById('nr-def').value)||0;
     const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
     if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
     const maqObj = (typeof MAQUINAS!=='undefined'?MAQUINAS:[]).find(m=>m.nombre===maq);
     const maqIdx = maqObj ? MAQUINAS.indexOf(maqObj) : null;
-    const target = maqObj ? (maqObj.target||0) : 0;
+    // Target correcto según corte seleccionado
+    const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
     const pct    = target>0 ? +(qty/target*100).toFixed(2) : 0;
     const newReg = {
       fecha, maquina:maq, maqNombre:maq, maqTipo:tipo, tipo,
-      modelo, parte, turno, qty, prod:qty, def, defectos:def, scrap,
+      modelo, parte, turno, corte, qty, prod:qty, def, defectos:def, scrap,
       target, pct, uid: CURRENT_USER?.uid||'', operador: CURRENT_USER?.nombre||'Admin',
       tsLocal: new Date().toISOString(), ts: serverTimestamp()
     };
