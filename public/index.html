@@ -160,6 +160,7 @@ async function editarRegistro(id) {
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
+    const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
     modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border)">
@@ -185,6 +186,10 @@ async function editarRegistro(id) {
           <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
           <select id="er-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
         </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Corte</div>
+          <select id="er-corte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcCorte}</select>
+        </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">Cancelar</button>
@@ -204,6 +209,7 @@ async function guardarRegistroEdit(id, btn) {
     const tipo = document.getElementById('er-tipo').value;
     const qty = parseInt(document.getElementById('er-qty').value)||0;
     const turno = document.getElementById('er-turno').value;
+    const corte = document.getElementById('er-corte').value;
     // Validación de modelo: SM-XXXXXXXXXXX (14 con guión) o CRNXXX (6 sin guión)
     if (modelo) {
       const esSMValido = modelo.startsWith("SM") && modelo.length===14 && modelo.includes("-");
@@ -217,7 +223,10 @@ async function guardarRegistroEdit(id, btn) {
     // Buscar idx y nombre de la máquina seleccionada
     const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
     const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
-    const updateData = {maquina:maq, maqNombre:maq, maqTipo:tipo, modelo, tipo, qty, prod:qty, turno};
+    const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
+    const pct = target > 0 ? +(qty/target*100).toFixed(2) : 0;
+    const parte = document.getElementById('er-parte') ? document.getElementById('er-parte').value.trim().toUpperCase() : '';
+    const updateData = {maquina:maq, maqNombre:maq, maqTipo:tipo, modelo, parte, tipo, qty, prod:qty, turno, corte, target, pct};
     if (maqIdx !== null) updateData.maqIdx = maqIdx;
     await setDoc(doc(db,'registros',id), updateData, {merge:true});
     btn.closest('div[style*=fixed]').remove();
