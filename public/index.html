@@ -175,6 +175,10 @@ async function editarRegistro(id) {
           <input id="er-modelo" value="${reg.modelo||''}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
         </div>
         <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Part No.</div>
+          <input id="er-parte" value="${(reg.parte||reg.pn||reg.partNo||'').toUpperCase()}" placeholder="Ej. ABC-12345" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box;font-family:monospace">
+        </div>
+        <div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tipo</div>
           <select id="er-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
         </div>
