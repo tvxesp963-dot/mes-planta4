@@ -2,57 +2,77 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
 <title>Break Management · MES P4</title>
-
-<!-- Mismas fuentes que index.html -->
+<link rel="manifest" href="manifest.json">
 <link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
 
-<!-- Firebase compat SDK — igual que index.html -->
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-firestore-compat.min.js"></script>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, query, orderBy }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
-<script>
-  // Misma config que index.html
-  var cfg = {
-    apiKey:    "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
-    authDomain:"mes-production-esp.firebaseapp.com",
-    projectId: "mes-production-esp"
-  };
-  if (!firebase.apps.length) firebase.initializeApp(cfg);
-  var db = firebase.firestore();
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.appspot.com",
+  messagingSenderId: "1:000000000000",
+  appId:             "mes-production-esp"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+window._db  = db;
+window._auth = auth;
+window._fbMod = { collection, doc, addDoc, getDocs, updateDoc, query, orderBy };
+
+onAuthStateChanged(auth, user => {
+  const el = document.getElementById('user-chip');
+  if(el) el.textContent = user ? (user.email?.split('@')[0] || 'User') : 'Guest';
+});
+
+document.dispatchEvent(new Event('fb-ready'));
 </script>
 
 <style>
 /* ═══════════════════════════════════════════════════════
    BREAK MANAGEMENT — MES Eunsung P4
-   Variables CSS idénticas al index.html original
+   Variables idénticas al index.html del sistema
 ═══════════════════════════════════════════════════════ */
-@import url('https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap');
-
 :root {
-  --bg:     #080c18;
-  --bg2:    #0e1325;
-  --bg3:    #141929;
-  --bg4:    #1c2238;
-  --accent: #4da6ff;
-  --accent2:#1a6fd4;
-  --accent3:#0d4a99;
-  --green:  #00e676;
-  --green2: #00b85a;
-  --red:    #ff4444;
-  --amber:  #ffb300;
-  --cyan:   #00e5ff;
-  --purple: #b388ff;
-  --teal:   #00bcd4;
-  --text:   #dde3f5;
-  --text2:  #7a88b8;
-  --text3:  #3d4d77;
-  --border: #1e2a4a;
-  --border2:#263558;
-  /* Break module extra */
-  --orange: #ff8c00;
-  --orange2:#cc7000;
+  --bg:     #0f1117;
+  --bg2:    #161b2e;
+  --bg3:    #1c2238;
+  --card:   #1e2540;
+  --card2:  #232b47;
+  --border: #2a3350;
+  --border2:#344070;
+  --accent: #4f8ef7;
+  --green:  #2ecc71;
+  --red:    #e74c3c;
+  --amber:  #f1c40f;
+  --orange: #f97316;
+  --purple: #9b7fe0;
+  --teal:   #00b8a0;
+  --text:   #e8ecf4;
+  --muted:  #7f8c9a;
+
+  /* Shift colors — igual que index.html */
+  --shift-a: #4f8ef7;
+  --shift-b: #2ecc71;
+  --shift-c: #e67e22;
+
+  /* Status colors */
+  --running:    #4f8ef7;
+  --breaking:   #f97316;
+  --warning:    #f1c40f;
+  --returnow:   #e74c3c;
+  --late:       #c0392b;
 }
 
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
@@ -63,17 +83,26 @@ body {
   color: var(--text);
   min-height: 100vh;
   -webkit-font-smoothing: antialiased;
+  transition: background .3s;
 }
 
-/* ── Animations ── */
-@keyframes pulse  { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(1.35)} }
-@keyframes blink  { 0%,100%{opacity:1} 50%{opacity:.1} }
-@keyframes spin   { to{transform:rotate(360deg)} }
-@keyframes fadeIn { from{opacity:0;transform:translateY(6px)} to{opacity:1;transform:translateY(0)} }
+/* ── Animaciones ── */
+@keyframes pulse       { 0%,100%{opacity:1;transform:scale(1)} 50%{opacity:.35;transform:scale(1.3)} }
+@keyframes spin        { to{transform:rotate(360deg)} }
+@keyframes fadeIn      { from{opacity:0;transform:translateY(5px)} to{opacity:1;transform:translateY(0)} }
 
-/* ══════════════════════════════════════════════════════
-   TOPBAR — idéntico al index.html
-══════════════════════════════════════════════════════ */
+/* Opción C — Borde glow + texto parpadea (WARNING 3min) */
+@keyframes blink-text  { 0%,100%{opacity:1} 50%{opacity:.08} }
+@keyframes glow-border { 0%,100%{box-shadow:0 0 0 transparent,inset 0 0 0 transparent}
+                         50%{box-shadow:0 0 35px #f9731666,inset 0 0 30px #f9731618} }
+
+/* Flash rápido pantalla — último minuto RETURN_NOW */
+@keyframes flash-screen{ 0%,100%{background:var(--bg)} 50%{background:#1a0800} }
+@keyframes flash-text  { 0%,100%{opacity:1} 50%{opacity:.05} }
+
+/* ═══════════════════════════════════════════════════════
+   TOPBAR — idéntico al MES
+═══════════════════════════════════════════════════════ */
 .topbar {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
@@ -85,127 +114,122 @@ body {
   position: sticky;
   top: 0;
   z-index: 100;
+  transition: border-color .5s;
 }
 .topbar::after {
   content: '';
   position: absolute;
   bottom: 0; left: 0; right: 0;
   height: 1px;
-  background: linear-gradient(90deg, transparent, var(--accent2), transparent);
-  opacity: .5;
+  background: linear-gradient(90deg, transparent, var(--accent), transparent);
+  opacity: .4;
+  transition: background .5s;
 }
+.tb-left { display: flex; align-items: center; gap: 0; }
 .tb-logo {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 16px;
-  font-weight: 700;
-  color: var(--accent);
-  letter-spacing: 1px;
-  display: flex;
-  align-items: center;
-  gap: 8px;
+  font-size: 15px; font-weight: 700;
+  color: var(--accent); letter-spacing: 1px;
+  display: flex; align-items: center; gap: 6px;
 }
-.tb-module {
+.tb-mod {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 13px;
-  font-weight: 700;
+  font-size: 13px; font-weight: 700;
   color: var(--orange);
-  letter-spacing: .5px;
   border-left: 1px solid var(--border2);
-  padding-left: 12px;
-  margin-left: 4px;
+  padding-left: 10px; margin-left: 8px;
+  letter-spacing: .5px;
 }
-.tb-right {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-}
+.tb-right { display: flex; align-items: center; gap: 7px; }
 .tb-clock {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 18px;
-  font-weight: 700;
+  font-size: 19px; font-weight: 700;
   color: var(--accent);
   background: var(--bg3);
   border: 1px solid var(--border2);
   border-radius: 8px;
-  padding: 2px 12px;
+  padding: 2px 11px;
   letter-spacing: 1px;
-  min-width: 88px;
+  min-width: 90px;
   text-align: center;
   transition: color .5s;
 }
-.tb-back {
-  padding: 5px 12px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
+.user-chip {
   background: var(--bg3);
   border: 1px solid var(--border2);
-  color: var(--text2);
-  font-family: 'DM Sans', sans-serif;
-  text-decoration: none;
-  transition: all .2s;
+  border-radius: 20px;
+  padding: 3px 10px;
+  font-size: 11px;
+  color: var(--muted);
+  font-weight: 500;
+}
+.tb-back {
+  padding: 5px 12px; border-radius: 7px;
+  font-size: 12px; font-weight: 600;
+  background: var(--bg3); border: 1px solid var(--border2);
+  color: var(--muted); font-family: 'DM Sans', sans-serif;
+  text-decoration: none; cursor: pointer; transition: all .2s;
 }
 .tb-back:hover { border-color: var(--accent); color: var(--accent); }
 
-/* ══════════════════════════════════════════════════════
-   NAV — igual clase .nav + .tab del index.html
-══════════════════════════════════════════════════════ */
-.nav {
+/* Shift chips */
+.shift-chips { display: flex; gap: 5px; }
+.s-chip {
+  padding: 4px 11px; border-radius: 6px;
+  border: 1px solid var(--border2); background: var(--bg3);
+  color: var(--muted); font-family: 'Rajdhani', sans-serif;
+  font-size: 12px; font-weight: 700; cursor: pointer;
+  letter-spacing: .06em; text-transform: uppercase; transition: all .2s;
+}
+.s-chip.active-a { background: var(--shift-a); border-color: var(--shift-a); color: #fff; }
+.s-chip.active-b { background: var(--shift-b); border-color: var(--shift-b); color: #000; }
+.s-chip.active-c { background: var(--shift-c); border-color: var(--shift-c); color: #fff; }
+
+/* ═══════════════════════════════════════════════════════
+   MODEBAR
+═══════════════════════════════════════════════════════ */
+.modebar {
   background: var(--bg2);
   border-bottom: 1px solid var(--border);
   display: flex;
-  overflow-x: auto;
 }
-.tab {
+.mbtn {
   padding: 10px 16px;
-  font-size: 12px;
-  color: var(--text2);
-  cursor: pointer;
-  border-bottom: 2px solid transparent;
-  white-space: nowrap;
   font-family: 'DM Sans', sans-serif;
-  transition: color .2s;
-  margin-bottom: -1px;
+  font-size: 12px; font-weight: 600;
+  color: var(--muted);
+  border: none; background: none;
+  border-bottom: 2px solid transparent;
+  cursor: pointer; white-space: nowrap;
+  transition: all .2s; margin-bottom: -1px;
 }
-.tab:hover { color: var(--text); }
-.tab.active { color: var(--accent); border-bottom-color: var(--accent); font-weight: 600; }
-.tab.tab-orange.active { color: var(--orange); border-bottom-color: var(--orange); }
+.mbtn:hover { color: var(--text); }
+.mbtn.active { color: var(--orange); border-bottom-color: var(--orange); }
 
-/* ══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════
    STATUS STRIP
-══════════════════════════════════════════════════════ */
-.status-strip {
+═══════════════════════════════════════════════════════ */
+.ss {
   padding: 5px 1rem;
-  display: flex;
-  align-items: center;
-  gap: 9px;
+  display: flex; align-items: center; gap: 9px;
   border-bottom: 1px solid transparent;
   transition: all .5s;
-  position: relative;
 }
-.ss-dot {
-  width: 7px; height: 7px;
-  border-radius: 50%;
-  flex-shrink: 0;
-  animation: pulse 1.5s infinite;
-}
-.ss-label {
+.ss-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+.ss-lbl {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 11px;
-  font-weight: 700;
-  letter-spacing: .15em;
-  text-transform: uppercase;
+  font-size: 11px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase;
 }
-.ss-date { font-size: 11px; color: var(--text3); margin-left: auto; text-transform: capitalize; }
-.progress-bar  { height: 2px; background: var(--bg4); }
-.progress-fill { height: 100%; transition: width 1s linear; }
+.ss-date { font-size: 11px; color: var(--muted); margin-left: auto; text-transform: capitalize; }
+.pbar { height: 2px; background: var(--bg3); }
+.pfill { height: 100%; transition: width 1s linear; }
 
-/* ══════════════════════════════════════════════════════
-   MAIN LAYOUT
-══════════════════════════════════════════════════════ */
-.page { display: none; padding: 1rem; }
-.page.active { display: block; animation: fadeIn .3s ease; }
+/* ═══════════════════════════════════════════════════════
+   VIEWS
+═══════════════════════════════════════════════════════ */
+.view { display: none; padding: 1rem; animation: fadeIn .3s ease; }
+.view.active { display: block; }
 
 .dash-grid {
   display: grid;
@@ -215,278 +239,189 @@ body {
 }
 @media(max-width:780px){ .dash-grid{ grid-template-columns:1fr; } }
 
-/* ══════════════════════════════════════════════════════
-   STATUS CARD — estilos del MES adaptados
-══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   STATUS CARD
+═══════════════════════════════════════════════════════ */
 .status-card {
   border-radius: 12px;
-  padding: 1.2rem;
-  border: 1px solid;
+  padding: 1.2rem 1.3rem;
+  border: 2px solid;
   border-left: 4px solid;
   position: relative;
   overflow: hidden;
-  transition: all .5s;
-  animation: fadeIn .4s ease;
+  transition: border-color .5s, background .5s, box-shadow .5s;
   margin-bottom: .8rem;
 }
 .sc-glow {
-  position: absolute;
-  top: -30px; right: -30px;
-  width: 180px; height: 180px;
-  border-radius: 50%;
-  pointer-events: none;
+  position: absolute; top: 0; right: 0;
+  width: 200px; height: 200px;
+  border-radius: 50%; pointer-events: none;
   transition: background .5s;
 }
-.sc-top {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  margin-bottom: 14px;
-}
+.sc-top { display: flex; align-items: center; gap: 8px; margin-bottom: 14px; }
 .sc-icon { font-size: 1.1rem; }
 .sc-name {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 14px;
-  font-weight: 700;
-  letter-spacing: .15em;
-  text-transform: uppercase;
+  font-size: 14px; font-weight: 700;
+  letter-spacing: .15em; text-transform: uppercase;
   transition: color .5s;
 }
 .sc-lbl {
-  font-size: 9px;
-  color: var(--text2);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-weight: 600;
-  margin-bottom: 3px;
+  font-size: 9px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  font-weight: 600; margin-bottom: 3px;
 }
 .sc-val {
   font-family: 'Rajdhani', sans-serif;
-  font-size: 20px;
-  font-weight: 700;
-  color: var(--text);
-  letter-spacing: .03em;
-  margin-bottom: 10px;
+  font-size: 20px; font-weight: 700;
+  color: var(--text); margin-bottom: 10px;
 }
-.sc-countdown {
+.sc-cd {
   font-family: 'Rajdhani', sans-serif;
-  font-weight: 700;
-  letter-spacing: .05em;
-  line-height: 1;
+  font-weight: 700; letter-spacing: .05em; line-height: 1;
   transition: color .5s;
 }
-.sc-countdown-md { font-size: 38px; }
-.sc-countdown-lg { font-size: 58px; }
+.sc-cd-md { font-size: 40px; }
+.sc-cd-lg { font-size: 58px; }
 
-/* ══════════════════════════════════════════════════════
-   BREAK CARDS (schedule list)
-══════════════════════════════════════════════════════ */
+/* ── Opción C: borde glow + texto blink (3 min warning) ── */
+.status-card.warning-blink {
+  animation: glow-border 1s ease-in-out infinite;
+}
+.status-card.warning-blink .sc-cd {
+  animation: blink-text 1s ease-in-out infinite;
+}
+
+/* ── Flash rápido: último minuto ── */
+body.flash-mode {
+  animation: flash-screen .5s ease-in-out infinite;
+}
+body.flash-mode .sc-cd {
+  animation: flash-text .5s ease-in-out infinite;
+}
+
+/* ── TV btn ── */
+.tv-btn {
+  width: 100%; padding: .6rem;
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 8px; color: var(--muted);
+  font-size: 11px; font-weight: 600;
+  font-family: 'DM Sans', sans-serif; cursor: pointer;
+  text-align: center; letter-spacing: .08em;
+  display: flex; align-items: center; justify-content: center; gap: 6px;
+  margin-top: .6rem; transition: all .2s;
+}
+.tv-btn:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ═══════════════════════════════════════════════════════
+   BREAK CARDS (horario)
+═══════════════════════════════════════════════════════ */
 .panel-lbl {
-  font-size: 9px;
-  color: var(--text2);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-weight: 600;
-  margin-bottom: .5rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
+  font-size: 9px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em;
+  font-weight: 600; margin-bottom: .5rem;
 }
 .break-card {
-  background: var(--bg2);
+  background: var(--card);
   border: 1px solid var(--border);
   border-left: 3px solid var(--border2);
   border-radius: 10px;
   padding: .65rem .9rem;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-bottom: .5rem;
-  transition: all .3s;
+  display: flex; justify-content: space-between; align-items: center;
+  margin-bottom: .5rem; transition: all .3s;
 }
 .bc-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
-.bc-badge { font-size: 8px; color: var(--text3); text-transform: uppercase; letter-spacing: .1em; }
+.bc-badge { font-size: 8px; color: var(--muted); text-transform: uppercase; letter-spacing: .1em; }
 .bc-name { font-family: 'Rajdhani', sans-serif; font-size: 13px; font-weight: 700; margin-top: 1px; }
 .bc-time { font-family: 'Rajdhani', sans-serif; font-size: 14px; font-weight: 700; text-align: right; }
-.bc-dur  { font-size: 9px; color: var(--text3); text-align: right; margin-top: 1px; }
+.bc-dur  { font-size: 9px; color: var(--muted); text-align: right; margin-top: 1px; }
+.bc-line { font-size: 9px; color: var(--muted); margin-top: 2px; }
 
-/* TV pill */
-.tv-btn {
-  width: 100%;
-  padding: .6rem;
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  color: var(--text2);
-  font-size: 11px;
-  font-weight: 600;
-  font-family: 'DM Sans', sans-serif;
-  cursor: pointer;
-  text-align: center;
-  letter-spacing: .08em;
-  transition: all .2s;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  margin-top: .7rem;
-}
-.tv-btn:hover { border-color: var(--accent); color: var(--accent); }
-
-/* ══════════════════════════════════════════════════════
-   ADMIN PANEL
-══════════════════════════════════════════════════════ */
+/* ═══════════════════════════════════════════════════════
+   ADMIN
+═══════════════════════════════════════════════════════ */
 .admin-grid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
-  gap: 1rem;
-  max-width: 860px;
+  display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; max-width: 860px;
 }
 @media(max-width:650px){ .admin-grid{ grid-template-columns:1fr; } }
 
 .card {
-  background: var(--bg2);
-  border: 1px solid var(--border);
-  border-radius: 12px;
-  padding: .85rem 1rem;
-  margin-bottom: .7rem;
+  background: var(--card); border: 1px solid var(--border);
+  border-radius: 12px; padding: .85rem 1rem; margin-bottom: .7rem;
 }
 .card-title {
-  font-size: 10px;
-  color: var(--text2);
-  text-transform: uppercase;
-  letter-spacing: .08em;
-  font-weight: 600;
-  margin-bottom: .7rem;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding-bottom: .5rem;
-  border-bottom: 1px solid var(--border);
+  font-size: 10px; color: var(--muted);
+  text-transform: uppercase; letter-spacing: .08em; font-weight: 600;
+  margin-bottom: .7rem; padding-bottom: .5rem; border-bottom: 1px solid var(--border);
+  display: flex; align-items: center; gap: 6px;
 }
-.label { font-size: 11px; color: var(--text2); margin-bottom: 4px; display: block; }
-.input, .select {
-  width: 100%;
-  background: var(--bg3);
-  border: 1px solid var(--border2);
-  border-radius: 8px;
-  padding: 8px 11px;
-  color: var(--text);
-  font-size: 13px;
-  font-family: 'DM Sans', sans-serif;
-  outline: none;
-  transition: border .2s;
+.lbl { font-size: 11px; color: var(--muted); margin-bottom: 4px; display: block; }
+.inp, .sel {
+  width: 100%; background: var(--card2); border: 1px solid var(--border2);
+  border-radius: 8px; padding: 8px 11px; color: var(--text);
+  font-size: 13px; font-family: 'DM Sans', sans-serif; outline: none; transition: border .2s;
 }
-.input:focus, .select:focus { border-color: var(--accent); }
-.form-row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
-.form-row   { margin-bottom: .6rem; }
-
-/* Buttons — igual que index.html */
+.inp:focus, .sel:focus { border-color: var(--accent); }
+.frow2 { display: grid; grid-template-columns: 1fr 1fr; gap: .6rem; }
+.frow  { margin-bottom: .6rem; }
 .btn {
-  padding: 7px 14px;
-  border-radius: 7px;
-  font-size: 12px;
-  font-weight: 600;
-  cursor: pointer;
-  border: none;
-  display: inline-flex;
-  align-items: center;
-  gap: 5px;
-  font-family: 'DM Sans', sans-serif;
-  transition: opacity .15s;
+  padding: 7px 14px; border-radius: 7px; font-size: 12px; font-weight: 600;
+  cursor: pointer; border: none; display: inline-flex; align-items: center; gap: 5px;
+  font-family: 'DM Sans', sans-serif; transition: opacity .15s;
 }
 .btn:hover { opacity: .85; }
-.btn-primary  { background: var(--accent2); color: #fff; }
-.btn-success  { background: rgba(0,230,118,.12); border: 1px solid rgba(0,230,118,.3); color: var(--green); }
-.btn-secondary{ background: var(--bg3); border: 1px solid var(--border2); color: var(--text2); }
-.btn-warn     { background: rgba(255,179,0,.12); border: 1px solid rgba(255,179,0,.3); color: var(--amber); }
-.btn-danger   { background: rgba(255,68,68,.12);  border: 1px solid rgba(255,68,68,.3);  color: var(--red); }
-.btn-sm       { padding: 4px 10px; font-size: 11px; }
-.btn-row      { display: flex; gap: 6px; flex-wrap: wrap; margin-top: .4rem; }
+.btn-primary { background: #1a6fd4; color: #fff; }
+.btn-success { background: rgba(46,204,113,.12); border: 1px solid rgba(46,204,113,.3); color: var(--green); }
+.btn-warn    { background: rgba(241,196,15,.12);  border: 1px solid rgba(241,196,15,.3);  color: var(--amber); }
+.btn-danger  { background: rgba(231,76,60,.12);   border: 1px solid rgba(231,76,60,.3);   color: var(--red); }
+.btn-sec     { background: var(--bg3); border: 1px solid var(--border2); color: var(--muted); }
+.btn-sm      { padding: 4px 10px; font-size: 11px; }
+.btn-row     { display: flex; gap: 6px; flex-wrap: wrap; margin-top: .4rem; }
 
-/* Tags igual que index.html */
-.tag { font-size: 9px; padding: 2px 7px; border-radius: 4px; font-weight: 600; display: inline-block; }
-.tag-ok   { background: rgba(0,230,118,.1);  color: var(--green);  border: 1px solid rgba(0,230,118,.25); }
-.tag-warn { background: rgba(255,179,0,.1);  color: var(--amber);  border: 1px solid rgba(255,179,0,.25); }
-.tag-info { background: rgba(77,166,255,.1); color: var(--accent); border: 1px solid rgba(77,166,255,.25); }
-
-/* Schedule rows */
-.sched-row {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 8px 0;
-  border-bottom: 1px solid rgba(30,42,74,.5);
-  gap: 8px;
+.srow {
+  display: flex; justify-content: space-between; align-items: center;
+  padding: 8px 0; border-bottom: 1px solid rgba(42,51,80,.5); gap: 8px;
 }
-.sched-row:last-child { border-bottom: none; }
-.sched-info { font-size: 11px; color: var(--text2); flex: 1; }
-.sched-shift { font-family: 'Rajdhani', sans-serif; font-weight: 700; color: var(--accent); margin-right: 6px; }
-.sched-btns { display: flex; gap: 5px; flex-shrink: 0; }
+.srow:last-child { border-bottom: none; }
+.sinfo { font-size: 11px; color: var(--muted); flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.sshift { font-family: 'Rajdhani', sans-serif; font-weight: 700; color: var(--accent); margin-right: 6px; }
+.sbtns { display: flex; gap: 5px; flex-shrink: 0; }
 
-/* Checkbox */
-.check-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
-.check-row input { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
-.check-row span  { font-size: 12px; color: var(--text2); }
+.chk-row { display: flex; align-items: center; gap: 8px; margin-bottom: 8px; cursor: pointer; }
+.chk-row input { width: 14px; height: 14px; accent-color: var(--accent); cursor: pointer; }
+.chk-row span  { font-size: 12px; color: var(--muted); }
 
-/* Toast */
-.toast {
-  position: fixed;
-  bottom: 20px; right: 20px;
-  background: rgba(0,184,90,.2);
-  border: 1px solid var(--green2);
-  border-radius: 8px;
-  padding: 9px 16px;
-  color: var(--green);
-  font-size: 12px;
-  font-weight: 600;
-  z-index: 9999;
-  opacity: 0;
-  transform: translateY(8px);
-  transition: all .3s;
-  pointer-events: none;
-}
-.toast.show { opacity: 1; transform: translateY(0); }
-
-/* Loading / empty */
-.loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 2rem; color: var(--text3); font-size: 12px; }
-.spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
-.empty { text-align: center; padding: 2rem 1rem; color: var(--text2); font-size: 12px; }
-
-/* ══════════════════════════════════════════════════════
+/* ═══════════════════════════════════════════════════════
    TV MODE
-══════════════════════════════════════════════════════ */
+═══════════════════════════════════════════════════════ */
 #tv-mode {
-  display: none;
-  position: fixed;
-  inset: 0;
-  background: #040710;
-  z-index: 9998;
-  flex-direction: column;
-  font-family: 'Rajdhani', sans-serif;
+  display: none; position: fixed; inset: 0;
+  background: #07090f; z-index: 9998;
+  flex-direction: column; font-family: 'Rajdhani', sans-serif;
 }
 #tv-mode.open { display: flex; }
 
+/* TV — Opción C: borde glow + texto blink */
+#tv-mode.tv-warning { animation: glow-border 1s ease-in-out infinite; }
+#tv-mode.tv-warning #tv-body .tv-cd { animation: blink-text 1s ease-in-out infinite; }
+
+/* TV — flash rápido último minuto */
+#tv-mode.tv-flash { animation: flash-screen .5s ease-in-out infinite; }
+#tv-mode.tv-flash #tv-body .tv-cd { animation: flash-text .5s ease-in-out infinite; }
+
 .tv-hdr {
-  background: #080c18;
-  border-bottom: 1px solid;
-  padding: 14px 36px;
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  flex-shrink: 0;
-  transition: border-color .5s;
+  background: #0a0d18; border-bottom: 1px solid;
+  padding: 14px 36px; display: flex;
+  justify-content: space-between; align-items: center;
+  flex-shrink: 0; transition: border-color .5s;
 }
 .tv-brand { display: flex; align-items: center; gap: 10px; }
 .tv-acbar { width: 3px; height: 36px; border-radius: 2px; transition: background .5s; }
-.tv-bsub  { font-size: 9px; letter-spacing: .25em; color: var(--text3); text-transform: uppercase; }
+.tv-bsub  { font-size: 9px; letter-spacing: .25em; color: var(--muted); text-transform: uppercase; }
 .tv-bname { font-size: 1.1rem; font-weight: 700; letter-spacing: .05em; }
-.tv-clock {
-  font-family: 'Rajdhani', sans-serif;
-  font-size: 3.2rem;
-  font-weight: 700;
-  letter-spacing: .05em;
-  transition: color .5s, text-shadow .5s;
+.tv-clk {
+  font-family: 'Rajdhani', sans-serif; font-size: 3.2rem; font-weight: 700;
+  letter-spacing: .05em; transition: color .5s, text-shadow .5s;
 }
 .tv-badge {
   display: inline-flex; align-items: center; gap: 6px;
@@ -495,56 +430,46 @@ body {
 }
 .tv-bdot  { width: 7px; height: 7px; border-radius: 50%; animation: pulse 1.5s infinite; }
 .tv-btxt  { font-size: 11px; font-weight: 700; letter-spacing: .12em; }
-.tv-center {
+.tv-ctr {
   flex: 1; display: flex; align-items: center; justify-content: center;
   padding: 20px 36px; text-align: center; transition: background .5s;
 }
-.tv-lbl-sm { font-size: 1.1rem; font-weight: 600; letter-spacing: .18em; color: var(--text2); text-transform: uppercase; margin-bottom: 8px; }
-.tv-bigtime { font-family: 'Rajdhani', sans-serif; font-size: 6.5rem; font-weight: 700; letter-spacing: .05em; line-height: 1; transition: color .5s, text-shadow .5s; }
-.tv-cd { font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: .05em; line-height: 1; margin-top: 12px; transition: color .5s, text-shadow .5s; }
-.tv-cd-md  { font-size: 4.5rem; }
-.tv-cd-xl  { font-size: 8rem; }
-
+.tv-lbl   { font-size: 1.1rem; font-weight: 600; letter-spacing: .18em; color: var(--muted); text-transform: uppercase; margin-bottom: 8px; }
+.tv-big   { font-family: 'Rajdhani', sans-serif; font-size: 6.5rem; font-weight: 700; letter-spacing: .05em; line-height: 1; transition: color .5s, text-shadow .5s; }
+.tv-cd    { font-family: 'Rajdhani', sans-serif; font-weight: 700; letter-spacing: .05em; line-height: 1; margin-top: 12px; transition: color .5s, text-shadow .5s; }
+.tv-cd-md { font-size: 4.5rem; }
+.tv-cd-xl { font-size: 8rem; }
 .tv-kpi {
-  background: #080c18;
-  border-top: 1px solid var(--border);
-  padding: 12px 36px;
-  display: grid;
-  grid-template-columns: repeat(4, 1fr);
-  gap: 10px;
-  flex-shrink: 0;
+  background: #0a0d18; border-top: 1px solid var(--border);
+  padding: 12px 36px; display: grid;
+  grid-template-columns: repeat(4, 1fr); gap: 10px; flex-shrink: 0;
 }
-.tv-kcard {
-  background: var(--bg2);
-  border-radius: 8px;
-  padding: 10px 14px;
-  border-top: 3px solid var(--accent);
-}
-.tv-klbl  { font-size: 9px; letter-spacing: .15em; color: var(--text3); text-transform: uppercase; margin-bottom: 3px; }
+.tv-kcard { background: var(--bg2); border-radius: 8px; padding: 10px 14px; border-top: 3px solid var(--accent); }
+.tv-klbl  { font-size: 9px; letter-spacing: .15em; color: var(--muted); text-transform: uppercase; margin-bottom: 3px; }
 .tv-kval  { font-family: 'Rajdhani', sans-serif; font-size: 1.8rem; font-weight: 700; line-height: 1; }
-.tv-ktgt  { font-size: 9px; color: var(--text3); margin-top: 2px; }
-
+.tv-ktgt  { font-size: 9px; color: var(--muted); margin-top: 2px; }
 .tv-close {
   position: absolute; top: 12px; right: 14px;
   background: transparent; border: 1px solid var(--border2);
-  color: var(--text3); border-radius: 6px; padding: 4px 11px;
-  font-family: 'DM Sans', sans-serif; font-size: 11px;
-  font-weight: 600; cursor: pointer; z-index: 9999; transition: all .2s;
+  color: var(--muted); border-radius: 6px; padding: 4px 11px;
+  font-family: 'DM Sans', sans-serif; font-size: 11px; font-weight: 600;
+  cursor: pointer; z-index: 9999; transition: all .2s;
 }
 .tv-close:hover { border-color: var(--red); color: var(--red); }
 
-/* Shift chips */
-.shift-chips { display: flex; gap: 5px; }
-.s-chip {
-  padding: 4px 11px; border-radius: 6px;
-  border: 1px solid var(--border2); background: var(--bg3);
-  color: var(--text2); font-family: 'Rajdhani', sans-serif;
-  font-size: 12px; font-weight: 700; cursor: pointer;
-  letter-spacing: .08em; text-transform: uppercase; transition: all .2s;
+/* Misc */
+.toast {
+  position: fixed; bottom: 20px; right: 20px;
+  background: rgba(46,204,113,.18); border: 1px solid var(--green);
+  border-radius: 8px; padding: 9px 16px; color: var(--green);
+  font-size: 12px; font-weight: 600; z-index: 9999;
+  opacity: 0; transform: translateY(8px); transition: all .3s; pointer-events: none;
 }
-.s-chip.active { background: var(--orange); border-color: var(--orange); color: #fff; }
+.toast.show { opacity: 1; transform: translateY(0); }
+.loading { display: flex; align-items: center; justify-content: center; gap: 8px; padding: 2rem; color: var(--muted); font-size: 12px; }
+.spinner { width: 16px; height: 16px; border: 2px solid var(--border2); border-top-color: var(--accent); border-radius: 50%; animation: spin .8s linear infinite; }
+.empty   { text-align: center; padding: 2rem 1rem; color: var(--muted); font-size: 12px; }
 
-/* Scrollbar */
 ::-webkit-scrollbar { width: 5px; }
 ::-webkit-scrollbar-track { background: var(--bg2); }
 ::-webkit-scrollbar-thumb { background: var(--border2); border-radius: 3px; }
@@ -552,208 +477,173 @@ body {
 </head>
 <body>
 
-<!-- ══════════════════════════════════════════════════
-     TOPBAR
-══════════════════════════════════════════════════ -->
-<div class="topbar">
-  <div style="display:flex;align-items:center;gap:0">
+<!-- ══ TOPBAR ══ -->
+<div class="topbar" id="topbar">
+  <div class="tb-left">
     <div class="tb-logo">⏸ BREAK MANAGEMENT</div>
-    <div class="tb-module">MES · Planta 4</div>
+    <div class="tb-mod">MES · Planta 4</div>
   </div>
   <div class="tb-right">
     <div class="shift-chips">
-      <div class="s-chip active" onclick="selectShift('A')">Shift A</div>
-      <div class="s-chip" onclick="selectShift('B')">Shift B</div>
-      <div class="s-chip" onclick="selectShift('C')">Shift C</div>
+      <div class="s-chip active-a" onclick="selectShift('A')" id="chip-A">Shift A</div>
+      <div class="s-chip" onclick="selectShift('B')" id="chip-B">Overtime</div>
+      <div class="s-chip" onclick="selectShift('C')" id="chip-C">Saturday OT</div>
     </div>
-    <div class="tb-clock" id="tb-clock">--:--:--</div>
-    <a href="index.html" class="tb-back">← BOM Simulator</a>
+    <div class="tb-clock" id="tb-clk">--:--:--</div>
+    <div class="user-chip" id="user-chip">---</div>
+    <a href="index.html" class="tb-back">← MES</a>
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     NAV
-══════════════════════════════════════════════════ -->
-<div class="nav">
-  <div class="tab active tab-orange" id="tab-dash" onclick="showPage('dash')">⏸ Dashboard</div>
-  <div class="tab" id="tab-admin" onclick="showPage('admin')" style="color:#ffb300">⚙️ Admin Breaks</div>
-  <div class="tab" id="tab-tv" onclick="openTV()">📺 TV Mode</div>
+<!-- ══ MODEBAR ══ -->
+<div class="modebar">
+  <button class="mbtn active" id="mb-dash"  onclick="showView('dash')">⏸ Dashboard</button>
+  <button class="mbtn"        id="mb-admin" onclick="showView('admin')" style="color:var(--amber)">⚙️ Admin Breaks</button>
+  <button class="mbtn"        id="mb-tv"    onclick="openTV()">📺 TV Mode</button>
 </div>
 
-<!-- Status strip -->
-<div class="status-strip" id="ss">
-  <div class="ss-dot" id="ss-dot"></div>
-  <span class="ss-label" id="ss-label">Cargando...</span>
-  <span class="ss-date"  id="ss-date"></span>
+<!-- ══ STATUS STRIP ══ -->
+<div class="ss" id="ss">
+  <div class="ss-dot" id="ss-dot" style="animation:pulse 1.5s infinite"></div>
+  <span class="ss-lbl" id="ss-lbl">Cargando...</span>
+  <span class="ss-date" id="ss-date"></span>
 </div>
-<div class="progress-bar">
-  <div class="progress-fill" id="pfill" style="width:0%"></div>
-</div>
+<div class="pbar"><div class="pfill" id="pfill" style="width:0%"></div></div>
 
-<!-- ══════════════════════════════════════════════════
-     DASHBOARD
-══════════════════════════════════════════════════ -->
-<div class="page active" id="page-dash">
+<!-- ══ DASHBOARD ══ -->
+<div class="view active" id="view-dash">
   <div class="dash-grid">
 
-    <!-- Left: status -->
     <div>
-      <div class="status-card" id="status-card">
+      <div class="status-card" id="sc">
         <div class="sc-glow" id="sc-glow"></div>
         <div class="sc-top">
           <span class="sc-icon" id="sc-icon">▶</span>
           <span class="sc-name" id="sc-name">CARGANDO</span>
         </div>
-        <div id="sc-body">
-          <div class="loading"><div class="spinner"></div>Conectando Firebase...</div>
-        </div>
+        <div id="sc-body"><div class="loading"><div class="spinner"></div>Conectando...</div></div>
       </div>
       <button class="tv-btn" onclick="openTV()">📺 Abrir TV Mode — Pantalla de Planta</button>
     </div>
 
-    <!-- Right: schedule -->
     <div>
       <div class="panel-lbl" id="panel-lbl">📅 Horario — Shift A</div>
-      <div id="break-cards">
-        <div class="loading"><div class="spinner"></div>Cargando horario...</div>
-      </div>
+      <div id="break-cards"><div class="loading"><div class="spinner"></div>Cargando...</div></div>
     </div>
 
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     ADMIN
-══════════════════════════════════════════════════ -->
-<div class="page" id="page-admin">
+<!-- ══ ADMIN ══ -->
+<div class="view" id="view-admin">
   <div class="admin-grid">
 
-    <!-- Form -->
     <div class="card" style="margin-bottom:0">
       <div class="card-title" id="form-title">➕ Nuevo Break</div>
-
-      <div class="form-row">
-        <label class="label">Shift</label>
-        <select class="select" id="f-shift">
-          <option value="A">Shift A</option>
-          <option value="B">Shift B</option>
-          <option value="C">Shift C</option>
+      <div class="frow">
+        <label class="lbl">Shift / Turno</label>
+        <select class="sel" id="f-shift">
+          <option value="A">Shift A (Principal)</option>
+          <option value="B">Overtime</option>
+          <option value="C">Saturday OT</option>
         </select>
       </div>
-
-      <div class="form-row">
-        <label class="label">Descripción</label>
-        <input class="input" type="text" id="f-desc" placeholder="Break 1, Lunch, Break 2…">
+      <div class="frow">
+        <label class="lbl">Descripción</label>
+        <input class="inp" type="text" id="f-desc" placeholder="Break, Lunch, Home, OT…">
       </div>
-
-      <div class="form-row-2">
-        <div>
-          <label class="label">Hora inicio</label>
-          <input class="input" type="time" id="f-start">
-        </div>
-        <div>
-          <label class="label">Hora fin</label>
-          <input class="input" type="time" id="f-end">
-        </div>
+      <div class="frow">
+        <label class="lbl">Líneas que aplica</label>
+        <input class="inp" type="text" id="f-lines" placeholder="Todas / Zhongke, ASSY1 / S1,S2,S3…">
       </div>
-
+      <div class="frow2">
+        <div><label class="lbl">Hora inicio</label><input class="inp" type="time" id="f-start"></div>
+        <div><label class="lbl">Hora fin</label><input class="inp" type="time" id="f-end"></div>
+      </div>
       <div class="btn-row">
         <button class="btn btn-primary" onclick="saveBreak()">Guardar</button>
-        <button class="btn btn-secondary" id="btn-cancel" onclick="cancelEdit()" style="display:none">Cancelar</button>
+        <button class="btn btn-sec" id="btn-cancel" onclick="cancelEdit()" style="display:none">Cancelar</button>
       </div>
     </div>
 
-    <!-- List -->
     <div class="card" style="margin-bottom:0">
       <div class="card-title">📋 Horarios registrados</div>
-      <div id="sched-list">
-        <div class="loading"><div class="spinner"></div>Cargando...</div>
-      </div>
+      <div id="sched-list"><div class="loading"><div class="spinner"></div>Cargando...</div></div>
     </div>
 
-    <!-- Settings full width -->
     <div class="card" style="grid-column:1/-1;margin-bottom:0">
-      <div class="card-title">🔊 Configuración de Sonidos</div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr auto;gap:12px;align-items:end;flex-wrap:wrap">
-        <label class="check-row"><input type="checkbox" id="s-start" checked><span>Sonido al iniciar break</span></label>
-        <label class="check-row"><input type="checkbox" id="s-before" checked><span>Aviso antes de regresar</span></label>
-        <label class="check-row"><input type="checkbox" id="s-end" checked><span>Sonido al terminar break</span></label>
-        <div>
-          <label class="label">Minutos de aviso</label>
-          <input class="input" type="number" id="s-mins" value="5" min="1" max="15" style="width:70px">
-        </div>
+      <div class="card-title">🔊 Configuración de Sonidos y Alertas</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px;margin-bottom:10px">
+        <label class="chk-row"><input type="checkbox" id="s-start" checked><span>Sonido al iniciar break</span></label>
+        <label class="chk-row"><input type="checkbox" id="s-before" checked><span>Aviso 3 min antes de regresar</span></label>
+        <label class="chk-row"><input type="checkbox" id="s-end" checked><span>Sonido al terminar break</span></label>
       </div>
-      <div class="btn-row" style="margin-top:.8rem">
-        <button class="btn btn-success" onclick="saveSettings()">Guardar configuración</button>
+      <div style="background:var(--bg3);border:1px solid var(--border2);border-radius:8px;padding:10px 12px;font-size:11px;color:var(--muted);margin-bottom:10px">
+        ⚡ <strong style="color:var(--amber)">Efecto visual activo:</strong>
+        Opción C — Borde glow + texto parpadea a <strong style="color:var(--text)">3 min</strong> antes de regresar al trabajo.
+        Flash rápido en el <strong style="color:var(--red)">último minuto</strong>.
       </div>
+      <button class="btn btn-success" onclick="saveSettings()">Guardar configuración</button>
     </div>
 
   </div>
 </div>
 
-<!-- ══════════════════════════════════════════════════
-     TV MODE
-══════════════════════════════════════════════════ -->
+<!-- ══ TV MODE ══ -->
 <div id="tv-mode">
   <button class="tv-close" onclick="closeTV()">✕ Cerrar TV</button>
-
   <div class="tv-hdr" id="tv-hdr">
     <div class="tv-brand">
       <div class="tv-acbar" id="tv-ac"></div>
       <div>
         <div class="tv-bsub">MES · Eunsung P4</div>
-        <div class="tv-bname">Break Management — Shift <span id="tv-slbl">A</span></div>
+        <div class="tv-bname">Break Management — <span id="tv-slbl">Shift A</span></div>
       </div>
     </div>
-    <div class="tv-clock" id="tv-clk">--:--:--</div>
+    <div class="tv-clk" id="tv-clk">--:--:--</div>
     <div style="text-align:right">
-      <div style="font-size:9px;letter-spacing:.12em;color:var(--text3);text-transform:capitalize" id="tv-date"></div>
+      <div style="font-size:9px;letter-spacing:.12em;color:var(--muted);text-transform:capitalize" id="tv-date"></div>
       <div class="tv-badge" id="tv-badge">
         <div class="tv-bdot" id="tv-bdot"></div>
         <span class="tv-btxt" id="tv-btxt"></span>
       </div>
     </div>
   </div>
-
-  <div class="tv-center" id="tv-ctr">
-    <div id="tv-body"></div>
-  </div>
-
+  <div class="tv-ctr" id="tv-ctr"><div id="tv-body"></div></div>
   <div class="tv-kpi" id="tv-kpi"></div>
 </div>
 
-<!-- Toast -->
 <div class="toast" id="toast"></div>
 
-<!-- ══════════════════════════════════════════════════
-     JAVASCRIPT
-══════════════════════════════════════════════════ -->
+<!-- ══ JAVASCRIPT ══ -->
 <script>
-// ── State ─────────────────────────────────────────────
+// ── State ──────────────────────────────────────────────
 let breaks      = [];
-let settings    = { sound_on_start:true, sound_before_return:true, sound_on_end:true, warning_minutes:5 };
+let settings    = { sound_on_start:true, sound_before_return:true, sound_on_end:true, warning_minutes:3 };
 let prevStatus  = null;
 let editingId   = null;
 let currentShift= 'A';
 let audioCtx    = null;
-let fbReady     = false;
 
-// KPIs demo — reemplaza con datos reales del MES si deseas
+// KPIs demo
 const demoKpis = [
-  { label:'PRODUCTION', value:'1,248', target:'1,500', unit:'',    color:'#4da6ff' },
-  { label:'COMPLIANCE', value:'83.2',  target:'90',    unit:'%',   color:'#ffb300' },
-  { label:'SCRAP',      value:'2.1',   target:'<3',    unit:'%',   color:'#00e676' },
-  { label:'DOWNTIME',   value:'12',    target:'<10',   unit:' min',color:'#ff4444' },
+  { label:'PRODUCTION', value:'1,248', target:'1,500', unit:'',    color:'#4f8ef7' },
+  { label:'COMPLIANCE', value:'83.2',  target:'90',    unit:'%',   color:'#f1c40f' },
+  { label:'SCRAP',      value:'2.1',   target:'<3',    unit:'%',   color:'#2ecc71' },
+  { label:'DOWNTIME',   value:'12',    target:'<10',   unit:' min',color:'#e74c3c' },
 ];
 
-// STATUS config — colores exactos del MES
+// STATUS config — colores y turnos del MES
 const ST = {
-  RUNNING:    { color:'#4da6ff', bg:'rgba(77,166,255,.08)',  icon:'▶',  label:'RUNNING'           },
-  BREAK:      { color:'#ff8c00', bg:'rgba(255,140,0,.08)',   icon:'⏸',  label:'BREAK IN PROGRESS' },
-  WARNING:    { color:'#ffb300', bg:'rgba(255,179,0,.08)',   icon:'⚠',  label:'RETURN TO WORK IN' },
-  RETURN_NOW: { color:'#ff4444', bg:'rgba(255,68,68,.08)',   icon:'🔴', label:'RETURN NOW'        },
-  LATE:       { color:'#cc2222', bg:'rgba(204,34,34,.1)',    icon:'🚨', label:'LATE RETURN'       },
+  RUNNING:    { color:'#4f8ef7', icon:'▶',  label:'RUNNING'           },
+  BREAK:      { color:'#f97316', icon:'⏸',  label:'BREAK IN PROGRESS' },
+  WARNING:    { color:'#f1c40f', icon:'⚠',  label:'RETURN TO WORK IN' },
+  RETURN_NOW: { color:'#e74c3c', icon:'🔴', label:'RETURN NOW'        },
+  LATE:       { color:'#c0392b', icon:'🚨', label:'LATE RETURN'       },
 };
+
+const SHIFT_COLORS = { A:'#4f8ef7', B:'#2ecc71', C:'#e67e22' };
+const SHIFT_LABELS = { A:'Shift A', B:'Overtime', C:'Saturday OT' };
 
 // ── Utils ──────────────────────────────────────────────
 const pad    = n => String(n).padStart(2,'0');
@@ -777,12 +667,17 @@ function lateTime(b){ if(!b)return 0; const n=new Date(),e=new Date(); const[h,m
 function breakPct(b){ if(!b)return 0; const s=toMin(b.start_time)*60,e=toMin(b.end_time)*60,n=new Date(),ns=n.getHours()*3600+n.getMinutes()*60+n.getSeconds(); return Math.min(100,Math.max(0,(ns-s)/(e-s)*100)); }
 
 function getStatus(){
-  const cur=getCurrent(),wm=settings.warning_minutes||5;
-  if(cur){ const r=remaining(cur); if(r<=60)return'RETURN_NOW'; if(r<=wm*60)return'WARNING'; return'BREAK'; }
+  const cur=getCurrent(), wm=settings.warning_minutes||3;
+  if(cur){
+    const r=remaining(cur);
+    if(r<=60)       return 'RETURN_NOW';
+    if(r<=wm*60)    return 'WARNING';
+    return 'BREAK';
+  }
   const now=nowMin();
   const last=[...shiftBreaks()].sort((a,b)=>toMin(a.end_time)-toMin(b.end_time)).filter(b=>toMin(b.end_time)<=now).pop();
-  if(last&&lateTime(last)>0&&lateTime(last)<900)return'LATE';
-  return'RUNNING';
+  if(last&&lateTime(last)>0&&lateTime(last)<900) return 'LATE';
+  return 'RUNNING';
 }
 
 // ── Sound ──────────────────────────────────────────────
@@ -800,63 +695,103 @@ function beep(freq,vol,times){
   }catch(e){}
 }
 
+// ── Visual effects ─────────────────────────────────────
+function applyEffects(status){
+  const card  = document.getElementById('sc');
+  const tvEl  = document.getElementById('tv-mode');
+
+  // Reset
+  card.classList.remove('warning-blink');
+  document.body.classList.remove('flash-mode');
+  tvEl.classList.remove('tv-warning','tv-flash');
+
+  if(status === 'WARNING'){
+    // Opción C: borde glow + texto blink
+    card.classList.add('warning-blink');
+    tvEl.classList.add('tv-warning');
+  } else if(status === 'RETURN_NOW'){
+    // Flash rápido — último minuto
+    document.body.classList.add('flash-mode');
+    tvEl.classList.add('tv-flash');
+  }
+}
+
 // ── Firebase ───────────────────────────────────────────
 function loadBreaks(){
-  db.collection('break_schedule').orderBy('start_time').get()
+  const { collection, getDocs, query, orderBy } = window._fbMod || {};
+  if(!window._db||!getDocs){ breaks=demoBreaks(); renderAll(); renderSchedList(); return; }
+  getDocs(query(collection(window._db,'break_schedule'),orderBy('start_time')))
     .then(snap=>{
       breaks=snap.docs.map(d=>({id:d.id,...d.data()}));
-      if(breaks.length===0){ breaks=demoBreaks(); showToast('Usando demo — configura en Admin Breaks'); }
+      if(!breaks.length){ breaks=demoBreaks(); showToast('Usando horarios demo'); }
       renderAll(); renderSchedList();
     })
     .catch(()=>{ breaks=demoBreaks(); renderAll(); renderSchedList(); });
 }
 
 function loadSettings(){
-  db.collection('break_settings').limit(1).get()
-    .then(snap=>{ if(!snap.empty) settings={...settings,...snap.docs[0].data()}; })
-    .catch(()=>{});
+  const { collection, getDocs } = window._fbMod || {};
+  if(!window._db||!getDocs) return;
+  getDocs(collection(window._db,'break_settings')).then(s=>{ if(!s.empty) settings={...settings,...s.docs[0].data()}; }).catch(()=>{});
 }
 
 function demoBreaks(){
   return [
-    {id:'d1',shift:'A',description:'Break 1',start_time:'08:45',end_time:'09:00',active:true},
-    {id:'d2',shift:'A',description:'Lunch',  start_time:'12:30',end_time:'13:00',active:true},
+    {id:'d1',shift:'A',description:'Break',   lines:'Todas las líneas', start_time:'07:00',end_time:'08:45',active:true},
+    {id:'d2',shift:'A',description:'Lunch',   lines:'Zhongke, ASSY1',   start_time:'12:30',end_time:'13:00',active:true},
+    {id:'d3',shift:'A',description:'Lunch',   lines:'S1,S2,S3,S4,VC1,VC2', start_time:'13:00',end_time:'13:30',active:true},
+    {id:'d4',shift:'A',description:'Home',    lines:'Todas las líneas', start_time:'16:25',end_time:'16:30',active:true},
+    {id:'d5',shift:'A',description:'OT',      lines:'Todas las líneas', start_time:'16:45',end_time:'18:25',active:true},
   ];
 }
 
 async function saveBreak(){
+  const { collection, addDoc, doc, updateDoc } = window._fbMod || {};
   const shift=document.getElementById('f-shift').value;
   const desc =document.getElementById('f-desc').value.trim();
+  const lines=document.getElementById('f-lines').value.trim();
   const start=document.getElementById('f-start').value;
   const end  =document.getElementById('f-end').value;
-  if(!desc||!start||!end){showToast('⚠ Completa todos los campos');return;}
-  const data={shift,description:desc,start_time:start,end_time:end,active:true};
-  try{
-    if(editingId){ await db.collection('break_schedule').doc(editingId).update(data); showToast('Break actualizado ✓'); }
-    else          { await db.collection('break_schedule').add(data); showToast('Break creado ✓'); }
-  }catch(e){ showToast('Error: '+e.message); return; }
+  if(!desc||!start||!end){ showToast('⚠ Completa todos los campos'); return; }
+  const data={shift,description:desc,lines:lines||'Todas',start_time:start,end_time:end,active:true};
+  if(window._db&&addDoc){
+    try{
+      if(editingId) await updateDoc(doc(window._db,'break_schedule',editingId),data);
+      else          await addDoc(collection(window._db,'break_schedule'),data);
+      showToast(editingId?'Break actualizado ✓':'Break creado ✓');
+    }catch(e){ showToast('Error: '+e.message); return; }
+  } else {
+    if(editingId){ const i=breaks.findIndex(b=>b.id===editingId); if(i>-1)breaks[i]={...breaks[i],...data}; }
+    else breaks.push({id:'l'+Date.now(),...data});
+    showToast('Guardado ✓');
+  }
   cancelEdit(); loadBreaks();
 }
 
 async function deleteBreak(id){
   if(!confirm('¿Eliminar este break?'))return;
-  try{ await db.collection('break_schedule').doc(id).update({active:false}); showToast('Eliminado ✓'); loadBreaks(); }
-  catch(e){ showToast('Error'); }
+  const { doc, updateDoc } = window._fbMod || {};
+  if(window._db&&updateDoc){ try{ await updateDoc(doc(window._db,'break_schedule',id),{active:false}); }catch(e){ showToast('Error'); return; } }
+  else breaks=breaks.filter(b=>b.id!==id);
+  showToast('Eliminado ✓'); loadBreaks();
 }
 
 async function saveSettings(){
+  const { collection, getDocs, addDoc, doc, updateDoc } = window._fbMod || {};
   const data={
-    sound_on_start:      document.getElementById('s-start').checked,
-    sound_before_return: document.getElementById('s-before').checked,
-    sound_on_end:        document.getElementById('s-end').checked,
-    warning_minutes:     parseInt(document.getElementById('s-mins').value)||5,
+    sound_on_start:     document.getElementById('s-start').checked,
+    sound_before_return:document.getElementById('s-before').checked,
+    sound_on_end:       document.getElementById('s-end').checked,
+    warning_minutes:    3,
   };
   settings=data;
-  try{
-    const snap=await db.collection('break_settings').limit(1).get();
-    if(snap.empty)await db.collection('break_settings').add(data);
-    else await db.collection('break_settings').doc(snap.docs[0].id).update(data);
-  }catch(e){}
+  if(window._db&&getDocs){
+    try{
+      const s=await getDocs(collection(window._db,'break_settings'));
+      if(s.empty) await addDoc(collection(window._db,'break_settings'),data);
+      else await updateDoc(doc(window._db,'break_settings',s.docs[0].id),data);
+    }catch(e){}
+  }
   showToast('Configuración guardada ✓');
 }
 
@@ -872,14 +807,17 @@ function renderAll(){
 
   // Sounds
   if(prevStatus!==null&&prevStatus!==status){
-    if(status==='BREAK'   &&settings.sound_on_start)     beep(440,.3,3);
-    if(status==='WARNING' &&settings.sound_before_return) beep(880,.2,2);
+    if(status==='BREAK'   &&settings.sound_on_start)      beep(440,.3,3);
+    if(status==='WARNING' &&settings.sound_before_return)  beep(880,.2,2);
     if(status==='RUNNING' &&['BREAK','WARNING','RETURN_NOW'].includes(prevStatus)&&settings.sound_on_end) beep(660,.4,2);
   }
   prevStatus=status;
 
+  // Visual effects
+  applyEffects(status);
+
   // Clock
-  const clk=document.getElementById('tb-clock');
+  const clk=document.getElementById('tb-clk');
   clk.textContent=timeStr; clk.style.color=cfg.color;
 
   // Status strip
@@ -889,11 +827,11 @@ function renderAll(){
   const dot=document.getElementById('ss-dot');
   dot.style.background=cfg.color; dot.style.boxShadow=`0 0 7px ${cfg.color}`;
   dot.style.animation=status!=='RUNNING'?'pulse 1s infinite':'none';
-  const lbl=document.getElementById('ss-label');
+  const lbl=document.getElementById('ss-lbl');
   lbl.textContent=cfg.label; lbl.style.color=cfg.color;
   document.getElementById('ss-date').textContent=dateStr;
 
-  // Progress
+  // Progress bar
   const pf=document.getElementById('pfill');
   if(cur&&(status==='BREAK'||status==='WARNING'||status==='RETURN_NOW')){
     pf.style.width=`${100-breakPct(cur)}%`;
@@ -901,10 +839,10 @@ function renderAll(){
   } else { pf.style.width='0%'; }
 
   // Status card
-  const card=document.getElementById('status-card');
+  const card=document.getElementById('sc');
   card.style.borderColor=`${cfg.color}33`;
   card.style.borderLeftColor=cfg.color;
-  card.style.background=cfg.bg;
+  card.style.background=`linear-gradient(135deg,${cfg.color}10,transparent)`;
   document.getElementById('sc-glow').style.background=`radial-gradient(circle at top right,${cfg.color}18,transparent 60%)`;
   document.getElementById('sc-icon').textContent=cfg.icon;
   document.getElementById('sc-name').textContent=cfg.label;
@@ -912,63 +850,70 @@ function renderAll(){
 
   // Status body
   let html='';
+  const cdStyle=`color:${cfg.color};text-shadow:0 0 20px ${cfg.color}44`;
   if(status==='RUNNING'&&nxt){
-    html=`
-      <div class="sc-lbl">NEXT BREAK</div><div class="sc-val">${nxt.description}</div>
+    html=`<div class="sc-lbl">NEXT BREAK</div><div class="sc-val">${nxt.description}${nxt.lines?` — ${nxt.lines}`:''}</div>
       <div class="sc-lbl">STARTS AT</div><div class="sc-val">${nxt.start_time}</div>
       <div class="sc-lbl">RETURN AT</div><div class="sc-val">${nxt.end_time}</div>
       <div class="sc-lbl">COUNTDOWN</div>
-      <div class="sc-countdown sc-countdown-md" style="color:${cfg.color};text-shadow:0 0 18px ${cfg.color}44">${toHMS(countdown(nxt))}</div>`;
+      <div class="sc-cd sc-cd-md" style="${cdStyle}">${toHMS(countdown(nxt))}</div>`;
   } else if(status==='RUNNING'&&!nxt){
-    html=`<div class="sc-lbl">STATUS</div><div class="sc-val" style="color:var(--text3)">No more breaks today</div>`;
+    html=`<div class="sc-lbl">STATUS</div><div class="sc-val" style="color:var(--muted)">No more breaks today</div>`;
   } else if(status==='BREAK'&&cur){
-    html=`
-      <div class="sc-lbl">BREAK</div><div class="sc-val">${cur.description}</div>
+    html=`<div class="sc-lbl">BREAK</div><div class="sc-val">${cur.description}${cur.lines?` — ${cur.lines}`:''}</div>
       <div class="sc-lbl">RETURN TO WORK AT</div><div class="sc-val">${cur.end_time}</div>
       <div class="sc-lbl">REMAINING TIME</div>
-      <div class="sc-countdown sc-countdown-md" style="color:${cfg.color};text-shadow:0 0 18px ${cfg.color}44">${toHMS(remaining(cur))}</div>`;
+      <div class="sc-cd sc-cd-md" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='WARNING'&&cur){
-    html=`<div class="sc-lbl">RETURN TO WORK IN</div>
-      <div class="sc-countdown sc-countdown-lg" style="color:${cfg.color};text-shadow:0 0 25px ${cfg.color}66;animation:blink 1s infinite">${toHMS(remaining(cur))}</div>`;
+    html=`<div class="sc-lbl">⚠ RETURN TO WORK IN — ${cur.end_time}</div>
+      <div class="sc-cd sc-cd-lg" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='RETURN_NOW'&&cur){
-    html=`<div class="sc-lbl">⚡ RETURN NOW — ${cur.end_time}</div>
-      <div class="sc-countdown sc-countdown-lg" style="color:${cfg.color};text-shadow:0 0 25px ${cfg.color}66;animation:blink .6s infinite">${toHMS(remaining(cur))}</div>`;
+    html=`<div class="sc-lbl">🔴 RETURN NOW — ${cur.end_time}</div>
+      <div class="sc-cd sc-cd-lg" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='LATE'&&cur){
     html=`<div class="sc-lbl">🚨 LATE — ELAPSED TIME</div>
-      <div class="sc-countdown sc-countdown-lg" style="color:${cfg.color};text-shadow:0 0 25px ${cfg.color}66;animation:blink .5s infinite">${toHMS(lateTime(cur))}</div>`;
+      <div class="sc-cd sc-cd-lg" style="${cdStyle}">${toHMS(lateTime(cur))}</div>`;
   }
   document.getElementById('sc-body').innerHTML=html;
 
   // Break cards
   const now2=nowMin();
   const sorted=[...shiftBreaks()].sort((a,b)=>toMin(a.start_time)-toMin(b.start_time));
-  document.getElementById('panel-lbl').textContent=`📅 Horario — Shift ${currentShift}`;
+  document.getElementById('panel-lbl').textContent=`📅 Horario — ${SHIFT_LABELS[currentShift]||'Shift '+currentShift}`;
   document.getElementById('break-cards').innerHTML=sorted.length?sorted.map(b=>{
-    const isAct=cur?.id===b.id,isNxt=nxt?.id===b.id,isDone=toMin(b.end_time)<now2;
-    const c=isAct?'#ff8c00':isNxt?'#4da6ff':isDone?'#263558':'#263558';
-    const tc=isAct?'#ff8c00':isNxt?'#4da6ff':isDone?'#3d4d77':'#7a88b8';
+    const isAct=cur?.id===b.id, isNxt=nxt?.id===b.id, isDone=toMin(b.end_time)<now2;
+    const c=isAct?'#f97316':isNxt?'#4f8ef7':isDone?'#344070':'#344070';
+    const tc=isAct?'#f97316':isNxt?'#4f8ef7':isDone?'#3d4d77':'#7f8c9a';
     const badge=isAct?'▶ ACTIVE':isNxt?'⏭ NEXT':isDone?'✓ DONE':'UPCOMING';
     const dur=toMin(b.end_time)-toMin(b.start_time);
     return`<div class="break-card" style="border-left-color:${c};opacity:${isDone&&!isAct?.4:1}">
       <div style="display:flex;align-items:center;gap:8px">
         <div class="bc-dot" style="background:${c};box-shadow:${isAct?`0 0 8px ${c}`:''};animation:${isAct?'pulse 1.5s infinite':''}"></div>
-        <div><div class="bc-badge">${badge}</div><div class="bc-name" style="color:${tc}">${b.description}</div></div>
+        <div>
+          <div class="bc-badge">${badge}</div>
+          <div class="bc-name" style="color:${tc}">${b.description}</div>
+          ${b.lines?`<div class="bc-line">${b.lines}</div>`:''}
+        </div>
       </div>
-      <div><div class="bc-time" style="color:${tc}">${b.start_time}–${b.end_time}</div><div class="bc-dur">${dur} min</div></div>
+      <div>
+        <div class="bc-time" style="color:${tc}">${b.start_time}–${b.end_time}</div>
+        <div class="bc-dur">${dur} min</div>
+      </div>
     </div>`;
-  }).join(''):`<div class="empty">Sin breaks para Shift ${currentShift}<br><small>Agrégalos en Admin Breaks</small></div>`;
+  }).join(''):`<div class="empty">Sin breaks para ${SHIFT_LABELS[currentShift]||'Shift '+currentShift}<br><small>Agrégalos en Admin Breaks</small></div>`;
 
-  // TV
   renderTV(status,cfg,cur,nxt,timeStr,dateStr);
 }
 
+// ── TV Render ──────────────────────────────────────────
 function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
+  const tvEl=document.getElementById('tv-mode');
   document.getElementById('tv-clk').textContent=timeStr;
   document.getElementById('tv-clk').style.color=cfg.color;
   document.getElementById('tv-clk').style.textShadow=`0 0 35px ${cfg.color}77`;
   document.getElementById('tv-ac').style.background=cfg.color;
   document.getElementById('tv-date').textContent=dateStr;
-  document.getElementById('tv-slbl').textContent=currentShift;
+  document.getElementById('tv-slbl').textContent=SHIFT_LABELS[currentShift]||'Shift '+currentShift;
   document.getElementById('tv-hdr').style.borderBottomColor=`${cfg.color}33`;
   const badge=document.getElementById('tv-badge');
   badge.style.borderColor=`${cfg.color}33`; badge.style.background=`${cfg.color}14`; badge.style.color=cfg.color;
@@ -976,31 +921,32 @@ function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
   document.getElementById('tv-btxt').textContent=cfg.label; document.getElementById('tv-btxt').style.color=cfg.color;
   document.getElementById('tv-ctr').style.background=`radial-gradient(ellipse 70% 70% at 50% 50%,${cfg.color}07,transparent 70%)`;
 
-  let tvHtml='';
+  const cdStyle=`color:${cfg.color};text-shadow:0 0 60px ${cfg.color}66`;
+  let html='';
   if(status==='RUNNING'&&nxt){
-    tvHtml=`<div class="tv-lbl-sm">NEXT BREAK — ${nxt.description}</div>
-      <div class="tv-bigtime" style="color:${cfg.color};text-shadow:0 0 55px ${cfg.color}55">${nxt.start_time}</div>
-      <div class="tv-lbl-sm" style="margin-top:8px">RETURN AT ${nxt.end_time}</div>
-      <div class="tv-cd tv-cd-md" style="color:${cfg.color};text-shadow:0 0 40px ${cfg.color}55">${toHMS(countdown(nxt))}</div>`;
+    html=`<div class="tv-lbl">NEXT BREAK — ${nxt.description}</div>
+      <div class="tv-big" style="${cdStyle}">${nxt.start_time}</div>
+      <div class="tv-lbl" style="margin-top:8px">RETURN AT ${nxt.end_time}</div>
+      <div class="tv-cd tv-cd-md" style="${cdStyle}">${toHMS(countdown(nxt))}</div>`;
   } else if(status==='RUNNING'&&!nxt){
-    tvHtml=`<div class="tv-lbl-sm">NO MORE BREAKS TODAY</div>
-      <div class="tv-bigtime" style="color:var(--green);text-shadow:0 0 55px rgba(0,230,118,.4)">RUNNING</div>`;
+    html=`<div class="tv-lbl">NO MORE BREAKS TODAY</div>
+      <div class="tv-big" style="color:#2ecc71;text-shadow:0 0 55px rgba(46,204,113,.4)">RUNNING</div>`;
   } else if(status==='BREAK'&&cur){
-    tvHtml=`<div class="tv-lbl-sm">BREAK IN PROGRESS — ${cur.description}</div>
-      <div class="tv-bigtime" style="color:${cfg.color};text-shadow:0 0 55px ${cfg.color}55">${cur.end_time}</div>
-      <div class="tv-lbl-sm" style="margin-top:8px">RETURN TO WORK</div>
-      <div class="tv-cd tv-cd-md" style="color:${cfg.color};text-shadow:0 0 40px ${cfg.color}55">${toHMS(remaining(cur))}</div>`;
+    html=`<div class="tv-lbl">BREAK IN PROGRESS — ${cur.description}</div>
+      <div class="tv-big" style="${cdStyle}">${cur.end_time}</div>
+      <div class="tv-lbl" style="margin-top:8px">RETURN TO WORK</div>
+      <div class="tv-cd tv-cd-md" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='WARNING'&&cur){
-    tvHtml=`<div class="tv-lbl-sm">⚠ RETURN TO WORK IN</div>
-      <div class="tv-cd tv-cd-xl" style="color:${cfg.color};text-shadow:0 0 70px ${cfg.color}77;animation:blink 1s infinite">${toHMS(remaining(cur))}</div>`;
+    html=`<div class="tv-lbl">⚠ RETURN TO WORK IN</div>
+      <div class="tv-cd tv-cd-xl tv-cd" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='RETURN_NOW'&&cur){
-    tvHtml=`<div class="tv-lbl-sm">🔴 RETURN TO WORK NOW</div>
-      <div class="tv-cd tv-cd-xl" style="color:${cfg.color};text-shadow:0 0 70px ${cfg.color}77;animation:blink .6s infinite">${toHMS(remaining(cur))}</div>`;
+    html=`<div class="tv-lbl">🔴 RETURN TO WORK NOW</div>
+      <div class="tv-cd tv-cd-xl tv-cd" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='LATE'&&cur){
-    tvHtml=`<div class="tv-lbl-sm">🚨 LATE RETURN — ELAPSED</div>
-      <div class="tv-cd tv-cd-xl" style="color:${cfg.color};text-shadow:0 0 70px ${cfg.color}77;animation:blink .5s infinite">${toHMS(lateTime(cur))}</div>`;
+    html=`<div class="tv-lbl">🚨 LATE RETURN — ELAPSED</div>
+      <div class="tv-cd tv-cd-xl tv-cd" style="${cdStyle}">${toHMS(lateTime(cur))}</div>`;
   }
-  document.getElementById('tv-body').innerHTML=tvHtml;
+  document.getElementById('tv-body').innerHTML=html;
   document.getElementById('tv-kpi').innerHTML=demoKpis.map(k=>`
     <div class="tv-kcard" style="border-top-color:${k.color}">
       <div class="tv-klbl">${k.label}</div>
@@ -1013,9 +959,9 @@ function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
 function renderSchedList(){
   const list=[...breaks].filter(b=>b.active!==false).sort((a,b)=>a.shift.localeCompare(b.shift)||toMin(a.start_time)-toMin(b.start_time));
   document.getElementById('sched-list').innerHTML=list.length?list.map(b=>`
-    <div class="sched-row">
-      <div class="sched-info"><span class="sched-shift">Shift ${b.shift}</span>${b.description} — ${b.start_time}–${b.end_time}</div>
-      <div class="sched-btns">
+    <div class="srow">
+      <div class="sinfo"><span class="sshift">${SHIFT_LABELS[b.shift]||b.shift}</span>${b.description} ${b.lines?`(${b.lines})`:''} — ${b.start_time}–${b.end_time}</div>
+      <div class="sbtns">
         <button class="btn btn-warn btn-sm" onclick="editBreak('${b.id}')">Editar</button>
         <button class="btn btn-danger btn-sm" onclick="deleteBreak('${b.id}')">Del</button>
       </div>
@@ -1027,6 +973,7 @@ function editBreak(id){
   editingId=id;
   document.getElementById('f-shift').value=b.shift;
   document.getElementById('f-desc').value=b.description;
+  document.getElementById('f-lines').value=b.lines||'';
   document.getElementById('f-start').value=b.start_time;
   document.getElementById('f-end').value=b.end_time;
   document.getElementById('form-title').textContent='✏ Editar Break';
@@ -1034,29 +981,34 @@ function editBreak(id){
 }
 function cancelEdit(){
   editingId=null;
-  document.getElementById('f-shift').value='A';
-  document.getElementById('f-desc').value='';
-  document.getElementById('f-start').value='';
-  document.getElementById('f-end').value='';
+  ['f-shift','f-desc','f-lines','f-start','f-end'].forEach(id=>{
+    const el=document.getElementById(id);
+    if(el) el.value=id==='f-shift'?'A':'';
+  });
   document.getElementById('form-title').textContent='➕ Nuevo Break';
   document.getElementById('btn-cancel').style.display='none';
 }
 
 // ── Navigation ─────────────────────────────────────────
-function showPage(p){
-  document.querySelectorAll('.page').forEach(x=>x.classList.remove('active'));
-  document.querySelectorAll('.tab').forEach(x=>x.classList.remove('active'));
-  document.getElementById('page-'+p).classList.add('active');
-  document.getElementById('tab-'+p).classList.add('active');
-  if(p==='admin') renderSchedList();
+function showView(v){
+  document.querySelectorAll('.view').forEach(x=>x.classList.remove('active'));
+  document.querySelectorAll('.mbtn').forEach(x=>x.classList.remove('active'));
+  document.getElementById('view-'+v).classList.add('active');
+  document.getElementById('mb-'+v).classList.add('active');
+  if(v==='admin') renderSchedList();
 }
 function openTV (){ document.getElementById('tv-mode').classList.add('open'); }
 function closeTV(){ document.getElementById('tv-mode').classList.remove('open'); }
 
 function selectShift(s){
   currentShift=s;
-  document.querySelectorAll('.s-chip').forEach((c,i)=>c.classList.toggle('active',['A','B','C'][i]===s));
-  document.getElementById('tv-slbl').textContent=s;
+  ['A','B','C'].forEach(x=>{
+    const el=document.getElementById('chip-'+x);
+    if(!el)return;
+    el.className='s-chip';
+    if(x===s) el.classList.add('active-'+s.toLowerCase());
+  });
+  document.getElementById('tv-slbl').textContent=SHIFT_LABELS[s]||'Shift '+s;
 }
 
 // ── Toast ──────────────────────────────────────────────
@@ -1068,11 +1020,10 @@ function showToast(msg){
 }
 
 // ── Init ───────────────────────────────────────────────
-setTimeout(()=>{ if(breaks.length===0){ breaks=demoBreaks(); renderAll(); } }, 3000);
-loadSettings();
-loadBreaks();
+document.addEventListener('fb-ready',()=>{ loadSettings(); loadBreaks(); });
+setTimeout(()=>{ if(!breaks.length){ breaks=demoBreaks(); renderAll(); } },3000);
 renderAll();
-setInterval(renderAll, 1000);
+setInterval(renderAll,1000);
 </script>
 </body>
 </html>
