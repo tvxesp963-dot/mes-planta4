@@ -854,15 +854,17 @@ const demoKpis = [
 
 // STATUS config — colores y turnos del MES
 const ST = {
-  RUNNING:    { color:'#4f8ef7', icon:'▶',  label:'RUNNING'           },
-  BREAK:      { color:'#f97316', icon:'⏸',  label:'BREAK IN PROGRESS' },
-  WARNING:    { color:'#f1c40f', icon:'⚠',  label:'RETURN TO WORK IN' },
-  RETURN_NOW: { color:'#e74c3c', icon:'🔴', label:'RETURN NOW'        },
-  LATE:       { color:'#c0392b', icon:'🚨', label:'LATE RETURN'       },
+  RUNNING:    { color:'#4f8ef7', icon:'▶',  key:'RUNNING'    },
+  BREAK:      { color:'#f97316', icon:'⏸',  key:'BREAK'      },
+  WARNING:    { color:'#f1c40f', icon:'⚠',  key:'WARNING'    },
+  RETURN_NOW: { color:'#e74c3c', icon:'🔴', key:'RETURN_NOW' },
+  LATE:       { color:'#c0392b', icon:'🚨', key:'LATE'       },
+  SHIFT_OVER: { color:'#2ecc71', icon:'✅', key:'SHIFT_OVER' },
 };
 
 const SHIFT_COLORS = { A:'#4f8ef7', B:'#2ecc71', C:'#e67e22' };
 const SHIFT_LABELS = { A:'Shift A', B:'Overtime', C:'Saturday OT' };
+function getCfg(status){ const s=ST[status]||ST.RUNNING; return {...s, label:t(s.key)}; }
 const getShiftLabel = (s) => { const m={A:'shift_a',B:'shift_b',C:'shift_c'}; return t(m[s]||'shift_a'); };
 
 // ── Utils ──────────────────────────────────────────────
@@ -1071,27 +1073,36 @@ function renderAll(){
   // Status body
   let html='';
   const cdStyle=`color:${cfg.color};text-shadow:0 0 20px ${cfg.color}44`;
-  if(status==='RUNNING'&&nxt){
-    html=`<div class="sc-lbl">NEXT BREAK</div><div class="sc-val">${nxt.description}${nxt.lines?` — ${nxt.lines}`:''}</div>
-      <div class="sc-lbl">STARTS AT</div><div class="sc-val">${nxt.start_time}</div>
-      <div class="sc-lbl">RETURN AT</div><div class="sc-val">${nxt.end_time}</div>
-      <div class="sc-lbl">COUNTDOWN</div>
+  const wlbl = getWarningLabel(cur||getEndOfShift());
+  if(status==='SHIFT_OVER'){
+    html=`<div class="sc-lbl">${t('shift_done')}</div>
+      <div class="sc-val" style="color:var(--green)">${getEndOfShift()?.end_time||'--:--'}</div>
+      <div class="sc-lbl" style="margin-top:8px">${t('redirecting')}</div>`;
+    scheduleRedirect();
+  } else if(status==='RUNNING'&&nxt){
+    const nl=getNextLabel(nxt);
+    html=`<div class="sc-lbl">${nl.title}</div>
+      <div class="sc-val">${nxt.description}${nxt.lines?` — ${nxt.lines}`:''}</div>
+      <div class="sc-lbl">${nl.startLbl}</div><div class="sc-val">${nxt.start_time}</div>
+      ${nl.endLbl?`<div class="sc-lbl">${nl.endLbl}</div><div class="sc-val">${nxt.end_time}</div>`:''}
+      <div class="sc-lbl">${t('countdown')}</div>
       <div class="sc-cd sc-cd-md" style="${cdStyle}">${toHMS(countdown(nxt))}</div>`;
   } else if(status==='RUNNING'&&!nxt){
-    html=`<div class="sc-lbl">STATUS</div><div class="sc-val" style="color:var(--muted)">No more breaks today</div>`;
+    html=`<div class="sc-val" style="color:var(--green)">${t('no_breaks')}</div>`;
   } else if(status==='BREAK'&&cur){
-    html=`<div class="sc-lbl">BREAK</div><div class="sc-val">${cur.description}${cur.lines?` — ${cur.lines}`:''}</div>
-      <div class="sc-lbl">RETURN TO WORK AT</div><div class="sc-val">${cur.end_time}</div>
-      <div class="sc-lbl">REMAINING TIME</div>
+    html=`<div class="sc-lbl">${t('break_lbl')}</div>
+      <div class="sc-val">${cur.description}${cur.lines?` — ${cur.lines}`:''}</div>
+      <div class="sc-lbl">${t('return_at')}</div><div class="sc-val">${cur.end_time}</div>
+      <div class="sc-lbl">${t('remaining')}</div>
       <div class="sc-cd sc-cd-md" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='WARNING'&&cur){
-    html=`<div class="sc-lbl">⚠ RETURN TO WORK IN — ${cur.end_time}</div>
+    html=`<div class="sc-lbl">${wlbl.warning} — ${cur.end_time}</div>
       <div class="sc-cd sc-cd-lg" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='RETURN_NOW'&&cur){
-    html=`<div class="sc-lbl">🔴 RETURN NOW — ${cur.end_time}</div>
+    html=`<div class="sc-lbl">${wlbl.warning}</div>
       <div class="sc-cd sc-cd-lg" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='LATE'&&cur){
-    html=`<div class="sc-lbl">🚨 LATE — ELAPSED TIME</div>
+    html=`<div class="sc-lbl">${t('late_lbl')}</div>
       <div class="sc-cd sc-cd-lg" style="${cdStyle}">${toHMS(lateTime(cur))}</div>`;
   }
   document.getElementById('sc-body').innerHTML=html;
@@ -1142,28 +1153,34 @@ function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
   document.getElementById('tv-ctr').style.background=`radial-gradient(ellipse 70% 70% at 50% 50%,${cfg.color}07,transparent 70%)`;
 
   const cdStyle=`color:${cfg.color};text-shadow:0 0 60px ${cfg.color}66`;
+  const tvwlbl = getWarningLabel(cur||getEndOfShift());
   let html='';
-  if(status==='RUNNING'&&nxt){
-    html=`<div class="tv-lbl">NEXT BREAK — ${nxt.description}</div>
+  if(status==='SHIFT_OVER'){
+    html=`<div class="tv-lbl">${t('shift_done')}</div>
+      <div class="tv-big" style="color:#2ecc71;text-shadow:0 0 55px rgba(46,204,113,.5)">${getEndOfShift()?.end_time||'--:--'}</div>
+      <div class="tv-lbl" style="margin-top:8px">${t('redirecting')}</div>`;
+  } else if(status==='RUNNING'&&nxt){
+    const nl=getNextLabel(nxt);
+    html=`<div class="tv-lbl">${nl.title} — ${nxt.description}</div>
       <div class="tv-big" style="${cdStyle}">${nxt.start_time}</div>
-      <div class="tv-lbl" style="margin-top:8px">RETURN AT ${nxt.end_time}</div>
+      ${nl.endLbl?`<div class="tv-lbl" style="margin-top:8px">${nl.endLbl} ${nxt.end_time}</div>`:''}
       <div class="tv-cd tv-cd-md" style="${cdStyle}">${toHMS(countdown(nxt))}</div>`;
   } else if(status==='RUNNING'&&!nxt){
-    html=`<div class="tv-lbl">NO MORE BREAKS TODAY</div>
-      <div class="tv-big" style="color:#2ecc71;text-shadow:0 0 55px rgba(46,204,113,.4)">RUNNING</div>`;
+    html=`<div class="tv-lbl">${t('tv_no_breaks')}</div>
+      <div class="tv-big" style="color:#2ecc71;text-shadow:0 0 55px rgba(46,204,113,.4)">${t('tv_running')}</div>`;
   } else if(status==='BREAK'&&cur){
-    html=`<div class="tv-lbl">BREAK IN PROGRESS — ${cur.description}</div>
+    html=`<div class="tv-lbl">${tvwlbl.label} — ${cur.description}</div>
       <div class="tv-big" style="${cdStyle}">${cur.end_time}</div>
-      <div class="tv-lbl" style="margin-top:8px">RETURN TO WORK</div>
+      <div class="tv-lbl" style="margin-top:8px">${tvwlbl.action}</div>
       <div class="tv-cd tv-cd-md" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='WARNING'&&cur){
-    html=`<div class="tv-lbl">⚠ RETURN TO WORK IN</div>
+    html=`<div class="tv-lbl">${tvwlbl.warning}</div>
       <div class="tv-cd tv-cd-xl tv-cd" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='RETURN_NOW'&&cur){
-    html=`<div class="tv-lbl">🔴 RETURN TO WORK NOW</div>
+    html=`<div class="tv-lbl">${tvwlbl.warning}</div>
       <div class="tv-cd tv-cd-xl tv-cd" style="${cdStyle}">${toHMS(remaining(cur))}</div>`;
   } else if(status==='LATE'&&cur){
-    html=`<div class="tv-lbl">🚨 LATE RETURN — ELAPSED</div>
+    html=`<div class="tv-lbl">${t('late_lbl')}</div>
       <div class="tv-cd tv-cd-xl tv-cd" style="${cdStyle}">${toHMS(lateTime(cur))}</div>`;
   }
   document.getElementById('tv-body').innerHTML=html;
