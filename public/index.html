@@ -1,17 +1,17 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f1117">
-<title>Manufacturing MES · Production System</title>
+<title>MES · Producción</title>
 <link rel="manifest" href="manifest.json">
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, getDoc, getDocs, deleteDoc, setDoc,
+import { getFirestore, collection, doc, addDoc, getDocs, deleteDoc,
   onSnapshot, query, orderBy, where, updateDoc, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
@@ -29,678 +29,6 @@ const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
 const REGS_COL  = () => collection(db, "registros");
-const MODS_COL  = () => collection(db, "modelos");
-const TGTS_COL  = () => collection(db, "targets");
-
-async function loadMaquinasStatus(){
-  try{
-    const snap=await getDocs(collection(db,"maquinas_status"));
-    snap.docs.forEach(d=>{
-      const data=d.data();
-      const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
-      if(idx>=0){
-        MAQUINAS[idx].activa = data.activa!==false;
-        MAQUINAS[idx]._statusId = d.id;
-      }
-    });
-  }catch(e){console.error("Error cargando status maquinas:",e);}
-}
-
-async function saveMaquinaStatus(idx, activa){
-  const m=MAQUINAS[idx];
-  const data={nombre:m.nombre,activa,updatedAt:serverTimestamp()};
-  try{
-    if(m._statusId){
-      await updateDoc(doc(db,"maquinas_status",m._statusId),data);
-    } else {
-      const ref=await addDoc(collection(db,"maquinas_status"),data);
-      MAQUINAS[idx]._statusId=ref.id;
-    }
-    MAQUINAS[idx].activa=activa;
-    showToast(`${m.nombre} ${activa?"activada":"desactivada"}`,activa?"var(--green)":"var(--red)");
-    renderAdminMaquinas();
-    rHoy();
-  }catch(e){showToast("Error al guardar estado","var(--red)");console.error(e);}
-}
-window.saveMaquinaStatus=saveMaquinaStatus;
-
-function renderAdminMaquinas(){
-  const el=document.getElementById("admin-maquinas-grid");
-  if(!el)return;
-  el.innerHTML=MAQUINAS.map((m,i)=>{
-    const activa=m.activa!==false;
-    return `<div style="background:${activa?"var(--card2)":"#1a1117"};border:1px solid ${activa?"#2ecc7133":"#e74c3c33"};border-radius:9px;padding:12px;opacity:${activa?1:0.8}">
-      <div style="font-size:.9rem;font-weight:700;margin-bottom:3px">${m.nombre}</div>
-      <div style="margin-bottom:8px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
-      <div style="font-size:.75rem;margin-bottom:10px">
-        <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${activa?"#2ecc71":"#e74c3c"};margin-right:4px"></span>
-        ${activa?"Activa":"Inactiva"}
-      </div>
-      <div style="display:flex;align-items:center;justify-content:space-between;">
-        <span style="font-size:.8rem;color:var(--muted)">Estado</span>
-        <div onclick="saveMaquinaStatus(${i},${!activa})"
-          style="width:36px;height:20px;border-radius:10px;background:${activa?"#2ecc71":"#444"};position:relative;cursor:pointer;transition:background .2s;">
-          <div style="width:14px;height:14px;background:#fff;border-radius:50%;position:absolute;top:3px;left:${activa?19:3}px;transition:left .2s;"></div>
-        </div>
-      </div>
-    </div>`;
-  }).join("");
-}
-window.renderAdminMaquinas=renderAdminMaquinas;
-
-// ── EDITAR REGISTROS ──
-async function buscarRegistrosEdit() {
-  const fecha = document.getElementById('edit-reg-fecha').value;
-  if (!fecha) { showToast('Selecciona una fecha','var(--red)'); return; }
-  const tabla = document.getElementById('edit-reg-tabla');
-  tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Buscando...</div>';
-  try {
-    const snap = await getDocs(collection(db,'registros'));
-    const regs = [];
-    snap.forEach(d => {
-      const r = d.data();
-      const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      if (fechaReg === fecha) regs.push({id:d.id, ...r});
-    });
-    if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
-    regs.sort((a,b) => (b.ts?.seconds||0)-(a.ts?.seconds||0));
-    // Ordenar igual que Production Summary
-    const ordenMaqEdit = ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
-    const getOrdenEdit = n => { const i = ordenMaqEdit.findIndex(o=>(n||'').toUpperCase().includes(o.toUpperCase())); return i>=0?i:ordenMaqEdit.length; };
-    regs.sort((a,b) => {
-      const om = getOrdenEdit(a.maquina||a.maqNombre) - getOrdenEdit(b.maquina||b.maqNombre);
-      if (om !== 0) return om;
-      return (a.modelo||'').localeCompare(b.modelo||'');
-    });
-    tabla.innerHTML = `<div class="tbl-parts-wrap"><table><thead><tr>
-        <th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th>
-        <th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th><th>Hora</th><th></th>
-      </tr></thead><tbody>
-      ${regs.map(r => {
-        const hora = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.hora||'—');
-        const maq = r.maquina || r.maqNombre || '—';
-        const tipo = r.tipo || r.maqTipo || '—';
-        const parte = r.parte || r.pn || r.partNo || '—';
-        const qty = r.qty || r.prod || 0;
-        const def = r.defectos || r.def || 0;
-        const scrap = r.scrap || 0;
-        const target = r.target || 0;
-        const pct = target > 0 ? (qty/target*100) : 0;
-        const cl = pct>=95?'green':pct>=80?'yellow':'red';
-        const tCol = {A:'#4f8ef7',B:'#2ecc71',C:'#e67e22'}[r.turno]||'#7f8c9a';
-        return `<tr>
-          <td><strong>${maq}</strong></td>
-          <td class="model-code">${r.modelo||'—'}</td>
-          <td><span class="tbadge ${tipo}">${tipo}</span></td>
-          <td style="font-size:.8rem;color:var(--muted)">${parte}</td>
-          <td style="color:${tCol};font-weight:700">${r.turno||'—'}</td>
-          <td class="blue">${qty.toLocaleString()}</td>
-          <td>${def.toLocaleString()}</td>
-          <td>${scrap.toLocaleString()}</td>
-          <td class="${cl}">${target>0?pct.toFixed(1)+'%':'—'}</td>
-          <td style="font-size:.8rem;color:var(--muted)">${hora}</td>
-          <td style="white-space:nowrap">
-            <button onclick="editarRegistro('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">✏️</button>
-            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:3px">🗑️</button>
-          </td>
-        </tr>`;
-      }).join('')}
-      </tbody></table></div>`;
-  } catch(e) { tabla.innerHTML = '<div style="color:var(--red);font-size:12px">Error: '+e.message+'</div>'; }
-}
-
-async function editarRegistro(id) {
-  try {
-    const snap = await getDocs(collection(db,'registros'));
-    let reg = null;
-    snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
-    if (!reg) return;
-    const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
-    const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
-    const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
-    const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
-    const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
-    const modal = document.createElement('div');
-    modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-    modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border)">
-      <div style="font-weight:700;margin-bottom:14px;font-size:14px">✏️ Editar Registro — ${hora}</div>
-      <div style="display:grid;gap:10px">
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Máquina</div>
-          <select id="er-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
-          <input id="er-modelo" value="${reg.modelo||''}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Part No.</div>
-          <input id="er-parte" value="${(reg.parte||reg.pn||reg.partNo||'').toUpperCase()}" placeholder="Ej. ABC-12345" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box;font-family:monospace">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tipo</div>
-          <select id="er-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Cantidad</div>
-          <input id="er-qty" type="number" value="${reg.qty||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
-          <select id="er-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
-        </div>
-        <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Corte</div>
-          <select id="er-corte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcCorte}</select>
-        </div>
-      </div>
-      <div style="display:flex;gap:8px;margin-top:16px">
-        <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">Cancelar</button>
-        <button onclick="guardarRegistroEdit('${id}',this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer">💾 Guardar</button>
-      </div>
-    </div>`;
-    document.body.appendChild(modal);
-  } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
-}
-
-async function guardarRegistroEdit(id, btn) {
-  btn.textContent = 'Guardando...';
-  btn.disabled = true;
-  try {
-    const maq = document.getElementById('er-maq').value;
-    const modelo = document.getElementById('er-modelo').value.trim().toUpperCase();
-    const tipo = document.getElementById('er-tipo').value;
-    const qty = parseInt(document.getElementById('er-qty').value)||0;
-    const turno = document.getElementById('er-turno').value;
-    const corte = document.getElementById('er-corte').value;
-    // Validación de modelo: SM-XXXXXXXXXXX (14 con guión) o CRNXXX (6 sin guión)
-    if (modelo) {
-      const esSMValido = modelo.startsWith("SM") && modelo.length===14 && modelo.includes("-");
-      const esCRNValido = modelo.startsWith("CRN") && modelo.length===6 && !modelo.includes("-");
-      if (!esSMValido && !esCRNValido) {
-        showToast('Modelo inválido — SM: 14 chars con guión o CRN: 6 chars sin guión','var(--red)');
-        btn.textContent='💾 Guardar'; btn.disabled=false;
-        return;
-      }
-    }
-    // Buscar idx y nombre de la máquina seleccionada
-    const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
-    const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
-    const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
-    const pct = target > 0 ? +(qty/target*100).toFixed(2) : 0;
-    const parte = document.getElementById('er-parte') ? document.getElementById('er-parte').value.trim().toUpperCase() : '';
-    const updateData = {maquina:maq, maqNombre:maq, maqTipo:tipo, modelo, parte, tipo, qty, prod:qty, turno, corte, target, pct};
-    if (maqIdx !== null) updateData.maqIdx = maqIdx;
-    await setDoc(doc(db,'registros',id), updateData, {merge:true});
-    btn.closest('div[style*=fixed]').remove();
-    showToast('✅ Registro actualizado — recargando...','var(--green)');
-    buscarRegistrosEdit();
-    setTimeout(()=>{ if(typeof rRegs==='function') rRegs(); if(typeof updateDashStats==='function') updateDashStats(); }, 800);
-  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; }
-}
-async function eliminarRegistroEdit(id) {
-  if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
-  try {
-    await deleteDoc(doc(db,'registros',id));
-    showToast('🗑️ Registro eliminado','var(--red)');
-    buscarRegistrosEdit();
-  } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
-}
-window.eliminarRegistroEdit=eliminarRegistroEdit;
-
-// ── AGREGAR REGISTRO MANUAL ──
-window.abrirNuevoRegistro = function() {
-  const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
-  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
-  const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
-  const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
-  const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}">${t}</option>`).join('');
-  const opcCorte = [
-    {id:'C1',label:'Break (7:00–8:45 AM)'},
-    {id:'C2',label:'Lunch (9:00–12:30 PM)'},
-    {id:'C3',label:'Home (1:00–4:30 PM)'},
-    {id:'OT',label:'OT (4:45–6:25 PM)'}
-  ].map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
-  const modal = document.createElement('div');
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-  modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border);max-height:90vh;overflow-y:auto">
-    <div style="font-weight:700;margin-bottom:14px;font-size:14px">➕ Agregar Registro</div>
-    <div style="display:grid;gap:10px">
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
-        <input id="nr-fecha" type="date" value="${fecha}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Máquina</div>
-        <select id="nr-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
-        <input id="nr-modelo" placeholder="SM-XXXXXXXXXXX o CRNXXX" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N° Parte</div>
-        <input id="nr-parte" maxlength="11" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Tipo</div>
-        <select id="nr-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
-        <select id="nr-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Corte</div>
-        <select id="nr-corte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcCorte}</select>
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Cantidad</div>
-        <input id="nr-qty" type="number" min="0" value="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Defectos</div>
-        <input id="nr-def" type="number" min="0" value="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Scrap</div>
-        <input id="nr-scrap" type="number" min="0" value="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-top:16px">
-      <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">Cancelar</button>
-      <button onclick="guardarNuevoRegistro(this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer">💾 Guardar</button>
-    </div>
-  </div>`;
-  document.body.appendChild(modal);
-};
-
-window.guardarNuevoRegistro = async function(btn) {
-  btn.textContent = 'Guardando...'; btn.disabled = true;
-  try {
-    const fecha  = document.getElementById('nr-fecha').value;
-    const maq    = document.getElementById('nr-maq').value;
-    const modelo = document.getElementById('nr-modelo').value.trim().toUpperCase();
-    const parte  = document.getElementById('nr-parte').value.trim().toUpperCase();
-    const tipo   = document.getElementById('nr-tipo').value;
-    const turno  = document.getElementById('nr-turno').value;
-    const corte  = document.getElementById('nr-corte').value;
-    const qty    = parseInt(document.getElementById('nr-qty').value)||0;
-    const def    = parseInt(document.getElementById('nr-def').value)||0;
-    const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
-    if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
-    const maqObj = (typeof MAQUINAS!=='undefined'?MAQUINAS:[]).find(m=>m.nombre===maq);
-    const maqIdx = maqObj ? MAQUINAS.indexOf(maqObj) : null;
-    // Target correcto según corte seleccionado
-    const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
-    const pct    = target>0 ? +(qty/target*100).toFixed(2) : 0;
-    const newReg = {
-      fecha, maquina:maq, maqNombre:maq, maqTipo:tipo, tipo,
-      modelo, parte, turno, corte, qty, prod:qty, def, defectos:def, scrap,
-      target, pct, uid: CURRENT_USER?.uid||'', operador: CURRENT_USER?.nombre||'Admin',
-      tsLocal: new Date().toISOString(), ts: serverTimestamp()
-    };
-    if (maqIdx!==null) newReg.maqIdx = maqIdx;
-    await addDoc(collection(db,'registros'), newReg);
-    btn.closest('div[style*=fixed]').remove();
-    showToast('✅ Registro agregado correctamente','var(--green)');
-    buscarRegistrosEdit();
-  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; }
-};
-
-// ── CORREGIR MODELOS EN LOTE ──
-async function previewCorregirModelo() {
-  const malo = (document.getElementById('cm-malo').value||'').trim().toUpperCase();
-  const bueno = (document.getElementById('cm-bueno').value||'').trim().toUpperCase();
-  const div = document.getElementById('cm-resultado');
-  if (!malo || !bueno) { div.innerHTML='<div style="color:var(--red)">❌ Captura ambos modelos</div>'; return; }
-  if (malo === bueno) { div.innerHTML='<div style="color:var(--red)">❌ Los modelos son iguales</div>'; return; }
-  // Validar que el modelo BUENO cumpla el formato
-  const esSM = bueno.startsWith("SM") && bueno.length===14 && bueno.includes("-");
-  const esCRN = bueno.startsWith("CRN") && bueno.length===6 && !bueno.includes("-");
-  if (!esSM && !esCRN) { div.innerHTML='<div style="color:var(--red)">❌ Modelo correcto inválido — debe ser SM-XXXXXXXXXXX (14 con guión) o CRNXXX (6 sin guión)</div>'; return; }
-  div.innerHTML='<div style="color:var(--muted)">⏳ Buscando...</div>';
-  try {
-    const snap = await getDocs(collection(db,'registros'));
-    const matches = [];
-    snap.forEach(d => {
-      const r = d.data();
-      if ((r.modelo||'').trim().toUpperCase() === malo) matches.push({id:d.id, ...r});
-    });
-    if (!matches.length) { div.innerHTML='<div style="color:var(--muted)">Sin registros con modelo "'+malo+'"</div>'; return; }
-    // Agrupar por fecha
-    const porFecha = {};
-    matches.forEach(r => { const f=r.fecha||'?'; porFecha[f]=(porFecha[f]||0)+1; });
-    const fechas = Object.entries(porFecha).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
-    let html = `<div style="padding:10px 12px;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;line-height:1.6">
-      <b style="color:var(--amber)">⚠️ Vista previa</b><br>
-      Se encontraron <b style="color:var(--text)">${matches.length} registros</b> con modelo "<b style="font-family:monospace;color:var(--text)">${malo}</b>".<br>
-      Se cambiarán a "<b style="font-family:monospace;color:var(--green)">${bueno}</b>".<br>
-      <span style="color:var(--muted);font-size:11px;display:block;margin-top:6px">
-        Distribución (últimas 5 fechas): ${fechas.map(([f,c])=>f+' ('+c+')').join(' · ')}<br>
-        ⚠️ Esta acción NO se puede deshacer. Haz click en <b>Ejecutar reemplazo</b> cuando estés seguro.
-      </span>
-    </div>`;
-    div.innerHTML = html;
-    window._cmPreview = {malo, bueno, total: matches.length, ids: matches.map(r=>r.id)};
-  } catch(e) { div.innerHTML='<div style="color:var(--red)">Error: '+e.message+'</div>'; }
-}
-window.previewCorregirModelo = previewCorregirModelo;
-
-async function ejecutarCorregirModelo() {
-  const div = document.getElementById('cm-resultado');
-  if (!window._cmPreview) { showToast('Primero haz "Vista previa"','var(--red)'); return; }
-  const {malo, bueno, total, ids} = window._cmPreview;
-  if (!confirm(`¿Reemplazar "${malo}" por "${bueno}" en ${total} registros?\n\nEsta acción NO se puede deshacer.`)) return;
-  div.innerHTML='<div style="color:var(--muted)">⏳ Actualizando '+total+' registros...</div>';
-  try {
-    let ok=0, errs=0;
-    for (const id of ids) {
-      try {
-        await setDoc(doc(db,'registros',id), {modelo: bueno}, {merge:true});
-        ok++;
-      } catch(e) { errs++; console.error('Error en',id,e); }
-    }
-    div.innerHTML=`<div style="padding:10px 12px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700">✅ Reemplazo completado<br><span style="font-size:11px;color:var(--muted);font-weight:400">Actualizados: ${ok} · Errores: ${errs}</span></div>`;
-    showToast('✅ '+ok+' registros corregidos','var(--green)');
-    window._cmPreview = null;
-    document.getElementById('cm-malo').value='';
-    document.getElementById('cm-bueno').value='';
-    // Refrescar dashboard si hace falta
-    if (typeof rRegs==='function') rRegs();
-  } catch(e) { div.innerHTML='<div style="color:var(--red)">Error: '+e.message+'</div>'; }
-}
-window.ejecutarCorregirModelo = ejecutarCorregirModelo;
-
-// ── CIERRE DE JORNADA ──
-async function calcularCierreJornada() {
-  const fecha = document.getElementById('cj-fecha').value;
-  if (!fecha) { showToast('Selecciona la fecha','var(--red)'); return; }
-  const div = document.getElementById('cj-resultado');
-  div.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳ Calculando...</div>';
-  try {
-    // 1. Verificar si ya se cerró ese día (evitar duplicados)
-    const cierreSnap = await getDocs(collection(db,'cierres_jornada'));
-    let yaCerrado = null;
-    cierreSnap.forEach(d => { if (d.id === fecha) yaCerrado = d.data(); });
-    if (yaCerrado) {
-      const fechaCierre = yaCerrado.fechaCierre ? new Date(yaCerrado.fechaCierre).toLocaleString('es-MX') : '';
-      div.innerHTML = `<div style="padding:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-weight:600;font-size:12px">⚠️ Esta fecha ya fue cerrada el ${fechaCierre} por ${yaCerrado.usuario||'?'}.<br><br>Si necesitas reabrir, contacta al admin.</div>`;
-      return;
-    }
-
-    // 2. Leer registros ASSY1 del día
-    const snap = await getDocs(collection(db,'registros'));
-    const assy1Regs = [];
-    snap.forEach(d => {
-      const r = d.data();
-      const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      if (fechaReg === fecha && (r.maquina === 'ASSY1' || r.tipo === 'ASSY')) assy1Regs.push({id:d.id,...r});
-    });
-    if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
-
-    // 3. Leer BOM ACTIVO (no plan_produccion)
-    const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
-    if (!bomDoc.exists()) {
-      div.innerHTML = '<div style="color:var(--red);font-size:12px">❌ No hay BOM activo en bom_simulator_p4</div>';
-      return;
-    }
-    const bomData = bomDoc.data();
-    const BOM = JSON.parse(bomData.bom||'[]');
-    const semanaRef = bomData.semana || '';
-
-    // 4. Leer inventario IMS
-    const imsSnap = await getDocs(collection(db,'planta4_inventario'));
-    const imsMap = {};
-    imsSnap.forEach(d => { const data = d.data(); if(data.pn) imsMap[(data.pn||'').toUpperCase()] = {...data, _docId:d.id}; });
-
-    // 5. Calcular descuentos consolidados (qty + defectos + scrap)
-    const descuentos = {};
-    let totalPiezasConsumo = 0;
-    assy1Regs.forEach(r => {
-      const modelo = (r.modelo||'').trim();
-      const qty = Number(r.qty)||0;
-      const defectos = Number(r.defectos)||0;
-      const scrap = Number(r.scrap)||0;
-      const consumo = qty + defectos + scrap;
-      if (!modelo || !consumo) return;
-      totalPiezasConsumo += consumo;
-      const compsModelo = BOM.filter(b => b.pn && b.sm && b.sm.trim() === modelo);
-      compsModelo.forEach(c => {
-        const pnKey = (c.pn||'').toUpperCase();
-        if (!descuentos[pnKey]) descuentos[pnKey] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0};
-        descuentos[pnKey].total += consumo;
-      });
-    });
-
-    // 6. Render preview
-    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty)||0),0);
-    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos)||0),0);
-    const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
-
-    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
-
-    const descList = Object.values(descuentos);
-    if (!descList.length) {
-      html += '<div style="color:var(--amber);font-size:12px;padding:.5rem">⚠️ No se encontraron componentes en el BOM activo para los modelos producidos.</div>';
-      div.innerHTML = html;
-      return;
-    }
-
-    let conFaltante = 0;
-    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
-    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
-    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
-      const imsDoc = imsMap[(d.pn||'').toUpperCase()];
-      const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
-      const nuevoInv = invAct !== null ? invAct - d.total : -d.total;
-      const sinIMS = imsDoc === undefined;
-      const negativo = nuevoInv < 0;
-      if (sinIMS || negativo) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--fg)';
-      const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
-    });
-    html += '</table></div>';
-    if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (registrará faltante).</div>`;
-    }
-    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
-    html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
-    div.innerHTML = html;
-  } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; console.error(e); }
-}
-
-async function confirmarCierreJornada() {
-  if (!window._cierreDescuentos) return;
-  const cd = window._cierreDescuentos;
-  const modoSim = document.getElementById('cj-modoSim') && document.getElementById('cj-modoSim').checked;
-  const msgConfirm = modoSim
-    ? `MODO SIMULACIÓN — NO se tocará Firebase.\n\nSe mostrará lo que pasaría si se descontaran:\n• ${cd.descuentos.length} componentes\n• Consumo: ${cd.totalConsumo.toLocaleString()} pzas\n\n¿Ejecutar simulación?`
-    : `Confirmar cierre de jornada del ${cd.fecha}?\n\n• ${cd.descuentos.length} componentes a descontar\n• Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\n• Esta acción NO se puede deshacer fácilmente.`;
-  if (!confirm(msgConfirm)) return;
-  const div = document.getElementById('cj-resultado');
-  div.innerHTML = `<div style="color:var(--muted);font-size:12px">⏳ ${modoSim?'Simulando':'Procesando'} descuentos...</div>`;
-  try {
-    const fechaISO = new Date().toISOString();
-    const userActual = (typeof currentUser!=='undefined' && currentUser && currentUser.email) ? currentUser.email : (window._userEmail || 'Sistema MES');
-    let actualizados = 0, faltantes = 0, movimientos = 0;
-    const detalleFaltantes = [];
-    const detalleSim = [];
-
-    for (const d of cd.descuentos) {
-      const imsDoc = cd.imsMap[(d.pn||'').toUpperCase()];
-      const refTxt = `Descuento ASSY1 ${cd.fecha} (${cd.semanaRef||'BOM'})`;
-      if (!imsDoc) {
-        faltantes++;
-        detalleFaltantes.push(`${d.pn}: ${d.total} no descontado (no existe en IMS)`);
-        if (modoSim) detalleSim.push(`❌ ${d.pn} → no existe en IMS, NO se podría descontar ${d.total}`);
-        continue;
-      }
-      const invAnterior = Number(imsDoc.actual)||0;
-      const salidasAnt = Number(imsDoc.salidas)||0;
-      const nuevoActual = invAnterior - d.total;
-
-      if (modoSim) {
-        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ⚠️ NEGATIVO':''}`);
-        actualizados++; movimientos++;
-        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedaría en ${nuevoActual}`); }
-        continue;
-      }
-
-      // ── MODO REAL ──
-      const histEntry = { tipo:'OUT', fecha:fechaISO, qty:d.total, loc:imsDoc.ubicacion||'Almacén', user:userActual, ref:refTxt };
-      const nuevoHist = (Array.isArray(imsDoc.historial)?imsDoc.historial:[]).concat([histEntry]);
-      await updateDoc(doc(db,'planta4_inventario',imsDoc._docId), {
-        actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
-        ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
-      });
-      if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: queda en ${nuevoActual}`); }
-      await addDoc(collection(db,'planta4_movimientos'), {
-        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total,
-        fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
-        usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
-      });
-      movimientos++; actualizados++;
-    }
-
-    if (!modoSim) {
-      await setDoc(doc(db,'cierres_jornada',cd.fecha), {
-        fecha:cd.fecha, fechaCierre:fechaISO, usuario:userActual, semanaRef:cd.semanaRef||'',
-        totalRegistros:cd.totalRegs, totalConsumo:cd.totalConsumo, totalQty:cd.totalQty,
-        totalDef:cd.totalDef, totalScr:cd.totalScr, componentesDescontados:actualizados,
-        faltantes:faltantes, movimientosCreados:movimientos
-      });
-    }
-
-    let resumen;
-    if (modoSim) {
-      resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">🧪 SIMULACIÓN COMPLETA — Firebase NO se modificó</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">• Componentes que SÍ se podrían descontar: <b style="color:var(--fg)">${actualizados}</b><br>• Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>• Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÍNEA POR LÍNEA</div>`;
-      resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:12px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
-      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">💡 Para ejecutar de verdad: desmarca <b>"Modo simulación"</b> y vuelve a calcular.</div>`;
-    } else {
-      resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">✅ Cierre aplicado — ${actualizados} componentes descontados</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>• Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
-      if (faltantes > 0) {
-        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
-      }
-    }
-    div.innerHTML = resumen;
-    if (!modoSim) { showToast(`✅ IMS actualizado — ${actualizados} partes`,'var(--green)'); window._cierreDescuentos = null; }
-    else { showToast(`🧪 Simulación completa — ${actualizados} descuentos posibles`,'#5BA3FF'); }
-  } catch(e) {
-    div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
-    console.error('confirmarCierreJornada:', e);
-    showToast('Error: '+e.message,'var(--red)');
-  }
-}
-window.calcularCierreJornada=calcularCierreJornada;
-window.confirmarCierreJornada=confirmarCierreJornada;
-window.buscarRegistrosEdit=buscarRegistrosEdit;
-window.editarRegistro=editarRegistro;
-window.guardarRegistroEdit=guardarRegistroEdit;
-
-async function loadTargetsFromDB(){
-  try{
-    const snap=await getDocs(TGTS_COL());
-    if(snap.empty)return;
-    snap.docs.forEach(d=>{
-      const data=d.data();
-      const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
-      if(idx<0)return;
-      const t=Number(data.target||data.A||0);
-      if(!t)return;
-      MAQUINAS[idx].target=t;
-      // Recalcular cortes proporcional
-      const m=MAQUINAS[idx];
-      const pcts={C1:0.2,C2:0.4,C3:0.4};
-      const otFixed=data.OT||m.cortes.OT;
-      m.cortes={
-        C1:Math.round(t*pcts.C1),
-        C2:Math.round(t*pcts.C2),
-        C3:Math.round(t*pcts.C3),
-        OT:otFixed
-      };
-      m._dbId=d.id;
-    });
-    console.log("Targets cargados desde Firestore");
-  }catch(e){console.error("Error cargando targets:",e);}
-}
-
-async function saveTargetToDB(maqIdx, targetVal){
-  const m=MAQUINAS[maqIdx];
-  const pcts={C1:0.2,C2:0.4,C3:0.4};
-  const data={
-    nombre:m.nombre,
-    target:targetVal,
-    C1:Math.round(targetVal*pcts.C1),
-    C2:Math.round(targetVal*pcts.C2),
-    C3:Math.round(targetVal*pcts.C3),
-    OT:m.cortes.OT,
-    updatedAt:serverTimestamp()
-  };
-  try{
-    if(m._dbId){
-      await updateDoc(doc(db,"targets",m._dbId),data);
-    } else {
-      const ref=await addDoc(TGTS_COL(),data);
-      MAQUINAS[maqIdx]._dbId=ref.id;
-    }
-    // Actualizar en memoria
-    MAQUINAS[maqIdx].target=targetVal;
-    MAQUINAS[maqIdx].cortes={C1:data.C1,C2:data.C2,C3:data.C3,OT:data.OT};
-    showToast("Target guardado ✓","var(--green)");
-    renderAdminTargets();
-  }catch(e){showToast("Error al guardar target","var(--red)");console.error(e);}
-}
-window.saveTargetToDB=saveTargetToDB;
-
-function renderAdminTargets(){
-  const el=document.getElementById("admin-targets-grid");
-  if(!el)return;
-  el.innerHTML=MAQUINAS.map((m,i)=>`
-    <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;">
-      <div style="font-size:.85rem;font-weight:700;margin-bottom:2px">${m.nombre}</div>
-      <div style="margin-bottom:10px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
-      <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Target diario</label>
-      <input type="number" id="tgt-inp-${i}" value="${m.target}"
-        style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.85rem;font-family:'IBM Plex Mono',monospace;text-align:right;outline:none;">
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;">
-        ${Object.entries({Break:"C1",Lunch:"C2",Home:"C3",OT:"OT"}).map(([lbl,k])=>`
-          <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:.75rem;">
-            <span style="color:var(--muted)">${lbl}</span>
-            <strong style="color:var(--accent);float:right">${(m.cortes[k]||0).toLocaleString()}</strong>
-          </div>`).join("")}
-      </div>
-      <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px">Cortes calculados automáticamente</div>
-      <button onclick="saveTargetToDB(${i},Number(document.getElementById('tgt-inp-${i}').value))"
-        style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px;font-size:.85rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;">
-        💾 Guardar ${m.nombre}
-      </button>
-    </div>`).join("");
-}
-window.renderAdminTargets=renderAdminTargets;
-let MODELOS_LIST = [];
-async function loadModelos(){
-  try{
-    const snap=await getDocs(MODS_COL());
-    MODELOS_LIST=snap.docs.map(d=>d.data().modelo).filter(Boolean).sort();
-    buildModelosDL();
-  }catch(e){}
-}
-function buildModelosDL(){
-  const dl=document.getElementById("modelos-dl");
-  if(!dl)return;
-  dl.innerHTML=MODELOS_LIST.map(m=>`<option value="${m}">`).join("");
-}
-async function saveModelo(modelo){
-  if(!modelo||MODELOS_LIST.includes(modelo))return;
-  try{await addDoc(MODS_COL(),{modelo,createdAt:serverTimestamp()});}catch(e){}
-  MODELOS_LIST.push(modelo);MODELOS_LIST.sort();buildModelosDL();
-}
 const USERS_COL = () => collection(db, "usuarios");
 
 const CAUSAS_PARO_DEFAULT = [
@@ -730,12 +58,11 @@ function buildCausasSelect(){
 }
 
 const CORTES = [
-  {id:"C1", label:"Break", hora:"7:00–8:45 AM",  icon:"🌅"},
-  {id:"C2", label:"Lunch", hora:"9:00–12:30 PM", icon:"☀️"},
-  {id:"C3", label:"Home", hora:"1:00–4:30 PM",  icon:"🌇"},
-  {id:"OT", label:"OT",hora:"4:45–6:25 PM",  icon:"⏰"},
+  {id:"C1", label:"Cut 1", hora:"7:00–8:45 AM",  icon:"🌅"},
+  {id:"C2", label:"Cut 2", hora:"9:00–12:30 PM", icon:"☀️"},
+  {id:"C3", label:"Cut 3", hora:"1:00–4:30 PM",  icon:"🌇"},
+  {id:"OT", label:"Cut OT",hora:"4:45–6:25 PM",  icon:"⏰"},
 ];
-// Estado activo/inactivo se carga desde Firestore
 const MAQUINAS = [
   {nombre:"S1",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
   {nombre:"S2",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
@@ -743,8 +70,7 @@ const MAQUINAS = [
   {nombre:"S4",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
   {nombre:"Zhongke",tipo:"AUTO",target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:2000}},
   {nombre:"ASSY1", tipo:"ASSY", target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
-  {nombre:"VC1",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"VC2",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"VC",    tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
 ];
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
@@ -793,7 +119,7 @@ function showApp() {
   document.getElementById("login-view").style.display="none";
   document.getElementById("app").style.display="flex";
   document.getElementById("app").style.flexDirection="column";
-  applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos();});
+  applyRoleUI(); initApp(); startListener(); loadEmailsRep();
 }
 function applyRoleUI() {
   const r=CURRENT_USER.rol;
@@ -869,13 +195,13 @@ function renderAdmin() {
     const regs=REGISTROS.filter(r=>r.userId===u.uid).length;
     const isMe=u.uid===CURRENT_USER.uid;
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${u.email}</td><td><strong>${u.nombre}</strong><br><span style="font-size:.8rem;color:var(--muted)">${u.empleado||""}</span></td>
+    tr.innerHTML=`<td>${u.email}</td><td><strong>${u.nombre}</strong><br><span style="font-size:.65rem;color:var(--muted)">${u.empleado||""}</span></td>
       <td><span class="role-badge role-${u.rol}">${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[u.rol]}</span></td>
       <td>${u.activo?'<span class="dot-on"></span> Activo':'<span class="dot-off"></span> Inactivo'}</td>
       <td>${regs}</td>
       <td>${!isMe?`<button class="abtn abtn-edit" onclick="toggleUser('${u.docId}',${u.activo})">${u.activo?"Desactivar":"Activar"}</button>
         <button class="abtn abtn-del" onclick="delUser('${u.docId}','${u.nombre}')" style="margin-left:4px">✕</button>`
-        :"<span style='font-size:.8rem;color:var(--muted)'>Tú</span>"}</td>`;
+        :"<span style='font-size:.68rem;color:var(--muted)'>Tú</span>"}</td>`;
     tb.appendChild(tr);
   });
 }
@@ -890,7 +216,6 @@ window.enviar = async () => {
     operador:document.getElementById("ip-op").value.trim(),
     empleado:document.getElementById("ip-emp").value.trim(),
     parte:document.getElementById("ip-parte").value.trim(),
-    modelo:document.getElementById("ip-modelo").value.trim().toUpperCase(),
     fecha:document.getElementById("ip-fecha").value,
     turno:opTurno,
     corte:opCorte,
@@ -906,320 +231,13 @@ window.enviar = async () => {
   };
   try {
     await addDoc(REGS_COL(),reg);
-    if(reg.modelo) saveModelo(reg.modelo);
     document.getElementById("suc-sub").textContent=`${m.nombre} · ${opCorte||opTurno} · ${p.toLocaleString()} piezas enviadas.`;
     showStep(4);
   } catch(e){showToast("❌ Error: "+e.message,"var(--red)");}
   btn.innerHTML="📤 Enviar al Dashboard";btn.disabled=false;
 };
 window.delReg = async (id) => { await deleteDoc(doc(db,"registros",id)); rRegs();rFeed();updateDashStats(); };
-
-// ── PLAN PRODUCCIÓN EN MES ──
-var mesPlanActivo = null;
-var mesPlanInvSnapshot = {}; // inventario al momento de publicar
-var unsubImsListener = null; // listener tiempo real
-
-async function loadMesPlan() {
-  try {
-    // 1. Cargar plan de Firestore
-    const snap = await getDocs(collection(db,'plan_produccion'));
-    let planDoc = null;
-    snap.forEach(d => { if(d.id==='plan_activo') planDoc = d.data(); });
-    if (!planDoc) {
-      document.getElementById('mesPlanEmpty').style.display='block';
-      document.getElementById('mesPlanContent').style.display='none';
-      return;
-    }
-    mesPlanActivo = planDoc;
-
-    // 2. Sync inventario actual del IMS
-    await sincronizarInvMES();
-
-    // 3. Renderizar con inventario fresco
-    renderMesPlan();
-    arrancarListenerIMS();
-    mostrarAlertaIMS([]); // limpiar banner
-    // Actualizar chart con línea de plan
-    if (typeof rHoy === 'function') rHoy();
-  } catch(e) { console.log('loadMesPlan:', e.message); }
-}
-
-// Carga inventario actual del IMS — guarda por PN+DESC para distinguir Virgen vs Ranurado
-async function sincronizarInvMES() {
-  try {
-    const snap = await getDocs(collection(db, 'planta4_inventario'));
-    mesPlanInvSnapshot = {};
-    snap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pn = data.pn.trim().toUpperCase();
-      const desc = (data.desc || '').trim().toUpperCase();
-      if (desc) mesPlanInvSnapshot[pn + '||' + desc] = data.actual || 0;
-      mesPlanInvSnapshot[pn] = (mesPlanInvSnapshot[pn] || 0) + (data.actual || 0);
-    });
-  } catch(e) {}
-}
-
-// Busca inventario por PN + descripción (igual que BOM Simulator)
-function getInvMES(pn, desc) {
-  const pnUp = (pn || '').trim().toUpperCase();
-  const descUp = (desc || '').trim().toUpperCase();
-  const exactKey = pnUp + '||' + descUp;
-  if (mesPlanInvSnapshot[exactKey] !== undefined) return mesPlanInvSnapshot[exactKey];
-  const keywords = ['VIRGEN','VIRGIN','RANURADO','GROOVING','TOP','BOTTOM','BOT',
-    'BUNDLE','STRIP','PULP','SET PAD','BACK STICKER','GIFT BOX','LOWER BOX','SHEET'];
-  let bestKey = null, bestScore = 0;
-  Object.keys(mesPlanInvSnapshot).forEach(key => {
-    if (key.indexOf(pnUp + '||') === 0) {
-      const imsDesc = key.replace(pnUp + '||', '');
-      let score = 0;
-      keywords.forEach(kw => { if (descUp.includes(kw) && imsDesc.includes(kw)) score++; });
-      if (score > bestScore) { bestScore = score; bestKey = key; }
-    }
-  });
-  if (bestKey && bestScore > 0) return mesPlanInvSnapshot[bestKey];
-  return mesPlanInvSnapshot[pnUp] || 0;
-}
-
-async function actualizarSnapshotIMS() {
-  try {
-    const snap = await getDocs(collection(db, 'planta4_inventario'));
-    const invActual = {};
-    snap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pn = data.pn.trim().toUpperCase();
-      invActual[pn] = (invActual[pn] || 0) + (data.actual || 0);
-    });
-    // Actualizar snapshot solo para las partes del plan
-    Object.keys(mesPlanInvSnapshot).forEach(pn => {
-      if (invActual[pn] !== undefined) mesPlanInvSnapshot[pn] = invActual[pn];
-    });
-    mostrarAlertaIMS([]); // ocultar banner
-  } catch(e) {}
-}
-
-function renderMesPlan() {
-  if (!mesPlanActivo) return;
-  document.getElementById('mesPlanEmpty').style.display='none';
-  document.getElementById('mesPlanContent').style.display='block';
-  document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
-  document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
-
-  const colores = {'VC1':'#FFBA00','VC2':'#00B8A0','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
-  const iconos = {'VC1':'⚙️','VC2':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','ASSY1':'✅'};
-  const ordenLineas = ['VC1','VC2','S1/S2','Zhongke','S3','S4','ASSY1'];
-  const lineas = mesPlanActivo.lineas || {};
-  const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
-
-  // Contar progreso
-  let totalLineas = 0, listasLineas = 0;
-  todasLineas.forEach(linea => {
-    const lineaData = lineas[linea];
-    if (!lineaData) return;
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    items.forEach(l => { if(l && (l.materiales?.length || l.cantidad > 0)) { totalLineas++; if(l.listo) listasLineas++; } });
-  });
-  const pct = totalLineas ? Math.round(listasLineas/totalLineas*100) : 0;
-  const canConfirm = CURRENT_USER?.rol === 'admin';
-
-  // Barra de progreso
-  const progressBar = `<div style="margin-bottom:.75rem;background:#0e1325;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.6rem .75rem">
-    <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:.35rem">
-      <span>Líneas confirmadas</span>
-      <span style="color:${pct===100?'#00e676':'var(--fg)'}"><b>${listasLineas}</b> / ${totalLineas} &nbsp;(${pct}%)</span>
-    </div>
-    <div style="background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden">
-      <div style="width:${pct}%;height:100%;background:${pct===100?'#00e676':'#FFBA00'};border-radius:4px;transition:width .4s"></div>
-    </div>
-  </div>`;
-
-  let html = progressBar;
-  todasLineas.forEach(linea => {
-    const lineaData = lineas[linea];
-    if (!lineaData) return;
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    const color = colores[linea] || '#aaa';
-    const icon = iconos[linea] || '📦';
-    items.forEach((l, idx) => {
-      if (!l) return;
-      const mats = l.materiales || [];
-      if (!mats.length && !(l.cantidad > 0)) return;
-      const listo = l.listo || false;
-      const key = linea + '___' + idx;
-      const confirmadoPor = l.confirmadoPor ? `<span style="font-size:12px;color:#00e676;margin-left:6px">✓ ${l.confirmadoPor}</span>` : '';
-      const confirmadoEn = l.confirmadoEn ? `<span style="font-size:9px;color:var(--muted);margin-left:4px">${new Date(l.confirmadoEn).toLocaleString('es-MX',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})}</span>` : '';
-      const btnConfirm = canConfirm
-        ? `<button onclick="confirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.1);color:#00e676;cursor:pointer;font-weight:600">✓ Confirmar listo</button>`
-        : `<span style="font-size:12px;color:var(--muted);font-style:italic">Solo admin</span>`;
-      html += `
-      <div style="background:#0e1325;border:1px solid ${listo?'rgba(0,230,118,.3)':'rgba(255,186,0,.3)'};border-radius:10px;margin-bottom:.5rem;overflow:hidden">
-        <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem .75rem;background:${listo?'rgba(0,230,118,.06)':'rgba(255,186,0,.06)'}">
-          <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
-            <span>${icon}</span>
-            <span style="font-weight:700;font-size:13px;color:${listo?'#00e676':'#FFBA00'}">${linea}</span>
-            <span style="font-size:12px;color:var(--muted)">· ${l.sm||''} · ${(l.cantidad||0).toLocaleString()} pzas</span>
-            ${listo ? confirmadoPor + confirmadoEn : ''}
-          </div>
-          ${listo
-            ? (canConfirm
-                ? `<button onclick="desconfirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,77,106,.3);background:rgba(255,77,106,.08);color:#ff4d6a;cursor:pointer">↩ Deshacer</button>`
-                : `<span style="font-size:12px;color:#00e676;font-weight:600">✓ Listo</span>`)
-            : btnConfirm
-          }
-        </div>
-        ${mats.length ? `<div style="padding:.4rem .75rem">
-          ${mats.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px">
-            <span style="color:${color};font-family:monospace">${m.pn||''}</span>
-            <span style="color:var(--muted);flex:1;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</span>
-            <span style="font-weight:600;color:var(--fg)">${(m.cant||0).toLocaleString()}</span>
-          </div>`).join('')}
-        </div>` : ''}
-      </div>`;
-    });
-  });
-
-  document.getElementById('mesPlanLineas').innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:1rem">Sin líneas en el plan</div>';
-}
-
-async function confirmarLinea(key) {
-  if (!mesPlanActivo) return;
-  const rol = CURRENT_USER?.rol;
-  if (rol !== 'admin') {
-    showToast('⚠️ Solo el administrador puede confirmar líneas', 'var(--red)');
-    return;
-  }
-  const parts = key.split('___');
-  const linea = parts[0];
-  const idx = parseInt(parts[1]);
-  if (!confirm('¿Confirmar que el material de ' + linea + ' ya está en la línea?')) return;
-  try {
-    const lineaData = mesPlanActivo.lineas[linea];
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    if (items[idx]) {
-      items[idx].listo = true;
-      items[idx].confirmadoPor = CURRENT_USER?.nombre || CURRENT_USER?.email || 'Supervisor';
-      items[idx].confirmadoEn = new Date().toISOString();
-      // Pre-llenar modelo en formulario
-      const modelo = items[idx].sm || '';
-      if (modelo) {
-        const ipModelo = document.getElementById('ip-modelo');
-        if (ipModelo) ipModelo.value = modelo;
-      }
-    }
-    await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
-    renderMesPlan();
-    showToast('✅ ' + linea + ' — confirmado por ' + (CURRENT_USER?.nombre || 'Supervisor'), 'var(--green)');
-  } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
-}
-async function desconfirmarLinea(key) {
-  if (!mesPlanActivo) return;
-  const rol = CURRENT_USER?.rol;
-  if (rol !== 'admin') return;
-  const parts = key.split('___');
-  const linea = parts[0];
-  const idx = parseInt(parts[1]);
-  if (!confirm('¿Deshacer la confirmación de ' + linea + '?')) return;
-  try {
-    const lineaData = mesPlanActivo.lineas[linea];
-    const items = Array.isArray(lineaData) ? lineaData : [lineaData];
-    if (items[idx]) {
-      delete items[idx].listo;
-      delete items[idx].confirmadoPor;
-      delete items[idx].confirmadoEn;
-    }
-    await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
-    renderMesPlan();
-    showToast('↩ ' + linea + ' — confirmación deshecha', '#FFBA00');
-  } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
-}
-// ── LISTENER IMS EN TIEMPO REAL ──
-function arrancarListenerIMS() {
-  if (!mesPlanActivo) return;
-  // Solo admin ve la alerta
-  if (CURRENT_USER?.rol !== 'admin') return;
-  // Cancelar listener previo si existe
-  if (unsubImsListener) { unsubImsListener(); unsubImsListener = null; }
-
-  const pnsDelPlan = Object.keys(mesPlanInvSnapshot);
-  if (!pnsDelPlan.length) return;
-
-  unsubImsListener = onSnapshot(
-    collection(db, 'planta4_inventario'),
-    (snap) => {
-      // Construir inventario actual
-      const invActual = {};
-      snap.forEach(d => {
-        const data = d.data();
-        if (!data.pn) return;
-        const pn = data.pn.trim().toUpperCase();
-        invActual[pn] = (invActual[pn] || 0) + (data.actual || 0);
-      });
-
-      // Comparar contra snapshot del plan
-      const cambios = [];
-      pnsDelPlan.forEach(pn => {
-        const enPlan = mesPlanInvSnapshot[pn] || 0;
-        const ahora = invActual[pn] || 0;
-        if (ahora > enPlan) {
-          cambios.push({ pn, enPlan, ahora, diff: ahora - enPlan });
-        }
-      });
-
-      mostrarAlertaIMS(cambios);
-    },
-    (err) => { console.log('IMS listener error:', err.message); }
-  );
-}
-
-function mostrarAlertaIMS(cambios) {
-  let banner = document.getElementById('imsAlertaBanner');
-  if (!banner) {
-    banner = document.createElement('div');
-    banner.id = 'imsAlertaBanner';
-    banner.style.cssText = 'display:none;position:sticky;top:0;z-index:99;margin-bottom:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.4);border-radius:10px;padding:.6rem .75rem';
-    const planContent = document.getElementById('mesPlanContent');
-    if (planContent) planContent.insertBefore(banner, planContent.firstChild);
-  }
-
-  if (!cambios.length) { banner.style.display = 'none'; return; }
-
-  const lista = cambios.map(c =>
-    `<span style="font-family:monospace;color:#FFBA00">${c.pn}</span>
-     <span style="color:var(--muted);font-size:12px"> +${(c.diff).toLocaleString()} pzas</span>`
-  ).join('<br>');
-
-  banner.style.display = 'block';
-  banner.innerHTML = `
-    <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem">
-      <div>
-        <div style="font-weight:700;font-size:12px;color:#FFBA00;margin-bottom:.3rem">
-          ⚠️ Llegó material nuevo — el plan puede estar desactualizado
-        </div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:.4rem">
-          Las siguientes partes tienen más inventario que cuando se publicó el plan:
-        </div>
-        <div style="font-size:12px;line-height:1.8">${lista}</div>
-      </div>
-      <button onclick="loadMesPlan()" style="white-space:nowrap;font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid rgba(255,186,0,.4);background:rgba(255,186,0,.15);color:#FFBA00;cursor:pointer;font-weight:600;margin-top:2px">
-        🔄 Refrescar plan
-      </button>
-    </div>`;
-}
-window.loadMesPlan = loadMesPlan;
-window.confirmarLinea = confirmarLinea;
-window.desconfirmarLinea = desconfirmarLinea;
-
-window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
-
-// ── Envío a SHIPQR (conexión pendiente con sistema externo) ──
-window.enviarShipqr=(modeloEnc,parteEnc,prod)=>{
-  const modelo=decodeURIComponent(modeloEnc);
-  const parte=decodeURIComponent(parteEnc);
-  const msg=`📱 Enviar a SHIPQR:\n\nModelo: ${modelo}\nPart Number: ${parte}\nProducción: ${prod.toLocaleString()} pzas\n\n(La conexión con el sistema SHIPQR aún no está implementada. Solo se está validando que la tabla del MES capture bien los datos.)`;
-  alert(msg);
-  console.log('[SHIPQR pendiente]', {modelo, parte, prod});
-};
+window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.corte||"—",r.operador,r.empleado,r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
@@ -1229,9 +247,9 @@ function initApp(){
   buildMaqGrid();buildSelects();showStep(0);
   loadCausasParo();
 }
-function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
+function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.6rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.65rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
-window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
+window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();}if(m==="admin"){loadUsuarios();loadEmailsRep();}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
@@ -1240,23 +258,16 @@ function gv(id){return parseFloat(document.getElementById(id)?.value)||0;}
 window.adj=(f,d)=>{const id=f==="p"?"ip-prod":f==="d"?"ip-def":"ip-scr";const el=document.getElementById(id);el.value=Math.max(0,(parseFloat(el.value)||0)+d);updK();};
 window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
 function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"📤 Enviar al Dashboard":"Siguiente →";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
-window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim().toUpperCase();
-      if(!modVal){showToast("Modelo es obligatorio","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      if(!modVal.startsWith("SM")&&!modVal.startsWith("CRN")){showToast("Modelo inválido — debe iniciar con SM o CRN","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      // Validación estricta de formato
-      const esSMValido = modVal.startsWith("SM") && modVal.length===14 && modVal.includes("-");
-      const esCRNValido = modVal.startsWith("CRN") && modVal.length===6 && !modVal.includes("-");
-      if(!esSMValido && !esCRNValido){showToast("Modelo inválido — SM: 14 chars con guión (SM-XXXXXXXXXXX) o CRN: 6 chars sin guión (CRNXXX)","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N° Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
-function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
-window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
-window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
+function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
+window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
+window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.78rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.67rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
 /* ══ DASHBOARD ══ */
 function updateDashStats(){document.getElementById("cnt").textContent=`${REGISTROS.length} registros`;document.getElementById("lupd").textContent="Act. "+new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
-const DTABS=["hoy","feed","maq","tend","regs","plan"];
-window.showDT=(id)=>{document.querySelectorAll(".dtc").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("active"));document.getElementById("dtab-"+id).classList.add("active");document.querySelectorAll(".dtab")[DTABS.indexOf(id)].classList.add("active");if(id==="hoy")rHoy();if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="feed")rFeed();if(id==="regs")rRegs();if(id==="plan")loadMesPlan();};
+const DTABS=["hoy","feed","maq","tend","regs"];
+window.showDT=(id)=>{document.querySelectorAll(".dtc").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("active"));document.getElementById("dtab-"+id).classList.add("active");document.querySelectorAll(".dtab")[DTABS.indexOf(id)].classList.add("active");if(id==="hoy")rHoy();if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="feed")rFeed();if(id==="regs")rRegs();};
 
 function dRefresh(){
   updateDashStats();rHoy();rFeed();chkAlertas();
@@ -1310,10 +321,10 @@ function rHoy(){
 
     tbDt.innerHTML=dtRows.map(r=>`<tr>
       <td style="font-weight:500">${r.m.nombre}</td>
-      <td style="font-size:.85rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.causas}</td>
+      <td style="font-size:.72rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.causas}</td>
       <td style="text-align:right;font-weight:500;color:${r.mins>0?r.statusColor:"var(--muted)"}">${r.mins}</td>
       <td style="text-align:right;color:var(--muted);font-size:.75rem">${r.pct}%</td>
-      <td style="text-align:right"><span style="font-size:.8rem;padding:2px 7px;border-radius:10px;background:${r.statusColor}22;color:${r.statusColor};font-weight:500">${r.statusLabel}</span></td>
+      <td style="text-align:right"><span style="font-size:.65rem;padding:2px 7px;border-radius:10px;background:${r.statusColor}22;color:${r.statusColor};font-weight:500">${r.statusLabel}</span></td>
     </tr>`).join("")+`<tr style="border-top:1.5px solid var(--border);font-weight:500">
       <td>TOTAL</td><td></td>
       <td style="text-align:right;color:${totalParo>60?"#e74c3c":totalParo>30?"#f1c40f":"#2ecc71"}">${totalParo}</td>
@@ -1337,142 +348,9 @@ function rHoy(){
     backgroundColor:corteColors[c.id],
     borderRadius:0,
   }));
-  const targetDataset={label:"Target",data:MAQUINAS.map(m=>m.target),backgroundColor:"#2e334766",borderRadius:4,type:"bar",stack:"target",order:2};
-  const prodDatasets=corteDatasets.map(d=>({...d,stack:"prod",order:1}));
-
-  // Plan del BOM Simulator por máquina
-  const planPorMaquina = MAQUINAS.map(m => {
-    if (!mesPlanActivo?.lineas) return null;
-    let totalPlan = 0;
-    Object.entries(mesPlanActivo.lineas).forEach(([linea, arr]) => {
-      const nl = linea.toUpperCase(), nm = (m.nombre||'').toUpperCase();
-      if (nl===nm || nl.includes(nm) || nm.includes(nl)) {
-        (Array.isArray(arr)?arr:[arr]).forEach(item => { if(item) totalPlan+=(item.cantidad||0); });
-      }
-    });
-    return totalPlan > 0 ? totalPlan : null;
-  });
-  const planDataset={label:"Prod Plan",data:planPorMaquina,type:"line",borderColor:"#FFBA00",backgroundColor:"transparent",borderWidth:2,borderDash:[5,3],pointBackgroundColor:"#FFBA00",pointRadius:4,pointHoverRadius:6,order:0,fill:false};
-
-  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets,planDataset]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
-  // Tabla producción por modelo y parte
-  const tbParts=document.getElementById("tb-parts");
-  if(tbParts){
-    tbParts.innerHTML="";
-    let totalQty=0,totalDef=0,totalScrap=0;
-    if(!data.length){
-      tbParts.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este período.</td></tr>';
-    } else {
-            const maqModelMap={};
-      data.forEach(r=>{
-        const key=r.maqIdx+"_"+(r.modelo||"—");
-        if(!maqModelMap[key]){maqModelMap[key]={maqNombre:r.maqNombre,maqTipo:r.maqTipo,modelo:r.modelo||"—",parte:r.parte||"—",turno:r.turno,prod:0,def:0,scrap:0,target:0};}
-        maqModelMap[key].prod+=r.prod||0;
-        maqModelMap[key].def+=r.def||0;
-        maqModelMap[key].scrap+=r.scrap||0;
-        maqModelMap[key].target+=r.target||0;
-        if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
-      });
-      // Ordenar: VC → S1 → S2 → S3 → S4 → Zhongke → ASSY1
-      const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
-      const getOrden = nombre => {
-        const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
-        return idx >= 0 ? idx : ordenMaq.length;
-      };
-      const sortedRows = Object.values(maqModelMap).sort((a,b) => {
-        const oa = getOrden(a.maqNombre);
-        const ob = getOrden(b.maqNombre);
-        if (oa !== ob) return oa - ob;
-        return (a.modelo||'').localeCompare(b.modelo||'');
-      });
-
-      sortedRows.forEach(m=>{
-        const pct=m.target>0?(m.prod/m.target*100):0;
-        const cl=pct>=95?"green":pct>=80?"yellow":"red";
-        const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[m.turno]||"#7f8c9a";
-        const tr=document.createElement("tr");
-        tr.innerHTML=`<td><strong>${m.maqNombre||"—"}</strong></td>
-          <td class="model-code">${m.modelo}</td>
-          <td><span class="tbadge ${m.maqTipo||""}">${m.maqTipo||"—"}</span></td>
-          <td style="font-size:.8rem;color:var(--muted)">${m.parte}</td>
-          <td style="color:${tCol};font-weight:700">${m.turno||"—"}</td>
-          <td class="blue">${m.prod.toLocaleString()}</td>
-          <td>${m.def.toLocaleString()}</td>
-          <td>${m.scrap.toLocaleString()}</td>
-          <td class="${cl}">${pct.toFixed(1)}%</td>`;
-        tbParts.appendChild(tr);
-        totalQty+=m.prod;totalDef+=m.def;totalScrap+=m.scrap;
-      });
-      const trTot=document.createElement("tr");
-      trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
-      trTot.innerHTML=`<td>TOTAL</td><td></td><td></td><td></td><td></td>
-        <td class="blue">${totalQty.toLocaleString()}</td>
-        <td>${totalDef.toLocaleString()}</td>
-        <td>${totalScrap.toLocaleString()}</td><td></td>`;
-      tbParts.appendChild(trTot);
-    }
-  }
-
-  // ── Tabla Material listo para SHIPQR (rango de fechas) ──
-  renderShipqr();
-
+  corteDatasets.push({label:"Target",data:MAQUINAS.map(m=>m.target),backgroundColor:"#2e3347",borderRadius:4,type:"bar"});
+  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:corteDatasets},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+c.parsed.y.toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
 }
-
-// Renderiza la tabla SHIPQR según el rango de fechas seleccionado
-function renderShipqr(){
-  const tbShipqr=document.getElementById("tb-shipqr");
-  if(!tbShipqr) return;
-  tbShipqr.innerHTML="";
-  const HOY=new Date().toISOString().slice(0,10);
-  const inpDesde=document.getElementById("shipqr-desde");
-  const inpHasta=document.getElementById("shipqr-hasta");
-  // Si los inputs están vacíos, default a hoy
-  if(inpDesde && !inpDesde.value) inpDesde.value=HOY;
-  if(inpHasta && !inpHasta.value) inpHasta.value=HOY;
-  const desde=inpDesde?inpDesde.value:HOY;
-  const hasta=inpHasta?inpHasta.value:HOY;
-  const assyRango=REGISTROS.filter(r=>{
-    const fecha=r.fecha||"";
-    const esASSY=(r.maqNombre||"").toUpperCase().includes("ASSY")||(r.maqTipo||"").toUpperCase()==="ASSY";
-    const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
-    return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
-  });
-  if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
-    return;
-  }
-  const modPnMap={};
-  assyRango.forEach(r=>{
-    const modelo=r.modelo||"—";
-    const parte=r.parte||"—";
-    const key=modelo+"||"+parte;
-    if(!modPnMap[key]){modPnMap[key]={modelo,parte,prod:0};}
-    modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
-  });
-  const rows=Object.values(modPnMap).sort((a,b)=>(a.modelo||"").localeCompare(b.modelo||""));
-  let totalShip=0;
-  rows.forEach(m=>{
-    totalShip+=m.prod;
-    const tr=document.createElement("tr");
-    tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
-      <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
-      <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
-      <td style="text-align:center;padding:10px 6px">
-        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod})"
-          style="background:rgba(77,166,255,.12);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
-          🚚 SHIPQR
-        </button>
-      </td>`;
-    tbShipqr.appendChild(tr);
-  });
-  const trTot=document.createElement("tr");
-  trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
-  trTot.innerHTML=`<td colspan="2" style="font-size:.9rem;padding:10px 6px">TOTAL</td>
-    <td class="blue" style="text-align:right;font-size:.95rem;padding:10px 6px">${totalShip.toLocaleString()}</td>
-    <td></td>`;
-  tbShipqr.appendChild(trTot);
-}
-window.renderShipqr=renderShipqr;
 
 function rFeed(){
   const fecha=document.getElementById("ffeed").value,turno=document.getElementById("tfeed").value;
@@ -1480,9 +358,9 @@ function rFeed(){
   const fb=document.getElementById("feed-body");
   if(!data.length){fb.innerHTML='<div class="empty">Sin capturas.</div>';return;}
   fb.innerHTML=data.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";const corteLabel=r.corte?` · ${r.corte}`:"";const cl=sem(r.pct);
-    return`<div class="fi"><div><div class="fo">${r.operador||"—"} <span style="color:${tCol};font-size:.8rem;font-weight:700">${r.turno}</span></div><div class="fm">🔧 ${r.maqNombre}${r.parte?` · 🔩 ${r.parte}`:""} · ⏱ ${tSince(r.tsLocal)}${r.notas?` · 📝 ${r.notas.slice(0,35)}`:""}</div></div><div style="text-align:right;flex-shrink:0"><div class="fp ${cl}">${r.pct}%</div><div class="fq">${r.prod.toLocaleString()} pzas</div></div></div>`;}).join("");
+    return`<div class="fi"><div><div class="fo">${r.operador||"—"} <span style="color:${tCol};font-size:.65rem;font-weight:700">${r.turno}</span></div><div class="fm">🔧 ${r.maqNombre}${r.parte?` · 🔩 ${r.parte}`:""} · ⏱ ${tSince(r.tsLocal)}${r.notas?` · 📝 ${r.notas.slice(0,35)}`:""}</div></div><div style="text-align:right;flex-shrink:0"><div class="fp ${cl}">${r.pct}%</div><div class="fq">${r.prod.toLocaleString()} pzas</div></div></div>`;}).join("");
   const ops=[...new Set(filt(REGISTROS,fecha,"todos").map(r=>r.operador))].filter(Boolean);
-  document.getElementById("ops-body").innerHTML=ops.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${ops.map(o=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.85rem">👷 ${o}</span>`).join("")}</div>`:'<div class="empty">Sin operadores.</div>';
+  document.getElementById("ops-body").innerHTML=ops.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${ops.map(o=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.72rem">👷 ${o}</span>`).join("")}</div>`:'<div class="empty">Sin operadores.</div>';
 }
 
 async function enviarAlertaScrap(maquina, scrapPct){
@@ -1506,7 +384,7 @@ Date: ${HOY}
 
 Immediate action required.
 
-MES - Production System - Eunsung Printing Mex`,
+MES - Production System - Eunsung Printers`,
         to_email:email,
         name:"MES Alerts"
       });
@@ -1553,10 +431,10 @@ function chkAlertas(){
   const nowMin=hh*60+mm;
 
   const cutDeadlines=[
-    {id:"C1", label:"Break", endH:8,  endM:45},
-    {id:"C2", label:"Lunch", endH:12, endM:30},
-    {id:"C3", label:"Home", endH:16, endM:30},
-    {id:"OT", label:"OT",endH:18, endM:25},
+    {id:"C1", label:"Cut 1", endH:8,  endM:45},
+    {id:"C2", label:"Cut 2", endH:12, endM:30},
+    {id:"C3", label:"Cut 3", endH:16, endM:30},
+    {id:"OT", label:"Cut OT",endH:18, endM:25},
   ];
 
   cutDeadlines.forEach(c=>{
@@ -1622,12 +500,12 @@ function rRegs(){
     const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";
     const tr=document.createElement("tr");
     tr.innerHTML=`<td>${r.fecha}</td><td style="color:${tCol};font-weight:700">${r.turno}</td><td>${r.operador||"—"}</td>
-    <td style="font-size:.8rem;color:var(--muted)">${r.parte||"—"}</td>
+    <td style="font-size:.66rem;color:var(--muted)">${r.parte||"—"}</td>
     <td><span class="tbadge ${r.maqTipo}">${r.maqNombre}</span></td>
     <td>${r.prod.toLocaleString()}</td><td>${r.def.toLocaleString()}</td><td>${r.scrap.toLocaleString()}</td>
     <td class="${sem(r.pct)}">${r.pct}%</td>
-    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.causaParo?(r.causaParo+(r.minParo?" ("+r.minParo+"m)":"")):"—"}</td>
-    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.notas||"—"}</td>
+    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.66rem;color:var(--muted)">${r.causaParo?(r.causaParo+(r.minParo?" ("+r.minParo+"m)":"")):"—"}</td>
+    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.66rem;color:var(--muted)">${r.notas||"—"}</td>
     <td><button class="dbtn ddl" onclick="delReg('${r.id}')">✕</button></td>`;
     tb.appendChild(tr);
   });
@@ -1788,7 +666,7 @@ function buildReporte(tipo){
     detalle+=`  • ${m.nombre} (${m.tipo}): ${prod.toLocaleString()} pzas — ${pct}% cumplimiento\n`;
   });
 
-  const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\n• Producción total: ${tP.toLocaleString()} pzas\n• Cumplimiento: ${cumpl}%\n• Scrap: ${scrapP}%\n• Defectos: ${defP}%\n• Total registros: ${registros.length}\n\nDETALLE POR MÁQUINA\n${detalle}\n${"=".repeat(50)}\nManufacturing MES · Production System — Eunsung Printing Mex`;
+  const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\n• Producción total: ${tP.toLocaleString()} pzas\n• Cumplimiento: ${cumpl}%\n• Scrap: ${scrapP}%\n• Defectos: ${defP}%\n• Total registros: ${registros.length}\n\nDETALLE POR MÁQUINA\n${detalle}\n${"=".repeat(50)}\nMES · Sistema de Producción — Eunsung Printers`;
   return {titulo, cuerpo};
 }
 
@@ -1850,23 +728,23 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .login-box{background:var(--card);border:1px solid var(--border);border-radius:18px;padding:32px 28px;width:100%;max-width:380px;}
 .login-logo{text-align:center;margin-bottom:6px;}
 .login-title{text-align:center;font-size:1.05rem;font-weight:700;color:var(--accent);margin-bottom:3px;}
-.login-sub{text-align:center;font-size:.85rem;color:var(--muted);margin-bottom:22px;}
-.lfield{margin-bottom:13px;}.lfield label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:4px;}
+.login-sub{text-align:center;font-size:.73rem;color:var(--muted);margin-bottom:22px;}
+.lfield{margin-bottom:13px;}.lfield label{display:block;font-size:.74rem;color:var(--muted);margin-bottom:4px;}
 .lfield input{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 13px;font-size:.92rem;outline:none;}
 .lfield input:focus{border-color:var(--accent);}
 .lbtn{width:100%;padding:12px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-size:.92rem;font-weight:700;cursor:pointer;margin-top:4px;}
 .lbtn:hover{opacity:.9;}
-.lerr{background:#1a0a0a;border:1px solid var(--red);border-radius:8px;padding:8px 12px;font-size:.85rem;color:var(--red);margin-top:10px;display:none;text-align:center;}
-.role-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.8rem;font-weight:700;}
+.lerr{background:#1a0a0a;border:1px solid var(--red);border-radius:8px;padding:8px 12px;font-size:.76rem;color:var(--red);margin-top:10px;display:none;text-align:center;}
+.role-badge{display:inline-block;padding:2px 9px;border-radius:20px;font-size:.67rem;font-weight:700;}
 .role-admin{background:#3d1a3a;color:#9b59b6;}.role-supervisor{background:#1a3d2b;color:#2ecc71;}.role-operador{background:#1a3a5c;color:#4f8ef7;}
 #app{display:none;flex-direction:column;min-height:100vh;}
 .topbar{background:var(--card);border-bottom:1px solid var(--border);padding:10px 15px;display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:7px;position:sticky;top:0;z-index:200;}
 .topbar h1{font-size:.9rem;color:var(--accent);font-weight:700;display:flex;align-items:center;gap:8px;}
 .tright{display:flex;align-items:center;gap:7px;flex-wrap:wrap;}
-.user-chip{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:.85rem;}
-.logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.85rem;cursor:pointer;}
+.user-chip{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:.73rem;}
+.logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.7rem;cursor:pointer;}
 .logout-btn:hover{border-color:var(--red);color:var(--red);}
-#clk{font-size:.85rem;color:var(--muted);}
+#clk{font-size:.73rem;color:var(--muted);}
 .modebar{display:flex;background:var(--card);border-bottom:2px solid var(--border);}
 .mbtn{flex:1;padding:11px;text-align:center;cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;transition:all .2s;}
 .mbtn.active{color:var(--accent);border-bottom-color:var(--accent);}
@@ -1879,33 +757,33 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .screen{display:none;padding:12px;animation:fi .2s ease;}.screen.active{display:block;}
 @keyframes fi{from{opacity:0;transform:translateY(5px);}to{opacity:1;}}
 .oc{background:var(--card);border-radius:12px;padding:13px;border:1px solid var(--border);margin-bottom:9px;}
-.oct{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
-.field{margin-bottom:10px;}.field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px;}
+.oct{font-size:.65rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px;}
+.field{margin-bottom:10px;}.field label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:3px;}
 .field input,.field select,.field textarea{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:10px 11px;font-size:.9rem;outline:none;-webkit-appearance:none;}
 .field input:focus,.field select:focus{border-color:var(--accent);}
 .field textarea{resize:none;height:65px;font-size:.8rem;}
 .tgrid{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;}
 .tc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px 4px;text-align:center;cursor:pointer;}
 .tc.selA{border-color:#4f8ef7;background:#0d1f35;}.tc.selB{border-color:#2ecc71;background:#0d2518;}.tc.selC{border-color:#e67e22;background:#2a1a0a;}.tc.selCorte{border-color:#9b59b6;background:#1a0d2a;color:#9b59b6;}
-.ticon{font-size:1.3rem;margin-bottom:2px;}.tlbl{font-size:.85rem;font-weight:700;}.tsub{font-size:.75rem;color:var(--muted);}
+.ticon{font-size:1.3rem;margin-bottom:2px;}.tlbl{font-size:.73rem;font-weight:700;}.tsub{font-size:.59rem;color:var(--muted);}
 .mgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:7px;}
 .mc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;}
 .mc.sel{border-color:var(--accent);background:#0d1f35;}.mc-done{opacity:0.5;border-color:#2ecc71!important;cursor:not-allowed!important;}.mn{font-size:.86rem;font-weight:700;}
-.tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.75rem;font-weight:600;margin-top:3px;}
+.tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.59rem;font-weight:600;margin-top:3px;}
 .TOP{background:#1a3a5c;color:#4f8ef7;}.BOT{background:#1a3d2b;color:#2ecc71;}.AUTO{background:#3d2b1a;color:#e67e22;}.ASSY{background:#3d1a3a;color:#9b59b6;}.VC{background:#1a3d3d;color:#1abc9c;}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
 .km{background:var(--card2);border-radius:8px;padding:7px;text-align:center;}
-.km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.75rem;color:var(--muted);margin-top:1px;}
-.nf{margin-bottom:9px;}.nf label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px;}
+.km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.58rem;color:var(--muted);margin-top:1px;}
+.nf{margin-bottom:9px;}.nf label{display:block;font-size:.72rem;color:var(--muted);margin-bottom:3px;}
 .nw{display:flex;align-items:center;gap:6px;}
 .nw input{flex:1;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:9px;padding:11px;font-size:1.25rem;text-align:center;outline:none;}
 .nw input:focus{border-color:var(--accent);}
 .nb{width:38px;height:38px;border-radius:9px;border:1px solid var(--border);background:var(--card2);color:var(--text);font-size:1.2rem;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0;}
 .pw{background:var(--card2);border-radius:4px;height:7px;margin-top:4px;}
 .pb{height:7px;border-radius:4px;transition:width .4s;}
-.sr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.85rem;}.sr:last-child{border:none;}
+.sr{display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border);font-size:.78rem;}.sr:last-child{border:none;}
 .si{font-size:3rem;text-align:center;margin:14px 0 6px;}.st{font-size:1.05rem;font-weight:700;text-align:center;color:var(--green);}
-.ss{font-size:.85rem;color:var(--muted);text-align:center;margin-top:5px;}
+.ss{font-size:.76rem;color:var(--muted);text-align:center;margin-top:5px;}
 .bottom{position:fixed;bottom:0;left:0;right:0;background:var(--card);border-top:1px solid var(--border);padding:9px 14px;display:flex;gap:7px;max-width:480px;margin:0 auto;}
 .btn{flex:1;padding:11px;border-radius:10px;border:none;font-size:.83rem;font-weight:700;cursor:pointer;}.btn:active{opacity:.75;}
 .bprev{background:var(--card2);color:var(--muted);}.bnext{background:var(--accent);color:#fff;}.bsend{background:var(--green);color:#fff;}
@@ -1913,64 +791,57 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .ahead{display:flex;justify-content:space-between;align-items:center;margin-bottom:13px;flex-wrap:wrap;gap:7px;}
 .ahead h2{font-size:.95rem;color:var(--purple);}
 .acard{background:var(--card);border-radius:12px;padding:13px;border:1px solid var(--border);margin-bottom:11px;}
-.acard h3{font-size:.85rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px;}
+.acard h3{font-size:.72rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:11px;}
 .agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:9px;margin-bottom:13px;}
 .astat{background:var(--card2);border-radius:10px;padding:11px;text-align:center;}
-.astat .av{font-size:1.5rem;font-weight:700;}.astat .al{font-size:.8rem;color:var(--muted);margin-top:2px;}
+.astat .av{font-size:1.5rem;font-weight:700;}.astat .al{font-size:.63rem;color:var(--muted);margin-top:2px;}
 .form-row{display:grid;grid-template-columns:1fr 1fr 1fr 1fr auto;gap:7px;align-items:end;margin-bottom:9px;}
-.form-field label{display:block;font-size:.85rem;color:var(--muted);margin-bottom:3px;}
-.form-field input,.form-field select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:.85rem;outline:none;}
+.form-field label{display:block;font-size:.71rem;color:var(--muted);margin-bottom:3px;}
+.form-field input,.form-field select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;font-size:.78rem;outline:none;}
 .form-field input:focus,.form-field select:focus{border-color:var(--accent);}
-.abtn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.85rem;font-weight:700;}
-.abtn-add{background:var(--accent);color:#fff;}.abtn-del{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.8rem;padding:3px 7px;}.abtn-edit{background:transparent;color:var(--accent);border:1px solid var(--accent);font-size:.8rem;padding:3px 7px;}
-table{width:100%;border-collapse:collapse;font-size:.85rem;}
-th{background:var(--card2);color:var(--muted);font-size:.75rem;text-transform:uppercase;padding:6px 5px;text-align:center;}
+.abtn{padding:7px 14px;border-radius:8px;border:none;cursor:pointer;font-size:.76rem;font-weight:700;}
+.abtn-add{background:var(--accent);color:#fff;}.abtn-del{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.67rem;padding:3px 7px;}.abtn-edit{background:transparent;color:var(--accent);border:1px solid var(--accent);font-size:.67rem;padding:3px 7px;}
+table{width:100%;border-collapse:collapse;font-size:.74rem;}
+th{background:var(--card2);color:var(--muted);font-size:.61rem;text-transform:uppercase;padding:6px 5px;text-align:center;}
 td{padding:5px 5px;text-align:center;border-bottom:1px solid var(--border);}tr:last-child td{border-bottom:none;}tbody tr:hover{background:var(--card2);}
 .dot-on{width:7px;height:7px;border-radius:50%;background:var(--green);display:inline-block;}.dot-off{width:7px;height:7px;border-radius:50%;background:var(--muted);display:inline-block;}
 .dw{padding:11px;}
 .dh{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px;flex-wrap:wrap;gap:6px;}
 .dh h2{font-size:.93rem;color:var(--accent);}
 .hr{display:flex;align-items:center;gap:6px;flex-wrap:wrap;}
-.live{display:flex;align-items:center;gap:4px;font-size:.8rem;color:var(--green);}
+.live{display:flex;align-items:center;gap:4px;font-size:.67rem;color:var(--green);}
 .ldot{width:7px;height:7px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite;}
 @keyframes pulse{0%,100%{opacity:1;}50%{opacity:.3;}}
-.bsm{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:.8rem;color:var(--muted);}
-.cb{background:#1a3a5c;color:#4f8ef7;border-radius:20px;padding:2px 9px;font-size:.8rem;font-weight:700;}
+.bsm{background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:2px 8px;font-size:.63rem;color:var(--muted);}
+.cb{background:#1a3a5c;color:#4f8ef7;border-radius:20px;padding:2px 9px;font-size:.65rem;font-weight:700;}
 .dtabs{display:flex;gap:3px;margin-bottom:8px;flex-wrap:wrap;}
-.dtab{padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.85rem;font-weight:600;transition:all .2s;}
+.dtab{padding:5px 11px;border-radius:7px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.7rem;font-weight:600;transition:all .2s;}
 .dtab.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .dtc{display:none;}.dtc.active{display:block;}
 .kgrid{display:grid;grid-template-columns:repeat(5,1fr);gap:7px;margin-bottom:12px;}
 .kpi{background:var(--card);border-radius:10px;padding:10px;border:1px solid var(--border);text-align:center;}
-.kpi .lbl{font-size:.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
-.kpi .val{font-size:1.4rem;font-weight:700;}.kpi .sub{font-size:.75rem;color:var(--muted);margin-top:1px;}
+.kpi .lbl{font-size:.57rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:3px;}
+.kpi .val{font-size:1.4rem;font-weight:700;}.kpi .sub{font-size:.57rem;color:var(--muted);margin-top:1px;}
 .dc{background:var(--card);border-radius:10px;padding:11px;border:1px solid var(--border);margin-bottom:8px;}
-.dc h3{font-size:.8rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
+.dc h3{font-size:.69rem;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:7px;}
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-bottom:8px;}
 .fi{display:flex;justify-content:space-between;align-items:flex-start;padding:6px 0;border-bottom:1px solid var(--border);gap:7px;}.fi:last-child{border:none;}
-.fo{font-size:.85rem;font-weight:600;}.fm{font-size:.8rem;color:var(--muted);margin-top:1px;}
-.fp{font-size:.85rem;font-weight:700;}.fq{font-size:.75rem;color:var(--muted);}
+.fo{font-size:.78rem;font-weight:600;}.fm{font-size:.64rem;color:var(--muted);margin-top:1px;}
+.fp{font-size:.85rem;font-weight:700;}.fq{font-size:.61rem;color:var(--muted);}
 .ctrl{display:flex;align-items:center;gap:5px;margin-bottom:7px;flex-wrap:wrap;}
-select,input[type=date]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 7px;font-size:.85rem;}
-.dbtn{padding:4px 10px;border-radius:7px;border:none;cursor:pointer;font-size:.85rem;font-weight:600;}
-.dex{background:#1a3d2b;color:var(--green);border:1px solid var(--green);}.dcs{background:#0a2233;color:#4f8ef7;border:1px solid #4f8ef7;}.drf{background:var(--card2);color:var(--muted);border:1px solid var(--border);}.ddl{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.75rem;padding:2px 5px;}
-.rb{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.8rem;}.rb.active{background:var(--accent);color:#fff;border-color:var(--accent);}
+select,input[type=date]{background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:7px;padding:4px 7px;font-size:.72rem;}
+.dbtn{padding:4px 10px;border-radius:7px;border:none;cursor:pointer;font-size:.7rem;font-weight:600;}
+.dex{background:#1a3d2b;color:var(--green);border:1px solid var(--green);}.dcs{background:#0a2233;color:#4f8ef7;border:1px solid #4f8ef7;}.drf{background:var(--card2);color:var(--muted);border:1px solid var(--border);}.ddl{background:transparent;color:var(--red);border:1px solid var(--red);font-size:.62rem;padding:2px 5px;}
+.rb{padding:3px 8px;border-radius:5px;border:1px solid var(--border);background:var(--card2);color:var(--muted);cursor:pointer;font-size:.65rem;}.rb.active{background:var(--accent);color:#fff;border-color:var(--accent);}
 .rbs{display:flex;gap:3px;flex-wrap:wrap;}
-.empty{color:var(--muted);text-align:center;padding:16px;font-size:.85rem;}
+.empty{color:var(--muted);text-align:center;padding:16px;font-size:.78rem;}
 .green{color:var(--green);}.yellow{color:var(--yellow);}.red{color:var(--red);}.blue{color:var(--accent);}
 #alp{position:fixed;top:54px;right:10px;z-index:9999;display:flex;flex-direction:column;gap:4px;max-width:250px;}
-.alerta{background:#1a1a1a;border:1px solid var(--red);border-radius:7px;padding:8px 12px;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+.alerta{background:#1a1a1a;border:1px solid var(--red);border-radius:7px;padding:8px 12px;font-size:.72rem;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
 .ac{cursor:pointer;color:var(--red);}
-.toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:9px;font-size:.85rem;font-weight:600;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
+.toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:9px;font-size:.78rem;font-weight:600;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px;}
 @keyframes sp{to{transform:rotate(360deg);}}
-
-.tbl-parts-wrap{overflow-x:auto;margin-top:0;}
-.tbl-parts-wrap table{min-width:700px;}
-.model-code{font-size:.8rem;color:var(--accent);letter-spacing:.5px;font-family:'IBM Plex Mono',monospace;}
-.model-pill{display:inline-block;background:#0d2a3a;border:1px solid #00d4ff33;border-radius:4px;padding:2px 6px;font-size:.75rem;color:var(--accent);white-space:nowrap;margin:1px 0;}
-.model-stack{display:flex;flex-direction:column;gap:2px;align-items:center;}
-.model-divider{width:80%;border-top:1px dashed var(--border);margin:1px auto;}
 canvas{width:100%!important;}
 /* ══ MODO TV ══ */
 body.tv-mode .topbar{padding:6px 16px;}
@@ -1994,7 +865,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 <div id="login-view">
   <div class="login-box">
     <div class="login-logo"><img src="logo.jpg" style="width:120px;border-radius:8px;"></div>
-    <div class="login-title">Manufacturing MES · Eunsung Printing Mex</div>
+    <div class="login-title">MES · Sistema de Producción</div>
     <div class="login-sub">Acceso con tu correo y contraseña</div>
     <div class="lfield"><label>Correo electrónico</label><input type="email" id="li-user" placeholder="operador@tuempresa.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="lfield"><label>Contraseña</label><input type="password" id="li-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -2007,10 +878,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 </div>
 <div id="app">
   <div class="topbar">
-    <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES · Production System</h1>
+    <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">MES · Sistema de Producción</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><button class="logout-btn" onclick="logout()">⏏ Salir</button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin')">⚙️ Admin</button></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -2021,11 +892,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="field"><label>Fecha</label><input type="date" id="ip-fecha"></div>
         <div class="field"><label>👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label>🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
-        <div class="field"><label>📱 Modelo</label>
-          <input type="text" id="ip-modelo" placeholder="Ej. SM2F976UZKAATT" autocomplete="off" list="modelos-dl" oninput="this.value=this.value.toUpperCase()">
-          <datalist id="modelos-dl"></datalist>
-        </div>
-        <div class="field"><label>🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
+        <div class="field"><label>🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. PA-4521-B" oninput="this.value=this.value.toUpperCase()"></div>
       </div>
       <div class="oc"><div class="oct">⏰ Turno</div>
         <div class="tgrid">
@@ -2035,10 +902,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
         <div class="oct" style="margin-top:12px">⏱ Production Cut</div>
         <div class="tgrid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">🌅</div><div class="tlbl">Break</div><div class="tsub">7:00–8:45 AM</div></div>
-          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Lunch</div><div class="tsub">9:00–12:30 PM</div></div>
-          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">🌇</div><div class="tlbl">Home</div><div class="tsub">1:00–4:30 PM</div></div>
-          <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">⏰</div><div class="tlbl">OT</div><div class="tsub">4:45–6:25 PM</div></div>
+          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">🌅</div><div class="tlbl">Cut 1</div><div class="tsub">7:00–8:45 AM</div></div>
+          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Cut 2</div><div class="tsub">9:00–12:30 PM</div></div>
+          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">🌇</div><div class="tlbl">Cut 3</div><div class="tsub">1:00–4:30 PM</div></div>
+          <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">⏰</div><div class="tlbl">Cut OT</div><div class="tsub">4:45–6:25 PM</div></div>
         </div>
       </div>
     </div>
@@ -2067,7 +934,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     </div>
     <div class="screen" id="scr3">
       <div class="oc"><div class="oct">📋 Confirma tu registro</div><div id="res-body"></div></div>
-      <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">📝 Notas</div><div id="res-notas" style="font-size:.85rem;color:var(--muted)"></div></div>
+      <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">📝 Notas</div><div id="res-notas" style="font-size:.78rem;color:var(--muted)"></div></div>
     </div>
     <div class="screen" id="scr4">
       <div class="si">✅</div><div class="st">¡Enviado al Dashboard!</div>
@@ -2084,7 +951,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   <!-- DASHBOARD -->
   <div class="view" id="view-dash"><div class="dw">
     <div class="dh"><h2>🏭 Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div>EN VIVO</div><span class="bsm" id="lupd">–</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">📺 TV</button></div></div>
-    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" onclick="showDT('feed')">📡 Feed</div><div class="dtab" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" onclick="showDT('regs')">🗂 Registros</div><div class="dtab" onclick="showDT('plan')" style="color:#FFBA00">📋 Plan</div></div>
+    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" onclick="showDT('feed')">📡 Feed</div><div class="dtab" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" onclick="showDT('regs')">🗂 Registros</div></div>
 
     <div id="dtab-hoy" class="dtc active">
       <div class="ctrl">
@@ -2106,27 +973,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
         <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub">minutes</div></div>
       </div>
-      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00–8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00–12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00–4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45–6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Cut 1</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Cut 2</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Cut 3</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>Cut OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
         <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
-      </div>
-      <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
-      <div class="dc"><h3>📦 Material listo para SHIPQR · P4 → P3</h3>
-        <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
-          <div>
-            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Desde</label>
-            <input type="date" id="shipqr-desde" style="font-size:13px;padding:6px 10px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none">
-          </div>
-          <div>
-            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Hasta</label>
-            <input type="date" id="shipqr-hasta" style="font-size:13px;padding:6px 10px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none">
-          </div>
-          <button onclick="renderShipqr()" style="padding:7px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:6px;cursor:pointer">
-            🔍 Aplicar
-          </button>
-        </div>
-        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">Producción</th><th style="text-align:center;padding:10px 6px">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
       </div>
     </div>
 
@@ -2173,23 +1023,6 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div class="dc"><h3 id="tt-comp">Comparativo</h3><canvas id="tComp" height="130"></canvas></div>
     </div>
 
-    <div id="dtab-plan" class="dtc">
-  <div id="mesPlanEmpty" style="text-align:center;padding:3rem;color:var(--muted)">
-    <div style="font-size:36px;margin-bottom:.5rem">📋</div>
-    <div style="font-weight:600;margin-bottom:.25rem">Sin plan activo</div>
-    <div style="font-size:12px">Publica el plan desde el BOM Simulator</div>
-  </div>
-  <div id="mesPlanContent" style="display:none">
-    <div style="display:flex;align-items:center;justify-content:space-between;padding:.5rem 0;margin-bottom:.5rem">
-      <div>
-        <div style="font-weight:700;font-size:15px" id="mesPlanTitulo">Plan activo</div>
-        <div style="font-size:12px;color:var(--muted)" id="mesPlanFecha"></div>
-      </div>
-      <button onclick="loadMesPlan()" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer">🔄 Actualizar</button>
-    </div>
-    <div id="mesPlanLineas"></div>
-  </div>
-</div>
     <div id="dtab-regs" class="dtc">
       <div class="ctrl">
         <input type="date" id="freg" onchange="rRegs()">
@@ -2220,20 +1053,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="form-field"><label>Rol</label><select id="nu-rol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
       </div>
       <button class="abtn abtn-add" onclick="addUser()">➕ Crear usuario</button>
-      <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
+      <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.72rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
     </div>
     <div class="acard"><h3>👥 Usuarios (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
     <div class="acard"><h3>🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
-    <div class="acard">
-      <h3>🖥️ Estado de Máquinas</h3>
-      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva máquinas — las inactivas se muestran en gris en el dashboard.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;" id="admin-maquinas-grid"></div>
-    </div>
-    <div class="acard">
-      <h3>🎯 Targets por Máquina</h3>
-      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Modifica el target diario — los cortes se calculan automáticamente.</div>
-      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;" id="admin-targets-grid"></div>
-    </div>
     <div class="acard">
       <h3>📧 Reportes por Email</h3>
       <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px">Reportes automáticos: <strong style="color:var(--green)">Diario 4:30pm · Viernes 4:30pm · 1° de mes 4:30pm</strong></div>
@@ -2247,53 +1070,6 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <button class="abtn" style="background:#1a1a3d;color:#4f8ef7;border:1px solid #4f8ef7" onclick="enviarReporteAhora('semanal')">📤 Enviar reporte semanal ahora</button>
       </div>
     </div>
-  <div class="acard">
-    <h3>🔒 Cierre de Jornada — Descuento IMS</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
-        <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
-      </div>
-      <button class="abtn abtn-add" onclick="calcularCierreJornada()">📊 Calcular descuentos</button>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.85rem;color:#5BA3FF;font-weight:600" title="Si está activo, NO toca Firebase. Solo simula el resultado.">
-        <input type="checkbox" id="cj-modoSim" checked style="cursor:pointer;accent-color:#5BA3FF">
-        🧪 Modo simulación (NO toca Firebase)
-      </label>
-    </div>
-    <div id="cj-resultado"></div>
-  </div>
-  <div class="acard">
-    <h3>✏️ Corregir Registros</h3>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
-        <input type="date" id="edit-reg-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
-      </div>
-      <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">🔍 Buscar</button>
-      <button class="abtn abtn-add" onclick="abrirNuevoRegistro()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">➕ Agregar Registro</button>
-    </div>
-    <div id="edit-reg-tabla"></div>
-  </div>
-  <div class="acard">
-    <h3>🔄 Corregir modelos en lote</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Reemplaza un modelo incorrecto por uno correcto en TODOS los registros de la base. Útil para corregir modelos mal capturados que no cumplen el formato (SM-XXXXXXXXXXX o CRNXXX).</div>
-    <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo incorrecto (buscar)</div>
-        <input type="text" id="cm-malo" placeholder="Ej. SMG766UZKDN33" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;text-transform:uppercase;box-sizing:border-box" oninput="this.value=this.value.toUpperCase().trim()">
-      </div>
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo correcto (reemplazar por)</div>
-        <input type="text" id="cm-bueno" placeholder="Ej. SM-G766UZKDN33" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 10px;font-size:13px;font-family:monospace;text-transform:uppercase;box-sizing:border-box" oninput="this.value=this.value.toUpperCase().trim()">
-      </div>
-    </div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <button onclick="previewCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(255,186,0,.12);color:#FFBA00;border:1px solid rgba(255,186,0,.4);border-radius:8px;cursor:pointer">🔍 Vista previa</button>
-      <button onclick="ejecutarCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:8px;cursor:pointer">✅ Ejecutar reemplazo</button>
-    </div>
-    <div id="cm-resultado" style="font-size:13px"></div>
-  </div>
   </div></div>
 </div>
 </body>
