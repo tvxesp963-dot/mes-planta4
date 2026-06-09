@@ -1,10 +1,10 @@
-<!DOCTYPE html>
+Ôªø<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f1117">
-<title>Manufacturing MES ∑ Production System</title>
+<title>Manufacturing MES ¬∑ Production System</title>
 <link rel="manifest" href="manifest.json">
 
 <script type="module">
@@ -88,7 +88,7 @@ function renderAdminMaquinas(){
 }
 window.renderAdminMaquinas=renderAdminMaquinas;
 
-// -- EDITAR REGISTROS --
+// ‚îÄ‚îÄ EDITAR REGISTROS ‚îÄ‚îÄ
 async function buscarRegistrosEdit() {
   const fecha = document.getElementById('edit-reg-fecha').value;
   if (!fecha) { showToast('Selecciona una fecha','var(--red)'); return; }
@@ -117,10 +117,10 @@ async function buscarRegistrosEdit() {
         <th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th><th>Hora</th><th></th>
       </tr></thead><tbody>
       ${regs.map(r => {
-        const hora = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.hora||'ó');
-        const maq = r.maquina || r.maqNombre || 'ó';
-        const tipo = r.tipo || r.maqTipo || 'ó';
-        const parte = r.parte || r.pn || r.partNo || 'ó';
+        const hora = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.hora||'‚Äî');
+        const maq = r.maquina || r.maqNombre || '‚Äî';
+        const tipo = r.tipo || r.maqTipo || '‚Äî';
+        const parte = r.parte || r.pn || r.partNo || '‚Äî';
         const qty = r.qty || r.prod || 0;
         const def = r.defectos || r.def || 0;
         const scrap = r.scrap || 0;
@@ -130,18 +130,18 @@ async function buscarRegistrosEdit() {
         const tCol = {A:'#4f8ef7',B:'#2ecc71',C:'#e67e22'}[r.turno]||'#7f8c9a';
         return `<tr>
           <td><strong>${maq}</strong></td>
-          <td class="model-code">${r.modelo||'ó'}</td>
+          <td class="model-code">${r.modelo||'‚Äî'}</td>
           <td><span class="tbadge ${tipo}">${tipo}</span></td>
           <td style="font-size:.8rem;color:var(--muted)">${parte}</td>
-          <td style="color:${tCol};font-weight:700">${r.turno||'ó'}</td>
+          <td style="color:${tCol};font-weight:700">${r.turno||'‚Äî'}</td>
           <td class="blue">${qty.toLocaleString()}</td>
           <td>${def.toLocaleString()}</td>
           <td>${scrap.toLocaleString()}</td>
-          <td class="${cl}">${target>0?pct.toFixed(1)+'%':'ó'}</td>
+          <td class="${cl}">${target>0?pct.toFixed(1)+'%':'‚Äî'}</td>
           <td style="font-size:.8rem;color:var(--muted)">${hora}</td>
           <td style="white-space:nowrap">
-            <button onclick="editarRegistro('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">??</button>
-            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:3px">???</button>
+            <button onclick="editarRegistro('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--amber);background:rgba(255,186,0,.1);color:var(--amber);cursor:pointer">‚úèÔ∏è</button>
+            <button onclick="eliminarRegistroEdit('${r.id}')" style="font-size:12px;padding:2px 7px;border-radius:4px;border:1px solid var(--red);background:rgba(255,77,106,.1);color:var(--red);cursor:pointer;margin-left:3px">üóëÔ∏è</button>
           </td>
         </tr>`;
       }).join('')}
@@ -155,19 +155,19 @@ async function editarRegistro(id) {
     let reg = null;
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
-    const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : 'ó';
+    const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '‚Äî';
     const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
-    const opcCorte = [{id:'C1',label:'Break (7:00ñ8:45 AM)'},{id:'C2',label:'Lunch (9:00ñ12:30 PM)'},{id:'C3',label:'Home (1:00ñ4:30 PM)'},{id:'OT',label:'OT (4:45ñ6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
+    const opcCorte = [{id:'C1',label:'Break (7:00‚Äì8:45 AM)'},{id:'C2',label:'Lunch (9:00‚Äì12:30 PM)'},{id:'C3',label:'Home (1:00‚Äì4:30 PM)'},{id:'OT',label:'OT (4:45‚Äì6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
     modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border)">
-      <div style="font-weight:700;margin-bottom:14px;font-size:14px">?? Editar Registro ó ${hora}</div>
+      <div style="font-weight:700;margin-bottom:14px;font-size:14px">‚úèÔ∏è Editar Registro ‚Äî ${hora}</div>
       <div style="display:grid;gap:10px">
         <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">M·quina</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">M√°quina</div>
           <select id="er-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
         </div>
         <div>
@@ -197,7 +197,7 @@ async function editarRegistro(id) {
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
         <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">Cancelar</button>
-        <button onclick="guardarRegistroEdit('${id}',this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer">?? Guardar</button>
+        <button onclick="guardarRegistroEdit('${id}',this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer">üíæ Guardar</button>
       </div>
     </div>`;
     document.body.appendChild(modal);
@@ -214,17 +214,17 @@ async function guardarRegistroEdit(id, btn) {
     const qty = parseInt(document.getElementById('er-qty').value)||0;
     const turno = document.getElementById('er-turno').value;
     const corte = document.getElementById('er-corte').value;
-    // ValidaciÛn de modelo: SM-XXXXXXXXXXX (14 con guiÛn) o CRNXXX (6 sin guiÛn)
+    // Validaci√≥n de modelo: SM-XXXXXXXXXXX (14 con gui√≥n) o CRNXXX (6 sin gui√≥n)
     if (modelo) {
       const esSMValido = modelo.startsWith("SM") && modelo.length===14 && modelo.includes("-");
       const esCRNValido = modelo.startsWith("CRN") && modelo.length===6 && !modelo.includes("-");
       if (!esSMValido && !esCRNValido) {
-        showToast('Modelo inv·lido ó SM: 14 chars con guiÛn o CRN: 6 chars sin guiÛn','var(--red)');
-        btn.textContent='?? Guardar'; btn.disabled=false;
+        showToast('Modelo inv√°lido ‚Äî SM: 14 chars con gui√≥n o CRN: 6 chars sin gui√≥n','var(--red)');
+        btn.textContent='üíæ Guardar'; btn.disabled=false;
         return;
       }
     }
-    // Buscar idx y nombre de la m·quina seleccionada
+    // Buscar idx y nombre de la m√°quina seleccionada
     const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
     const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
     const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
@@ -234,22 +234,22 @@ async function guardarRegistroEdit(id, btn) {
     if (maqIdx !== null) updateData.maqIdx = maqIdx;
     await setDoc(doc(db,'registros',id), updateData, {merge:true});
     btn.closest('div[style*=fixed]').remove();
-    showToast('? Registro actualizado ó recargando...','var(--green)');
+    showToast('‚úÖ Registro actualizado ‚Äî recargando...','var(--green)');
     buscarRegistrosEdit();
     setTimeout(()=>{ if(typeof rRegs==='function') rRegs(); if(typeof updateDashStats==='function') updateDashStats(); }, 800);
-  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='?? Guardar'; btn.disabled=false; }
+  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='üíæ Guardar'; btn.disabled=false; }
 }
 async function eliminarRegistroEdit(id) {
-  if (!confirm('øEliminar este registro? Esta acciÛn no se puede deshacer.')) return;
+  if (!confirm('¬øEliminar este registro? Esta acci√≥n no se puede deshacer.')) return;
   try {
     await deleteDoc(doc(db,'registros',id));
-    showToast('??? Registro eliminado','var(--red)');
+    showToast('üóëÔ∏è Registro eliminado','var(--red)');
     buscarRegistrosEdit();
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
 }
 window.eliminarRegistroEdit=eliminarRegistroEdit;
 
-// -- AGREGAR REGISTRO MANUAL --
+// ‚îÄ‚îÄ AGREGAR REGISTRO MANUAL ‚îÄ‚îÄ
 window.abrirNuevoRegistro = function() {
   const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
   const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
@@ -257,22 +257,22 @@ window.abrirNuevoRegistro = function() {
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcCorte = [
-    {id:'C1',label:'Break (7:00ñ8:45 AM)'},
-    {id:'C2',label:'Lunch (9:00ñ12:30 PM)'},
-    {id:'C3',label:'Home (1:00ñ4:30 PM)'},
-    {id:'OT',label:'OT (4:45ñ6:25 PM)'}
+    {id:'C1',label:'Break (7:00‚Äì8:45 AM)'},
+    {id:'C2',label:'Lunch (9:00‚Äì12:30 PM)'},
+    {id:'C3',label:'Home (1:00‚Äì4:30 PM)'},
+    {id:'OT',label:'OT (4:45‚Äì6:25 PM)'}
   ].map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
   const modal = document.createElement('div');
   modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
   modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border);max-height:90vh;overflow-y:auto">
-    <div style="font-weight:700;margin-bottom:14px;font-size:14px">? Agregar Registro</div>
+    <div style="font-weight:700;margin-bottom:14px;font-size:14px">‚ûï Agregar Registro</div>
     <div style="display:grid;gap:10px">
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
         <input id="nr-fecha" type="date" value="${fecha}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">M·quina</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">M√°quina</div>
         <select id="nr-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
       </div>
       <div>
@@ -280,7 +280,7 @@ window.abrirNuevoRegistro = function() {
         <input id="nr-modelo" placeholder="SM-XXXXXXXXXXX o CRNXXX" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N∞ Parte</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N¬∞ Parte</div>
         <input id="nr-parte" maxlength="11" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
@@ -310,7 +310,7 @@ window.abrirNuevoRegistro = function() {
     </div>
     <div style="display:flex;gap:8px;margin-top:16px">
       <button onclick="this.closest('div[style*=fixed]').remove()" style="flex:1;padding:9px;border-radius:8px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer">Cancelar</button>
-      <button onclick="guardarNuevoRegistro(this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer">?? Guardar</button>
+      <button onclick="guardarNuevoRegistro(this)" style="flex:1;padding:9px;border-radius:8px;border:none;background:var(--accent);color:#000;font-weight:700;cursor:pointer">üíæ Guardar</button>
     </div>
   </div>`;
   document.body.appendChild(modal);
@@ -329,10 +329,10 @@ window.guardarNuevoRegistro = async function(btn) {
     const qty    = parseInt(document.getElementById('nr-qty').value)||0;
     const def    = parseInt(document.getElementById('nr-def').value)||0;
     const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
-    if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='?? Guardar'; btn.disabled=false; return; }
+    if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='üíæ Guardar'; btn.disabled=false; return; }
     const maqObj = (typeof MAQUINAS!=='undefined'?MAQUINAS:[]).find(m=>m.nombre===maq);
     const maqIdx = maqObj ? MAQUINAS.indexOf(maqObj) : null;
-    // Target correcto seg˙n corte seleccionado
+    // Target correcto seg√∫n corte seleccionado
     const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
     const pct    = target>0 ? +(qty/target*100).toFixed(2) : 0;
     const newReg = {
@@ -344,23 +344,23 @@ window.guardarNuevoRegistro = async function(btn) {
     if (maqIdx!==null) newReg.maqIdx = maqIdx;
     await addDoc(collection(db,'registros'), newReg);
     btn.closest('div[style*=fixed]').remove();
-    showToast('? Registro agregado correctamente','var(--green)');
+    showToast('‚úÖ Registro agregado correctamente','var(--green)');
     buscarRegistrosEdit();
-  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='?? Guardar'; btn.disabled=false; }
+  } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='üíæ Guardar'; btn.disabled=false; }
 };
 
-// -- CORREGIR MODELOS EN LOTE --
+// ‚îÄ‚îÄ CORREGIR MODELOS EN LOTE ‚îÄ‚îÄ
 async function previewCorregirModelo() {
   const malo = (document.getElementById('cm-malo').value||'').trim().toUpperCase();
   const bueno = (document.getElementById('cm-bueno').value||'').trim().toUpperCase();
   const div = document.getElementById('cm-resultado');
-  if (!malo || !bueno) { div.innerHTML='<div style="color:var(--red)">? Captura ambos modelos</div>'; return; }
-  if (malo === bueno) { div.innerHTML='<div style="color:var(--red)">? Los modelos son iguales</div>'; return; }
+  if (!malo || !bueno) { div.innerHTML='<div style="color:var(--red)">‚ùå Captura ambos modelos</div>'; return; }
+  if (malo === bueno) { div.innerHTML='<div style="color:var(--red)">‚ùå Los modelos son iguales</div>'; return; }
   // Validar que el modelo BUENO cumpla el formato
   const esSM = bueno.startsWith("SM") && bueno.length===14 && bueno.includes("-");
   const esCRN = bueno.startsWith("CRN") && bueno.length===6 && !bueno.includes("-");
-  if (!esSM && !esCRN) { div.innerHTML='<div style="color:var(--red)">? Modelo correcto inv·lido ó debe ser SM-XXXXXXXXXXX (14 con guiÛn) o CRNXXX (6 sin guiÛn)</div>'; return; }
-  div.innerHTML='<div style="color:var(--muted)">? Buscando...</div>';
+  if (!esSM && !esCRN) { div.innerHTML='<div style="color:var(--red)">‚ùå Modelo correcto inv√°lido ‚Äî debe ser SM-XXXXXXXXXXX (14 con gui√≥n) o CRNXXX (6 sin gui√≥n)</div>'; return; }
+  div.innerHTML='<div style="color:var(--muted)">‚è≥ Buscando...</div>';
   try {
     const snap = await getDocs(collection(db,'registros'));
     const matches = [];
@@ -374,12 +374,12 @@ async function previewCorregirModelo() {
     matches.forEach(r => { const f=r.fecha||'?'; porFecha[f]=(porFecha[f]||0)+1; });
     const fechas = Object.entries(porFecha).sort((a,b)=>b[0].localeCompare(a[0])).slice(0,5);
     let html = `<div style="padding:10px 12px;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;line-height:1.6">
-      <b style="color:var(--amber)">?? Vista previa</b><br>
+      <b style="color:var(--amber)">‚ö†Ô∏è Vista previa</b><br>
       Se encontraron <b style="color:var(--text)">${matches.length} registros</b> con modelo "<b style="font-family:monospace;color:var(--text)">${malo}</b>".<br>
-      Se cambiar·n a "<b style="font-family:monospace;color:var(--green)">${bueno}</b>".<br>
+      Se cambiar√°n a "<b style="font-family:monospace;color:var(--green)">${bueno}</b>".<br>
       <span style="color:var(--muted);font-size:11px;display:block;margin-top:6px">
-        DistribuciÛn (˙ltimas 5 fechas): ${fechas.map(([f,c])=>f+' ('+c+')').join(' ∑ ')}<br>
-        ?? Esta acciÛn NO se puede deshacer. Haz click en <b>Ejecutar reemplazo</b> cuando estÈs seguro.
+        Distribuci√≥n (√∫ltimas 5 fechas): ${fechas.map(([f,c])=>f+' ('+c+')').join(' ¬∑ ')}<br>
+        ‚ö†Ô∏è Esta acci√≥n NO se puede deshacer. Haz click en <b>Ejecutar reemplazo</b> cuando est√©s seguro.
       </span>
     </div>`;
     div.innerHTML = html;
@@ -392,8 +392,8 @@ async function ejecutarCorregirModelo() {
   const div = document.getElementById('cm-resultado');
   if (!window._cmPreview) { showToast('Primero haz "Vista previa"','var(--red)'); return; }
   const {malo, bueno, total, ids} = window._cmPreview;
-  if (!confirm(`øReemplazar "${malo}" por "${bueno}" en ${total} registros?\n\nEsta acciÛn NO se puede deshacer.`)) return;
-  div.innerHTML='<div style="color:var(--muted)">? Actualizando '+total+' registros...</div>';
+  if (!confirm(`¬øReemplazar "${malo}" por "${bueno}" en ${total} registros?\n\nEsta acci√≥n NO se puede deshacer.`)) return;
+  div.innerHTML='<div style="color:var(--muted)">‚è≥ Actualizando '+total+' registros...</div>';
   try {
     let ok=0, errs=0;
     for (const id of ids) {
@@ -402,8 +402,8 @@ async function ejecutarCorregirModelo() {
         ok++;
       } catch(e) { errs++; console.error('Error en',id,e); }
     }
-    div.innerHTML=`<div style="padding:10px 12px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700">? Reemplazo completado<br><span style="font-size:11px;color:var(--muted);font-weight:400">Actualizados: ${ok} ∑ Errores: ${errs}</span></div>`;
-    showToast('? '+ok+' registros corregidos','var(--green)');
+    div.innerHTML=`<div style="padding:10px 12px;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700">‚úÖ Reemplazo completado<br><span style="font-size:11px;color:var(--muted);font-weight:400">Actualizados: ${ok} ¬∑ Errores: ${errs}</span></div>`;
+    showToast('‚úÖ '+ok+' registros corregidos','var(--green)');
     window._cmPreview = null;
     document.getElementById('cm-malo').value='';
     document.getElementById('cm-bueno').value='';
@@ -413,24 +413,24 @@ async function ejecutarCorregirModelo() {
 }
 window.ejecutarCorregirModelo = ejecutarCorregirModelo;
 
-// -- CIERRE DE JORNADA --
+// ‚îÄ‚îÄ CIERRE DE JORNADA ‚îÄ‚îÄ
 async function calcularCierreJornada() {
   const fecha = document.getElementById('cj-fecha').value;
   if (!fecha) { showToast('Selecciona la fecha','var(--red)'); return; }
   const div = document.getElementById('cj-resultado');
-  div.innerHTML = '<div style="color:var(--muted);font-size:12px">? Calculando...</div>';
+  div.innerHTML = '<div style="color:var(--muted);font-size:12px">‚è≥ Calculando...</div>';
   try {
-    // 1. Verificar si ya se cerrÛ ese dÌa (evitar duplicados)
+    // 1. Verificar si ya se cerr√≥ ese d√≠a (evitar duplicados)
     const cierreSnap = await getDocs(collection(db,'cierres_jornada'));
     let yaCerrado = null;
     cierreSnap.forEach(d => { if (d.id === fecha) yaCerrado = d.data(); });
     if (yaCerrado) {
       const fechaCierre = yaCerrado.fechaCierre ? new Date(yaCerrado.fechaCierre).toLocaleString('es-MX') : '';
-      div.innerHTML = `<div style="padding:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-weight:600;font-size:12px">?? Esta fecha ya fue cerrada el ${fechaCierre} por ${yaCerrado.usuario||'?'}.<br><br>Si necesitas reabrir, contacta al admin.</div>`;
+      div.innerHTML = `<div style="padding:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-weight:600;font-size:12px">‚ö†Ô∏è Esta fecha ya fue cerrada el ${fechaCierre} por ${yaCerrado.usuario||'?'}.<br><br>Si necesitas reabrir, contacta al admin.</div>`;
       return;
     }
 
-    // 2. Leer registros ASSY1 del dÌa
+    // 2. Leer registros ASSY1 del d√≠a
     const snap = await getDocs(collection(db,'registros'));
     const assy1Regs = [];
     snap.forEach(d => {
@@ -443,7 +443,7 @@ async function calcularCierreJornada() {
     // 3. Leer BOM ACTIVO (no plan_produccion)
     const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
     if (!bomDoc.exists()) {
-      div.innerHTML = '<div style="color:var(--red);font-size:12px">? No hay BOM activo en bom_simulator_p4</div>';
+      div.innerHTML = '<div style="color:var(--red);font-size:12px">‚ùå No hay BOM activo en bom_simulator_p4</div>';
       return;
     }
     const bomData = bomDoc.data();
@@ -479,18 +479,18 @@ async function calcularCierreJornada() {
     const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos)||0),0);
     const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
 
-    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} ∑ Qty: ${totalQty.toLocaleString()} ∑ Def: ${totalDef.toLocaleString()} ∑ Scrap: ${totalScr.toLocaleString()} ∑ <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
+    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} ¬∑ Qty: ${totalQty.toLocaleString()} ¬∑ Def: ${totalDef.toLocaleString()} ¬∑ Scrap: ${totalScr.toLocaleString()} ¬∑ <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
 
     const descList = Object.values(descuentos);
     if (!descList.length) {
-      html += '<div style="color:var(--amber);font-size:12px;padding:.5rem">?? No se encontraron componentes en el BOM activo para los modelos producidos.</div>';
+      html += '<div style="color:var(--amber);font-size:12px;padding:.5rem">‚ö†Ô∏è No se encontraron componentes en el BOM activo para los modelos producidos.</div>';
       div.innerHTML = html;
       return;
     }
 
     let conFaltante = 0;
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
-    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N∞ Parte</th><th style="text-align:left;padding:6px">DescripciÛn</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
+    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N¬∞ Parte</th><th style="text-align:left;padding:6px">Descripci√≥n</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
     descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
       const imsDoc = imsMap[(d.pn||'').toUpperCase()];
       const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
@@ -504,10 +504,10 @@ async function calcularCierreJornada() {
     });
     html += '</table></div>';
     if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">?? ${conFaltante} parte(s) sin stock suficiente. Se permitir· el descuento (registrar· faltante).</div>`;
+      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">‚ö†Ô∏è ${conFaltante} parte(s) sin stock suficiente. Se permitir√° el descuento (registrar√° faltante).</div>`;
     }
     window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
-    html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">? Confirmar y Descontar IMS</button>`;
+    html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">‚úÖ Confirmar y Descontar IMS</button>`;
     div.innerHTML = html;
   } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; console.error(e); }
 }
@@ -517,11 +517,11 @@ async function confirmarCierreJornada() {
   const cd = window._cierreDescuentos;
   const modoSim = document.getElementById('cj-modoSim') && document.getElementById('cj-modoSim').checked;
   const msgConfirm = modoSim
-    ? `MODO SIMULACI”N ó NO se tocar· Firebase.\n\nSe mostrar· lo que pasarÌa si se descontaran:\nï ${cd.descuentos.length} componentes\nï Consumo: ${cd.totalConsumo.toLocaleString()} pzas\n\nøEjecutar simulaciÛn?`
-    : `Confirmar cierre de jornada del ${cd.fecha}?\n\nï ${cd.descuentos.length} componentes a descontar\nï Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\nï Esta acciÛn NO se puede deshacer f·cilmente.`;
+    ? `MODO SIMULACI√ìN ‚Äî NO se tocar√° Firebase.\n\nSe mostrar√° lo que pasar√≠a si se descontaran:\n‚Ä¢ ${cd.descuentos.length} componentes\n‚Ä¢ Consumo: ${cd.totalConsumo.toLocaleString()} pzas\n\n¬øEjecutar simulaci√≥n?`
+    : `Confirmar cierre de jornada del ${cd.fecha}?\n\n‚Ä¢ ${cd.descuentos.length} componentes a descontar\n‚Ä¢ Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\n‚Ä¢ Esta acci√≥n NO se puede deshacer f√°cilmente.`;
   if (!confirm(msgConfirm)) return;
   const div = document.getElementById('cj-resultado');
-  div.innerHTML = `<div style="color:var(--muted);font-size:12px">? ${modoSim?'Simulando':'Procesando'} descuentos...</div>`;
+  div.innerHTML = `<div style="color:var(--muted);font-size:12px">‚è≥ ${modoSim?'Simulando':'Procesando'} descuentos...</div>`;
   try {
     const fechaISO = new Date().toISOString();
     const userActual = (typeof currentUser!=='undefined' && currentUser && currentUser.email) ? currentUser.email : (window._userEmail || 'Sistema MES');
@@ -535,7 +535,7 @@ async function confirmarCierreJornada() {
       if (!imsDoc) {
         faltantes++;
         detalleFaltantes.push(`${d.pn}: ${d.total} no descontado (no existe en IMS)`);
-        if (modoSim) detalleSim.push(`? ${d.pn} ? no existe en IMS, NO se podrÌa descontar ${d.total}`);
+        if (modoSim) detalleSim.push(`‚ùå ${d.pn} ‚Üí no existe en IMS, NO se podr√≠a descontar ${d.total}`);
         continue;
       }
       const invAnterior = Number(imsDoc.actual)||0;
@@ -543,14 +543,14 @@ async function confirmarCierreJornada() {
       const nuevoActual = invAnterior - d.total;
 
       if (modoSim) {
-        detalleSim.push(`? ${d.pn} ? ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ?? NEGATIVO':''}`);
+        detalleSim.push(`‚úì ${d.pn} ‚Üí ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ‚ö†Ô∏è NEGATIVO':''}`);
         actualizados++; movimientos++;
-        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedarÌa en ${nuevoActual}`); }
+        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedar√≠a en ${nuevoActual}`); }
         continue;
       }
 
-      // -- MODO REAL --
-      const histEntry = { tipo:'OUT', fecha:fechaISO, qty:d.total, loc:imsDoc.ubicacion||'AlmacÈn', user:userActual, ref:refTxt };
+      // ‚îÄ‚îÄ MODO REAL ‚îÄ‚îÄ
+      const histEntry = { tipo:'OUT', fecha:fechaISO, qty:d.total, loc:imsDoc.ubicacion||'Almac√©n', user:userActual, ref:refTxt };
       const nuevoHist = (Array.isArray(imsDoc.historial)?imsDoc.historial:[]).concat([histEntry]);
       await updateDoc(doc(db,'planta4_inventario',imsDoc._docId), {
         actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
@@ -559,7 +559,7 @@ async function confirmarCierreJornada() {
       if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: queda en ${nuevoActual}`); }
       await addDoc(collection(db,'planta4_movimientos'), {
         tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total,
-        fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'AlmacÈn',
+        fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almac√©n',
         usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
       });
       movimientos++; actualizados++;
@@ -576,21 +576,21 @@ async function confirmarCierreJornada() {
 
     let resumen;
     if (modoSim) {
-      resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">?? SIMULACI”N COMPLETA ó Firebase NO se modificÛ</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">ï Componentes que SÕ se podrÌan descontar: <b style="color:var(--fg)">${actualizados}</b><br>ï Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>ï Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÕNEA POR LÕNEA</div>`;
+      resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">üß™ SIMULACI√ìN COMPLETA ‚Äî Firebase NO se modific√≥</div>`;
+      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">‚Ä¢ Componentes que S√ç se podr√≠an descontar: <b style="color:var(--fg)">${actualizados}</b><br>‚Ä¢ Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>‚Ä¢ Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
+      resumen += `<div style="font-size:12px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE L√çNEA POR L√çNEA</div>`;
       resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:12px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
-      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">?? Para ejecutar de verdad: desmarca <b>"Modo simulaciÛn"</b> y vuelve a calcular.</div>`;
+      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">üí° Para ejecutar de verdad: desmarca <b>"Modo simulaci√≥n"</b> y vuelve a calcular.</div>`;
     } else {
-      resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">? Cierre aplicado ó ${actualizados} componentes descontados</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7">ï Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>ï Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>ï Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
+      resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">‚úÖ Cierre aplicado ‚Äî ${actualizados} componentes descontados</div>`;
+      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7">‚Ä¢ Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>‚Ä¢ Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>‚Ä¢ Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
       if (faltantes > 0) {
-        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px"><b>?? ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'ï '+t).join('<br>')}${detalleFaltantes.length>5?'<br>ï ... y '+(detalleFaltantes.length-5)+' m·s':''}</div>`;
+        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px"><b>‚ö†Ô∏è ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'‚Ä¢ '+t).join('<br>')}${detalleFaltantes.length>5?'<br>‚Ä¢ ... y '+(detalleFaltantes.length-5)+' m√°s':''}</div>`;
       }
     }
     div.innerHTML = resumen;
-    if (!modoSim) { showToast(`? IMS actualizado ó ${actualizados} partes`,'var(--green)'); window._cierreDescuentos = null; }
-    else { showToast(`?? SimulaciÛn completa ó ${actualizados} descuentos posibles`,'#5BA3FF'); }
+    if (!modoSim) { showToast(`‚úÖ IMS actualizado ‚Äî ${actualizados} partes`,'var(--green)'); window._cierreDescuentos = null; }
+    else { showToast(`üß™ Simulaci√≥n completa ‚Äî ${actualizados} descuentos posibles`,'#5BA3FF'); }
   } catch(e) {
     div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
     console.error('confirmarCierreJornada:', e);
@@ -652,7 +652,7 @@ async function saveTargetToDB(maqIdx, targetVal){
     // Actualizar en memoria
     MAQUINAS[maqIdx].target=targetVal;
     MAQUINAS[maqIdx].cortes={C1:data.C1,C2:data.C2,C3:data.C3,OT:data.OT};
-    showToast("Target guardado ?","var(--green)");
+    showToast("Target guardado ‚úì","var(--green)");
     renderAdminTargets();
   }catch(e){showToast("Error al guardar target","var(--red)");console.error(e);}
 }
@@ -675,10 +675,10 @@ function renderAdminTargets(){
             <strong style="color:var(--accent);float:right">${(m.cortes[k]||0).toLocaleString()}</strong>
           </div>`).join("")}
       </div>
-      <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px">Cortes calculados autom·ticamente</div>
+      <div style="font-size:.75rem;color:var(--muted);text-align:center;margin-top:4px">Cortes calculados autom√°ticamente</div>
       <button onclick="saveTargetToDB(${i},Number(document.getElementById('tgt-inp-${i}').value))"
         style="background:var(--accent);color:#000;border:none;border-radius:7px;padding:8px;font-size:.85rem;font-weight:700;cursor:pointer;width:100%;margin-top:10px;">
-        ?? Guardar ${m.nombre}
+        üíæ Guardar ${m.nombre}
       </button>
     </div>`).join("");
 }
@@ -716,7 +716,7 @@ async function loadCausasParo(){
     if(!snap.empty){
       CAUSAS_PARO=snap.docs.map(d=>d.data().causa).filter(Boolean);
     } else {
-      // Primera vez ó guardar causas por defecto en Firestore
+      // Primera vez ‚Äî guardar causas por defecto en Firestore
       for(const c of CAUSAS_PARO_DEFAULT) await addDoc(collection(db,"causas_paro"),{causa:c});
       CAUSAS_PARO=[...CAUSAS_PARO_DEFAULT];
     }
@@ -730,10 +730,10 @@ function buildCausasSelect(){
 }
 
 const CORTES = [
-  {id:"C1", label:"Break", hora:"7:00ñ8:45 AM",  icon:"??"},
-  {id:"C2", label:"Lunch", hora:"9:00ñ12:30 PM", icon:"??"},
-  {id:"C3", label:"Home", hora:"1:00ñ4:30 PM",  icon:"??"},
-  {id:"OT", label:"OT",hora:"4:45ñ6:25 PM",  icon:"?"},
+  {id:"C1", label:"Break", hora:"7:00‚Äì8:45 AM",  icon:"üåÖ"},
+  {id:"C2", label:"Lunch", hora:"9:00‚Äì12:30 PM", icon:"‚òÄÔ∏è"},
+  {id:"C3", label:"Home", hora:"1:00‚Äì4:30 PM",  icon:"üåá"},
+  {id:"OT", label:"OT",hora:"4:45‚Äì6:25 PM",  icon:"‚è∞"},
 ];
 // Estado activo/inactivo se carga desde Firestore
 const MAQUINAS = [
@@ -753,7 +753,7 @@ let charts={}, ranges={maq:"diario",tend:"diario"};
 let opStep=0, opTurno=null, opCorte=null, opMaq=null, alertasVistas=new Set();
 const HOY = (()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
 
-/* -- AUTH -- */
+/* ‚ïê‚ïê AUTH ‚ïê‚ïê */
 onAuthStateChanged(auth, async (fireUser) => {
   if (fireUser) {
     const snap = await getDocs(query(USERS_COL(), where("uid","==",fireUser.uid)));
@@ -769,7 +769,7 @@ window.doLogin = async () => {
   const err   = document.getElementById("lerr");
   err.style.display = "none";
   try { await signInWithEmailAndPassword(auth, email, pass); }
-  catch(e) { err.textContent="Usuario o contraseÒa incorrectos"; err.style.display="block"; }
+  catch(e) { err.textContent="Usuario o contrase√±a incorrectos"; err.style.display="block"; }
 };
 window.doReset = async () => {
   const email = document.getElementById("li-user").value.trim();
@@ -778,7 +778,7 @@ window.doReset = async () => {
   try {
     await sendPasswordResetEmail(auth, email);
     err.style.background="var(--green)";err.style.color="#fff";
-    err.textContent="? Email enviado. Revisa tu bandeja de entrada.";err.style.display="block";
+    err.textContent="‚úÖ Email enviado. Revisa tu bandeja de entrada.";err.style.display="block";
     setTimeout(()=>{err.style.display="none";err.style.background="";err.style.color="";},5000);
   } catch(e){err.textContent="Correo no encontrado";err.style.display="block";}
 };
@@ -811,7 +811,7 @@ function applyRoleUI() {
   }
 }
 
-/* -- LISTENER TIEMPO REAL -- */
+/* ‚ïê‚ïê LISTENER TIEMPO REAL ‚ïê‚ïê */
 function startListener() {
   if(unsubRegs)unsubRegs();
   const q=query(REGS_COL(),orderBy("tsLocal","desc"));
@@ -824,7 +824,7 @@ function startListener() {
   });
 }
 
-/* -- ADMIN -- */
+/* ‚ïê‚ïê ADMIN ‚ïê‚ïê */
 async function loadUsuarios() {
   const snap=await getDocs(USERS_COL());
   USUARIOS=snap.docs.map(d=>({docId:d.id,...d.data()}));
@@ -836,10 +836,10 @@ window.addUser = async () => {
   const pass=document.getElementById("nu-pass").value;
   const rol=document.getElementById("nu-rol").value;
   const emp=document.getElementById("nu-emp-num").value.trim();
-  if(!email||!nombre||!pass||pass.length<6){showToast("Completa todos los campos (contraseÒa mÌn. 6)","var(--red)");return;}
+  if(!email||!nombre||!pass||pass.length<6){showToast("Completa todos los campos (contrase√±a m√≠n. 6)","var(--red)");return;}
   try {
     await addDoc(USERS_COL(),{email,nombre,rol,empleado:emp,activo:true,uid:"PENDIENTE",createdAt:serverTimestamp()});
-    showToast(`? Perfil de "${nombre}" guardado. Crea sus credenciales en Firebase Console ? Authentication.`,"var(--green)");
+    showToast(`‚úÖ Perfil de "${nombre}" guardado. Crea sus credenciales en Firebase Console ‚Üí Authentication.`,"var(--green)");
     ["nu-user","nu-nombre","nu-pass","nu-emp-num"].forEach(id=>document.getElementById(id).value="");
     loadUsuarios();
   } catch(e){showToast("Error: "+e.message,"var(--red)");}
@@ -849,7 +849,7 @@ window.toggleUser = async (docId,activo) => {
   showToast("Usuario actualizado","var(--accent)"); loadUsuarios();
 };
 window.delUser = async (docId,nombre) => {
-  if(!confirm(`øEliminar perfil de "${nombre}"?`))return;
+  if(!confirm(`¬øEliminar perfil de "${nombre}"?`))return;
   await deleteDoc(doc(db,"usuarios",docId));
   showToast(`Perfil eliminado`,"var(--yellow)"); loadUsuarios();
 };
@@ -874,13 +874,13 @@ function renderAdmin() {
       <td>${u.activo?'<span class="dot-on"></span> Activo':'<span class="dot-off"></span> Inactivo'}</td>
       <td>${regs}</td>
       <td>${!isMe?`<button class="abtn abtn-edit" onclick="toggleUser('${u.docId}',${u.activo})">${u.activo?"Desactivar":"Activar"}</button>
-        <button class="abtn abtn-del" onclick="delUser('${u.docId}','${u.nombre}')" style="margin-left:4px">?</button>`
-        :"<span style='font-size:.8rem;color:var(--muted)'>T˙</span>"}</td>`;
+        <button class="abtn abtn-del" onclick="delUser('${u.docId}','${u.nombre}')" style="margin-left:4px">‚úï</button>`
+        :"<span style='font-size:.8rem;color:var(--muted)'>T√∫</span>"}</td>`;
     tb.appendChild(tr);
   });
 }
 
-/* -- OPERADOR -- */
+/* ‚ïê‚ïê OPERADOR ‚ïê‚ïê */
 window.enviar = async () => {
   const btn=document.getElementById("btnnext");
   btn.innerHTML='<span class="spin"></span>Guardando...';btn.disabled=true;
@@ -907,14 +907,14 @@ window.enviar = async () => {
   try {
     await addDoc(REGS_COL(),reg);
     if(reg.modelo) saveModelo(reg.modelo);
-    document.getElementById("suc-sub").textContent=`${m.nombre} ∑ ${opCorte||opTurno} ∑ ${p.toLocaleString()} piezas enviadas.`;
+    document.getElementById("suc-sub").textContent=`${m.nombre} ¬∑ ${opCorte||opTurno} ¬∑ ${p.toLocaleString()} piezas enviadas.`;
     showStep(4);
-  } catch(e){showToast("? Error: "+e.message,"var(--red)");}
-  btn.innerHTML="?? Enviar al Dashboard";btn.disabled=false;
+  } catch(e){showToast("‚ùå Error: "+e.message,"var(--red)");}
+  btn.innerHTML="üì§ Enviar al Dashboard";btn.disabled=false;
 };
 window.delReg = async (id) => { await deleteDoc(doc(db,"registros",id)); rRegs();rFeed();updateDashStats(); };
 
-// -- PLAN PRODUCCI”N EN MES --
+// ‚îÄ‚îÄ PLAN PRODUCCI√ìN EN MES ‚îÄ‚îÄ
 var mesPlanActivo = null;
 var mesPlanInvSnapshot = {}; // inventario al momento de publicar
 var unsubImsListener = null; // listener tiempo real
@@ -939,12 +939,12 @@ async function loadMesPlan() {
     renderMesPlan();
     arrancarListenerIMS();
     mostrarAlertaIMS([]); // limpiar banner
-    // Actualizar chart con lÌnea de plan
+    // Actualizar chart con l√≠nea de plan
     if (typeof rHoy === 'function') rHoy();
   } catch(e) { console.log('loadMesPlan:', e.message); }
 }
 
-// Carga inventario actual del IMS ó guarda por PN+DESC para distinguir Virgen vs Ranurado
+// Carga inventario actual del IMS ‚Äî guarda por PN+DESC para distinguir Virgen vs Ranurado
 async function sincronizarInvMES() {
   try {
     const snap = await getDocs(collection(db, 'planta4_inventario'));
@@ -960,7 +960,7 @@ async function sincronizarInvMES() {
   } catch(e) {}
 }
 
-// Busca inventario por PN + descripciÛn (igual que BOM Simulator)
+// Busca inventario por PN + descripci√≥n (igual que BOM Simulator)
 function getInvMES(pn, desc) {
   const pnUp = (pn || '').trim().toUpperCase();
   const descUp = (desc || '').trim().toUpperCase();
@@ -1003,11 +1003,11 @@ function renderMesPlan() {
   if (!mesPlanActivo) return;
   document.getElementById('mesPlanEmpty').style.display='none';
   document.getElementById('mesPlanContent').style.display='block';
-  document.getElementById('mesPlanTitulo').textContent = 'Plan ó ' + (mesPlanActivo.semana||'');
+  document.getElementById('mesPlanTitulo').textContent = 'Plan ‚Äî ' + (mesPlanActivo.semana||'');
   document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
 
   const colores = {'VC1':'#FFBA00','VC2':'#00B8A0','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
-  const iconos = {'VC1':'??','VC2':'??','S1/S2':'??','Zhongke':'??','S3':'??','S4':'??','ASSY1':'?'};
+  const iconos = {'VC1':'‚öôÔ∏è','VC2':'‚öôÔ∏è','S1/S2':'üè≠','Zhongke':'ü§ñ','S3':'üè≠','S4':'üè≠','ASSY1':'‚úÖ'};
   const ordenLineas = ['VC1','VC2','S1/S2','Zhongke','S3','S4','ASSY1'];
   const lineas = mesPlanActivo.lineas || {};
   const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
@@ -1026,7 +1026,7 @@ function renderMesPlan() {
   // Barra de progreso
   const progressBar = `<div style="margin-bottom:.75rem;background:#0e1325;border:1px solid rgba(255,255,255,.08);border-radius:8px;padding:.6rem .75rem">
     <div style="display:flex;justify-content:space-between;font-size:12px;color:var(--muted);margin-bottom:.35rem">
-      <span>LÌneas confirmadas</span>
+      <span>L√≠neas confirmadas</span>
       <span style="color:${pct===100?'#00e676':'var(--fg)'}"><b>${listasLineas}</b> / ${totalLineas} &nbsp;(${pct}%)</span>
     </div>
     <div style="background:rgba(255,255,255,.08);border-radius:4px;height:6px;overflow:hidden">
@@ -1040,17 +1040,17 @@ function renderMesPlan() {
     if (!lineaData) return;
     const items = Array.isArray(lineaData) ? lineaData : [lineaData];
     const color = colores[linea] || '#aaa';
-    const icon = iconos[linea] || '??';
+    const icon = iconos[linea] || 'üì¶';
     items.forEach((l, idx) => {
       if (!l) return;
       const mats = l.materiales || [];
       if (!mats.length && !(l.cantidad > 0)) return;
       const listo = l.listo || false;
       const key = linea + '___' + idx;
-      const confirmadoPor = l.confirmadoPor ? `<span style="font-size:12px;color:#00e676;margin-left:6px">? ${l.confirmadoPor}</span>` : '';
+      const confirmadoPor = l.confirmadoPor ? `<span style="font-size:12px;color:#00e676;margin-left:6px">‚úì ${l.confirmadoPor}</span>` : '';
       const confirmadoEn = l.confirmadoEn ? `<span style="font-size:9px;color:var(--muted);margin-left:4px">${new Date(l.confirmadoEn).toLocaleString('es-MX',{hour:'2-digit',minute:'2-digit',day:'2-digit',month:'short'})}</span>` : '';
       const btnConfirm = canConfirm
-        ? `<button onclick="confirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.1);color:#00e676;cursor:pointer;font-weight:600">? Confirmar listo</button>`
+        ? `<button onclick="confirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(0,230,118,.4);background:rgba(0,230,118,.1);color:#00e676;cursor:pointer;font-weight:600">‚úì Confirmar listo</button>`
         : `<span style="font-size:12px;color:var(--muted);font-style:italic">Solo admin</span>`;
       html += `
       <div style="background:#0e1325;border:1px solid ${listo?'rgba(0,230,118,.3)':'rgba(255,186,0,.3)'};border-radius:10px;margin-bottom:.5rem;overflow:hidden">
@@ -1058,13 +1058,13 @@ function renderMesPlan() {
           <div style="display:flex;align-items:center;gap:.4rem;flex-wrap:wrap">
             <span>${icon}</span>
             <span style="font-weight:700;font-size:13px;color:${listo?'#00e676':'#FFBA00'}">${linea}</span>
-            <span style="font-size:12px;color:var(--muted)">∑ ${l.sm||''} ∑ ${(l.cantidad||0).toLocaleString()} pzas</span>
+            <span style="font-size:12px;color:var(--muted)">¬∑ ${l.sm||''} ¬∑ ${(l.cantidad||0).toLocaleString()} pzas</span>
             ${listo ? confirmadoPor + confirmadoEn : ''}
           </div>
           ${listo
             ? (canConfirm
-                ? `<button onclick="desconfirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,77,106,.3);background:rgba(255,77,106,.08);color:#ff4d6a;cursor:pointer">? Deshacer</button>`
-                : `<span style="font-size:12px;color:#00e676;font-weight:600">? Listo</span>`)
+                ? `<button onclick="desconfirmarLinea('${key}')" style="font-size:12px;padding:3px 10px;border-radius:20px;border:1px solid rgba(255,77,106,.3);background:rgba(255,77,106,.08);color:#ff4d6a;cursor:pointer">‚Ü© Deshacer</button>`
+                : `<span style="font-size:12px;color:#00e676;font-weight:600">‚úì Listo</span>`)
             : btnConfirm
           }
         </div>
@@ -1079,20 +1079,20 @@ function renderMesPlan() {
     });
   });
 
-  document.getElementById('mesPlanLineas').innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:1rem">Sin lÌneas en el plan</div>';
+  document.getElementById('mesPlanLineas').innerHTML = html || '<div style="color:var(--muted);text-align:center;padding:1rem">Sin l√≠neas en el plan</div>';
 }
 
 async function confirmarLinea(key) {
   if (!mesPlanActivo) return;
   const rol = CURRENT_USER?.rol;
   if (rol !== 'admin') {
-    showToast('?? Solo el administrador puede confirmar lÌneas', 'var(--red)');
+    showToast('‚ö†Ô∏è Solo el administrador puede confirmar l√≠neas', 'var(--red)');
     return;
   }
   const parts = key.split('___');
   const linea = parts[0];
   const idx = parseInt(parts[1]);
-  if (!confirm('øConfirmar que el material de ' + linea + ' ya est· en la lÌnea?')) return;
+  if (!confirm('¬øConfirmar que el material de ' + linea + ' ya est√° en la l√≠nea?')) return;
   try {
     const lineaData = mesPlanActivo.lineas[linea];
     const items = Array.isArray(lineaData) ? lineaData : [lineaData];
@@ -1109,7 +1109,7 @@ async function confirmarLinea(key) {
     }
     await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
     renderMesPlan();
-    showToast('? ' + linea + ' ó confirmado por ' + (CURRENT_USER?.nombre || 'Supervisor'), 'var(--green)');
+    showToast('‚úÖ ' + linea + ' ‚Äî confirmado por ' + (CURRENT_USER?.nombre || 'Supervisor'), 'var(--green)');
   } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
 }
 async function desconfirmarLinea(key) {
@@ -1119,7 +1119,7 @@ async function desconfirmarLinea(key) {
   const parts = key.split('___');
   const linea = parts[0];
   const idx = parseInt(parts[1]);
-  if (!confirm('øDeshacer la confirmaciÛn de ' + linea + '?')) return;
+  if (!confirm('¬øDeshacer la confirmaci√≥n de ' + linea + '?')) return;
   try {
     const lineaData = mesPlanActivo.lineas[linea];
     const items = Array.isArray(lineaData) ? lineaData : [lineaData];
@@ -1130,10 +1130,10 @@ async function desconfirmarLinea(key) {
     }
     await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
     renderMesPlan();
-    showToast('? ' + linea + ' ó confirmaciÛn deshecha', '#FFBA00');
+    showToast('‚Ü© ' + linea + ' ‚Äî confirmaci√≥n deshecha', '#FFBA00');
   } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
 }
-// -- LISTENER IMS EN TIEMPO REAL --
+// ‚îÄ‚îÄ LISTENER IMS EN TIEMPO REAL ‚îÄ‚îÄ
 function arrancarListenerIMS() {
   if (!mesPlanActivo) return;
   // Solo admin ve la alerta
@@ -1194,15 +1194,15 @@ function mostrarAlertaIMS(cambios) {
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem">
       <div>
         <div style="font-weight:700;font-size:12px;color:#FFBA00;margin-bottom:.3rem">
-          ?? LlegÛ material nuevo ó el plan puede estar desactualizado
+          ‚ö†Ô∏è Lleg√≥ material nuevo ‚Äî el plan puede estar desactualizado
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:.4rem">
-          Las siguientes partes tienen m·s inventario que cuando se publicÛ el plan:
+          Las siguientes partes tienen m√°s inventario que cuando se public√≥ el plan:
         </div>
         <div style="font-size:12px;line-height:1.8">${lista}</div>
       </div>
       <button onclick="loadMesPlan()" style="white-space:nowrap;font-size:12px;padding:5px 12px;border-radius:6px;border:1px solid rgba(255,186,0,.4);background:rgba(255,186,0,.15);color:#FFBA00;cursor:pointer;font-weight:600;margin-top:2px">
-        ?? Refrescar plan
+        üîÑ Refrescar plan
       </button>
     </div>`;
 }
@@ -1210,17 +1210,17 @@ window.loadMesPlan = loadMesPlan;
 window.confirmarLinea = confirmarLinea;
 window.desconfirmarLinea = desconfirmarLinea;
 
-window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N∞ Parte","M·quina","Tipo","Target","ProducciÛn","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"ó"),r.operador,r.empleado,r.modelo||"ó",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
+window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N¬∞ Parte","M√°quina","Tipo","Target","Producci√≥n","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"‚Äî"),r.operador,r.empleado,r.modelo||"‚Äî",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
 
-// -- EnvÌo a SHIPQR (conexiÛn pendiente con sistema externo) --
+// ‚îÄ‚îÄ Env√≠o a SHIPQR (conexi√≥n pendiente con sistema externo) ‚îÄ‚îÄ
 window.enviarShipqr=(modeloEnc,parteEnc,prod)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
-  const msg=`?? Enviar a SHIPQR:\n\nModelo: ${modelo}\nPart Number: ${parte}\nProducciÛn: ${prod.toLocaleString()} pzas\n\n(La conexiÛn con el sistema SHIPQR a˙n no est· implementada. Solo se est· validando que la tabla del MES capture bien los datos.)`;
+  const msg=`üì± Enviar a SHIPQR:\n\nModelo: ${modelo}\nPart Number: ${parte}\nProducci√≥n: ${prod.toLocaleString()} pzas\n\n(La conexi√≥n con el sistema SHIPQR a√∫n no est√° implementada. Solo se est√° validando que la tabla del MES capture bien los datos.)`;
   alert(msg);
   console.log('[SHIPQR pendiente]', {modelo, parte, prod});
 };
-window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N∞ Parte","M·quina","ProducciÛn","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
+window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N¬∞ Parte","M√°quina","Producci√≥n","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
   document.getElementById("ip-fecha").value=HOY;
@@ -1229,31 +1229,31 @@ function initApp(){
   buildMaqGrid();buildSelects();showStep(0);
   loadCausasParo();
 }
-function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>?</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`? ${m.nombre} ∑ ${opCorte} ∑ same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
-function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las m·quinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
+function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>‚úì</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`‚õî ${m.nombre} ¬∑ ${opCorte} ¬∑ same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
+function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las m√°quinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
 window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
-window.selM=(i)=>{opMaq=i;document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById(`mc${i}`).classList.add("sel");const m=MAQUINAS[i];const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;document.getElementById("mhdr").textContent=`${m.nombre} ∑ ${m.tipo} ó Target ${(t||m.target).toLocaleString()}`;document.getElementById("ktgt").textContent=(t||m.target).toLocaleString();document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t||m.target);updK();};
+window.selM=(i)=>{opMaq=i;document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById(`mc${i}`).classList.add("sel");const m=MAQUINAS[i];const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;document.getElementById("mhdr").textContent=`${m.nombre} ¬∑ ${m.tipo} ‚Äî Target ${(t||m.target).toLocaleString()}`;document.getElementById("ktgt").textContent=(t||m.target).toLocaleString();document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t||m.target);updK();};
 function gv(id){return parseFloat(document.getElementById(id)?.value)||0;}
 window.adj=(f,d)=>{const id=f==="p"?"ip-prod":f==="d"?"ip-def":"ip-scr";const el=document.getElementById(id);el.value=Math.max(0,(parseFloat(el.value)||0)+d);updK();};
 window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
-function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"?? Enviar al Dashboard":"Siguiente ?";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
-window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N∞ Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim().toUpperCase();
+function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"üì§ Enviar al Dashboard":"Siguiente ‚Üí";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
+window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N¬∞ Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim().toUpperCase();
       if(!modVal){showToast("Modelo es obligatorio","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      if(!modVal.startsWith("SM")&&!modVal.startsWith("CRN")){showToast("Modelo inv·lido ó debe iniciar con SM o CRN","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      // ValidaciÛn estricta de formato
+      if(!modVal.startsWith("SM")&&!modVal.startsWith("CRN")){showToast("Modelo inv√°lido ‚Äî debe iniciar con SM o CRN","var(--red)");document.getElementById("ip-modelo").focus();return;}
+      // Validaci√≥n estricta de formato
       const esSMValido = modVal.startsWith("SM") && modVal.length===14 && modVal.includes("-");
       const esCRNValido = modVal.startsWith("CRN") && modVal.length===6 && !modVal.includes("-");
-      if(!esSMValido && !esCRNValido){showToast("Modelo inv·lido ó SM: 14 chars con guiÛn (SM-XXXXXXXXXXX) o CRN: 6 chars sin guiÛn (CRNXXX)","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N∞ Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`? ${MAQUINAS[opMaq].nombre} ∑ ${opCorte} ∑ ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+      if(!esSMValido && !esCRNValido){showToast("Modelo inv√°lido ‚Äî SM: 14 chars con gui√≥n (SM-XXXXXXXXXXX) o CRN: 6 chars sin gui√≥n (CRNXXX)","var(--red)");document.getElementById("ip-modelo").focus();return;}
+      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N¬∞ Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`‚õî ${MAQUINAS[opMaq].nombre} ¬∑ ${opCorte} ¬∑ ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
-function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["?? Fecha",document.getElementById("ip-fecha").value],["?? Operador",document.getElementById("ip-op").value],["?? N∞ Empleado",document.getElementById("ip-emp").value||"ó"],["?? Modelo",document.getElementById("ip-modelo").value||"ó"],["?? N∞ Parte",document.getElementById("ip-parte").value||"ó"],["? Turno","Turno "+opTurno],["?? M·quina",`${m.nombre} (${m.tipo})`],["?? Target",tgt.toLocaleString()],["? Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["? ProducciÛn",p.toLocaleString()],["?? Defectos",d.toLocaleString()],["?? Scrap",s.toLocaleString()],["?? Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
+function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["üìÖ Fecha",document.getElementById("ip-fecha").value],["üë∑ Operador",document.getElementById("ip-op").value],["üî¢ N¬∞ Empleado",document.getElementById("ip-emp").value||"‚Äî"],["üì± Modelo",document.getElementById("ip-modelo").value||"‚Äî"],["üî© N¬∞ Parte",document.getElementById("ip-parte").value||"‚Äî"],["‚è∞ Turno","Turno "+opTurno],["üîß M√°quina",`${m.nombre} (${m.tipo})`],["üéØ Target",tgt.toLocaleString()],["‚è± Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["‚úÖ Producci√≥n",p.toLocaleString()],["‚ö†Ô∏è Defectos",d.toLocaleString()],["üóë Scrap",s.toLocaleString()],["üìä Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
 window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
-window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">?? Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% ∑ ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
+window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">üìÖ Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% ¬∑ ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
-/* -- DASHBOARD -- */
+/* ‚ïê‚ïê DASHBOARD ‚ïê‚ïê */
 function updateDashStats(){document.getElementById("cnt").textContent=`${REGISTROS.length} registros`;document.getElementById("lupd").textContent="Act. "+new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
 const DTABS=["hoy","feed","maq","tend","regs","plan"];
 window.showDT=(id)=>{document.querySelectorAll(".dtc").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("active"));document.getElementById("dtab-"+id).classList.add("active");document.querySelectorAll(".dtab")[DTABS.indexOf(id)].classList.add("active");if(id==="hoy")rHoy();if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="feed")rFeed();if(id==="regs")rRegs();if(id==="plan")loadMesPlan();};
@@ -1262,12 +1262,12 @@ function dRefresh(){
   updateDashStats();rHoy();rFeed();chkAlertas();
   const act=document.querySelector(".dtc.active");
   if(act){const id=act.id.replace("dtab-","");if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="regs")rRegs();}
-  showToast("? Dashboard actualizado","var(--green)");
+  showToast("‚úÖ Dashboard actualizado","var(--green)");
 }
 
 function sem(p){return p>=95?"green":p>=80?"yellow":"red";}
 
-/* -- FUNCI”N FILT CORREGIDA -- */
+/* ‚ïê‚ïê FUNCI√ìN FILT CORREGIDA ‚ïê‚ïê */
 function filt(data,fecha,turno){
   let d=data;
   if(fecha) d=d.filter(r=>r.fecha===fecha);
@@ -1275,7 +1275,7 @@ function filt(data,fecha,turno){
   return d;
 }
 
-function tSince(ts){if(!ts)return"ñ";const s=Math.floor((Date.now()-new Date(ts))/1000);if(s<60)return`hace ${s}s`;if(s<3600)return`hace ${Math.floor(s/60)}m`;if(s<86400)return`hace ${Math.floor(s/3600)}h`;return`hace ${Math.floor(s/86400)}d`;}
+function tSince(ts){if(!ts)return"‚Äì";const s=Math.floor((Date.now()-new Date(ts))/1000);if(s<60)return`hace ${s}s`;if(s<3600)return`hace ${Math.floor(s/60)}m`;if(s<86400)return`hace ${Math.floor(s/3600)}h`;return`hace ${Math.floor(s/86400)}d`;}
 function setKPI(id,val,cls){const el=document.getElementById(id);el.textContent=val;el.className="val "+cls;}
 
 function rHoy(){
@@ -1293,14 +1293,14 @@ function rHoy(){
   const totalParo=data.reduce((s,r)=>s+(r.minParo||0),0);
   setKPI("k-dt",totalParo+" min",totalParo>60?"red":totalParo>30?"yellow":"green");
 
-  // Tabla de downtime por m·quina
+  // Tabla de downtime por m√°quina
   const tbDt=document.getElementById("tb-dt");
   if(tbDt){
     const SHIFT_MIN=525;
     const dtRows=MAQUINAS.map((m,i)=>{
       const regs=data.filter(r=>parseInt(r.maqIdx)===i&&r.minParo>0);
       const mins=regs.reduce((s,r)=>s+(r.minParo||0),0);
-      const causas=[...new Set(regs.map(r=>r.causaParo).filter(Boolean))].join(", ")||"ó";
+      const causas=[...new Set(regs.map(r=>r.causaParo).filter(Boolean))].join(", ")||"‚Äî";
       const pct=SHIFT_MIN>0?(mins/SHIFT_MIN*100).toFixed(1):0;
       const status=mins===0?"ok":mins<=20?"normal":mins<=45?"warning":"critical";
       const statusColor={ok:"#2ecc71",normal:"#2ecc71",warning:"#f1c40f",critical:"#e74c3c"}[status];
@@ -1322,11 +1322,11 @@ function rHoy(){
     </tr>`;
   }
   const tb=document.getElementById("tb-hoy");tb.innerHTML="";
-  agg.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${m.tipo}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"?":pct>=80?"??":"??"}</td>`;tb.appendChild(tr);});
+  agg.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${m.tipo}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"‚úÖ":pct>=80?"‚ö†Ô∏è":"üî¥"}</td>`;tb.appendChild(tr);});
   const pcts=agg.map(m=>m.target>0?+(m.prod/m.target*100).toFixed(1):0);
   const cols=pcts.map(p=>p>=95?"#2ecc71":p>=80?"#f1c40f":"#e74c3c");
   rebuildChart("chC",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[{label:"% Cumpl",data:pcts,backgroundColor:cols,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
-  // Gr·fica apilada por corte
+  // Gr√°fica apilada por corte
   const corteColors={C1:"#4f8ef7",C2:"#2ecc71",C3:"#f1c40f",OT:"#e67e22"};
   const corteDatasets=CORTES.map(c=>({
     label:c.label,
@@ -1340,7 +1340,7 @@ function rHoy(){
   const targetDataset={label:"Target",data:MAQUINAS.map(m=>m.target),backgroundColor:"#2e334766",borderRadius:4,type:"bar",stack:"target",order:2};
   const prodDatasets=corteDatasets.map(d=>({...d,stack:"prod",order:1}));
 
-  // Plan del BOM Simulator por m·quina
+  // Plan del BOM Simulator por m√°quina
   const planPorMaquina = MAQUINAS.map(m => {
     if (!mesPlanActivo?.lineas) return null;
     let totalPlan = 0;
@@ -1355,25 +1355,25 @@ function rHoy(){
   const planDataset={label:"Prod Plan",data:planPorMaquina,type:"line",borderColor:"#FFBA00",backgroundColor:"transparent",borderWidth:2,borderDash:[5,3],pointBackgroundColor:"#FFBA00",pointRadius:4,pointHoverRadius:6,order:0,fill:false};
 
   rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets,planDataset]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
-  // Tabla producciÛn por modelo y parte
+  // Tabla producci√≥n por modelo y parte
   const tbParts=document.getElementById("tb-parts");
   if(tbParts){
     tbParts.innerHTML="";
     let totalQty=0,totalDef=0,totalScrap=0;
     if(!data.length){
-      tbParts.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este perÌodo.</td></tr>';
+      tbParts.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este per√≠odo.</td></tr>';
     } else {
             const maqModelMap={};
       data.forEach(r=>{
-        const key=r.maqIdx+"_"+(r.modelo||"ó");
-        if(!maqModelMap[key]){maqModelMap[key]={maqNombre:r.maqNombre,maqTipo:r.maqTipo,modelo:r.modelo||"ó",parte:r.parte||"ó",turno:r.turno,prod:0,def:0,scrap:0,target:0};}
+        const key=r.maqIdx+"_"+(r.modelo||"‚Äî");
+        if(!maqModelMap[key]){maqModelMap[key]={maqNombre:r.maqNombre,maqTipo:r.maqTipo,modelo:r.modelo||"‚Äî",parte:r.parte||"‚Äî",turno:r.turno,prod:0,def:0,scrap:0,target:0};}
         maqModelMap[key].prod+=r.prod||0;
         maqModelMap[key].def+=r.def||0;
         maqModelMap[key].scrap+=r.scrap||0;
         maqModelMap[key].target+=r.target||0;
-        if(r.parte&&r.parte!=="ó")maqModelMap[key].parte=r.parte;
+        if(r.parte&&r.parte!=="‚Äî")maqModelMap[key].parte=r.parte;
       });
-      // Ordenar: VC ? S1 ? S2 ? S3 ? S4 ? Zhongke ? ASSY1
+      // Ordenar: VC ‚Üí S1 ‚Üí S2 ‚Üí S3 ‚Üí S4 ‚Üí Zhongke ‚Üí ASSY1
       const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
       const getOrden = nombre => {
         const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
@@ -1391,11 +1391,11 @@ function rHoy(){
         const cl=pct>=95?"green":pct>=80?"yellow":"red";
         const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[m.turno]||"#7f8c9a";
         const tr=document.createElement("tr");
-        tr.innerHTML=`<td><strong>${m.maqNombre||"ó"}</strong></td>
+        tr.innerHTML=`<td><strong>${m.maqNombre||"‚Äî"}</strong></td>
           <td class="model-code">${m.modelo}</td>
-          <td><span class="tbadge ${m.maqTipo||""}">${m.maqTipo||"ó"}</span></td>
+          <td><span class="tbadge ${m.maqTipo||""}">${m.maqTipo||"‚Äî"}</span></td>
           <td style="font-size:.8rem;color:var(--muted)">${m.parte}</td>
-          <td style="color:${tCol};font-weight:700">${m.turno||"ó"}</td>
+          <td style="color:${tCol};font-weight:700">${m.turno||"‚Äî"}</td>
           <td class="blue">${m.prod.toLocaleString()}</td>
           <td>${m.def.toLocaleString()}</td>
           <td>${m.scrap.toLocaleString()}</td>
@@ -1413,12 +1413,12 @@ function rHoy(){
     }
   }
 
-  // -- Tabla Material listo para SHIPQR (rango de fechas) --
+  // ‚îÄ‚îÄ Tabla Material listo para SHIPQR (rango de fechas) ‚îÄ‚îÄ
   renderShipqr();
 
 }
 
-// Renderiza la tabla SHIPQR seg˙n el rango de fechas seleccionado
+// Renderiza la tabla SHIPQR seg√∫n el rango de fechas seleccionado
 function renderShipqr(){
   const tbShipqr=document.getElementById("tb-shipqr");
   if(!tbShipqr) return;
@@ -1426,7 +1426,7 @@ function renderShipqr(){
   const HOY=new Date().toISOString().slice(0,10);
   const inpDesde=document.getElementById("shipqr-desde");
   const inpHasta=document.getElementById("shipqr-hasta");
-  // Si los inputs est·n vacÌos, default a hoy
+  // Si los inputs est√°n vac√≠os, default a hoy
   if(inpDesde && !inpDesde.value) inpDesde.value=HOY;
   if(inpHasta && !inpHasta.value) inpHasta.value=HOY;
   const desde=inpDesde?inpDesde.value:HOY;
@@ -1438,13 +1438,13 @@ function renderShipqr(){
     return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producciÛn ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producci√≥n ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
     return;
   }
   const modPnMap={};
   assyRango.forEach(r=>{
-    const modelo=r.modelo||"ó";
-    const parte=r.parte||"ó";
+    const modelo=r.modelo||"‚Äî";
+    const parte=r.parte||"‚Äî";
     const key=modelo+"||"+parte;
     if(!modPnMap[key]){modPnMap[key]={modelo,parte,prod:0};}
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
@@ -1460,7 +1460,7 @@ function renderShipqr(){
       <td style="text-align:center;padding:10px 6px">
         <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod})"
           style="background:rgba(77,166,255,.12);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
-          ?? SHIPQR
+          üöö SHIPQR
         </button>
       </td>`;
     tbShipqr.appendChild(tr);
@@ -1479,10 +1479,10 @@ function rFeed(){
   const data=filt(REGISTROS,fecha,turno).slice(0,40);
   const fb=document.getElementById("feed-body");
   if(!data.length){fb.innerHTML='<div class="empty">Sin capturas.</div>';return;}
-  fb.innerHTML=data.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";const corteLabel=r.corte?` ∑ ${r.corte}`:"";const cl=sem(r.pct);
-    return`<div class="fi"><div><div class="fo">${r.operador||"ó"} <span style="color:${tCol};font-size:.8rem;font-weight:700">${r.turno}</span></div><div class="fm">?? ${r.maqNombre}${r.parte?` ∑ ?? ${r.parte}`:""} ∑ ? ${tSince(r.tsLocal)}${r.notas?` ∑ ?? ${r.notas.slice(0,35)}`:""}</div></div><div style="text-align:right;flex-shrink:0"><div class="fp ${cl}">${r.pct}%</div><div class="fq">${r.prod.toLocaleString()} pzas</div></div></div>`;}).join("");
+  fb.innerHTML=data.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";const corteLabel=r.corte?` ¬∑ ${r.corte}`:"";const cl=sem(r.pct);
+    return`<div class="fi"><div><div class="fo">${r.operador||"‚Äî"} <span style="color:${tCol};font-size:.8rem;font-weight:700">${r.turno}</span></div><div class="fm">üîß ${r.maqNombre}${r.parte?` ¬∑ üî© ${r.parte}`:""} ¬∑ ‚è± ${tSince(r.tsLocal)}${r.notas?` ¬∑ üìù ${r.notas.slice(0,35)}`:""}</div></div><div style="text-align:right;flex-shrink:0"><div class="fp ${cl}">${r.pct}%</div><div class="fq">${r.prod.toLocaleString()} pzas</div></div></div>`;}).join("");
   const ops=[...new Set(filt(REGISTROS,fecha,"todos").map(r=>r.operador))].filter(Boolean);
-  document.getElementById("ops-body").innerHTML=ops.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${ops.map(o=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.85rem">?? ${o}</span>`).join("")}</div>`:'<div class="empty">Sin operadores.</div>';
+  document.getElementById("ops-body").innerHTML=ops.length?`<div style="display:flex;flex-wrap:wrap;gap:5px">${ops.map(o=>`<span style="background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 10px;font-size:.85rem">üë∑ ${o}</span>`).join("")}</div>`:'<div class="empty">Sin operadores.</div>';
 }
 
 async function enviarAlertaScrap(maquina, scrapPct){
@@ -1495,7 +1495,7 @@ async function enviarAlertaScrap(maquina, scrapPct){
     emailjs.init(EJS_KEY);
     correos.forEach(email=>{
       emailjs.send(EJS_SVC,EJS_TPL,{
-        subject:`?? SCRAP ALERT - ${maquina} - ${scrapPct}%`,
+        subject:`‚ö†Ô∏è SCRAP ALERT - ${maquina} - ${scrapPct}%`,
         message:`SCRAP ALERT
 
 Machine: ${maquina}
@@ -1521,7 +1521,7 @@ function showAlerta(key, msg, color="#e74c3c"){
   const d=document.createElement("div");
   d.className="alerta";
   d.style.borderColor=color;
-  d.innerHTML=`<span>${msg}</span><span class="ac" onclick="alertasVistas.delete('${key}');this.parentElement.remove()">?</span>`;
+  d.innerHTML=`<span>${msg}</span><span class="ac" onclick="alertasVistas.delete('${key}');this.parentElement.remove()">‚úï</span>`;
   p.appendChild(d);
   setTimeout(()=>d&&d.remove(),15000);
 }
@@ -1529,7 +1529,7 @@ function showAlerta(key, msg, color="#e74c3c"){
 function chkAlertas(){
   const hoyData=filt(REGISTROS,HOY,"todos");
 
-  // Alerta 1: Scrap > 3% por m·quina
+  // Alerta 1: Scrap > 3% por m√°quina
   MAQUINAS.forEach((m,i)=>{
     const recs=hoyData.filter(r=>parseInt(r.maqIdx)===i);
     if(!recs.length) return;
@@ -1538,7 +1538,7 @@ function chkAlertas(){
     const scrapP=prod>0?(scrap/prod*100):0;
     const key=`scrap-${i}-${HOY}`;
     if(scrapP>3){
-      showAlerta(key,`?? ${m.nombre}: Scrap ${scrapP.toFixed(1)}% exceeds limit (3%)`, "#f1c40f");
+      showAlerta(key,`‚ö†Ô∏è ${m.nombre}: Scrap ${scrapP.toFixed(1)}% exceeds limit (3%)`, "#f1c40f");
       // Enviar correo de alerta
       if(!alertasVistas.has(key+"-email")){
         alertasVistas.add(key+"-email");
@@ -1547,7 +1547,7 @@ function chkAlertas(){
     }
   });
 
-  // Alerta 2: Corte no reportado (5 min despuÈs de que termina)
+  // Alerta 2: Corte no reportado (5 min despu√©s de que termina)
   const now=new Date();
   const hh=now.getHours(), mm=now.getMinutes();
   const nowMin=hh*60+mm;
@@ -1562,12 +1562,12 @@ function chkAlertas(){
   cutDeadlines.forEach(c=>{
     const deadlineMin=c.endH*60+c.endM+5;
     if(nowMin<deadlineMin) return;
-    if(nowMin>deadlineMin+60) return; // Solo alerta 1 hora despuÈs
+    if(nowMin>deadlineMin+60) return; // Solo alerta 1 hora despu√©s
 
     MAQUINAS.forEach((m,i)=>{
       const key=`missing-${i}-${c.id}-${HOY}`;
       const hasReg=hoyData.find(r=>parseInt(r.maqIdx)===i&&r.corte===c.id);
-      if(!hasReg) showAlerta(key,`?? ${m.nombre}: No record for ${c.label}`, "#e74c3c");
+      if(!hasReg) showAlerta(key,`üî¥ ${m.nombre}: No record for ${c.label}`, "#e74c3c");
     });
   });
 }
@@ -1581,10 +1581,10 @@ function rMaq(){
   const turno=document.getElementById("tmaq").value;
   const data=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
-  document.getElementById("mt-p").textContent=m.nombre+" ∑ ProducciÛn ("+rL+")";
-  document.getElementById("mt-c").textContent=m.nombre+" ∑ Cumpl% ("+rL+")";
-  document.getElementById("mt-s").textContent=m.nombre+" ∑ Scrap% ("+rL+")";
-  document.getElementById("mt-d").textContent=m.nombre+" ∑ Def% ("+rL+")";
+  document.getElementById("mt-p").textContent=m.nombre+" ¬∑ Producci√≥n ("+rL+")";
+  document.getElementById("mt-c").textContent=m.nombre+" ¬∑ Cumpl% ("+rL+")";
+  document.getElementById("mt-s").textContent=m.nombre+" ¬∑ Scrap% ("+rL+")";
+  document.getElementById("mt-d").textContent=m.nombre+" ¬∑ Def% ("+rL+")";
   if(!data.length){["mP","mC","mS","mD"].forEach(id=>rebuildChart(id,emptyChart()));return;}
   const grp=grpBy(data,ranges.maq),lbl=grp.map(g=>g.label);
   makeLine("mP",lbl,grp.map(g=>g.items.reduce((s,r)=>s+r.prod,0)),"Prod","#4f8ef7");
@@ -1596,8 +1596,8 @@ function rMaq(){
 function rTend(){
   const turno=document.getElementById("ttend").value,data=filt(REGISTROS,null,turno);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
-  ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`ProducciÛn total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
-  document.getElementById("tt-comp").textContent=`Comparativo por m·quina (${rL})`;
+  ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`Producci√≥n total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
+  document.getElementById("tt-comp").textContent=`Comparativo por m√°quina (${rL})`;
   if(!data.length)return;
   const grp=grpBy(data,ranges.tend),lbl=grp.map(g=>g.label);
   const agg=grp.map(g=>{const items=g.items;const dias=[...new Set(items.map(r=>r.fecha))].length;const tP=items.reduce((s,r)=>s+r.prod,0);const tT=MAQUINAS.reduce((s,m)=>s+m.target,0)*dias;const vS=items.filter(r=>r.prod>0);return{prod:tP,cumpl:tT>0?(tP/tT*100):0,scrap:vS.length?vS.reduce((s,r)=>s+r.scrapPct,0)/vS.length:0,def:vS.length?vS.reduce((s,r)=>s+r.defPct,0)/vS.length:0};});
@@ -1621,14 +1621,14 @@ function rRegs(){
   data.forEach(r=>{
     const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno]||"#7f8c9a";
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td>${r.fecha}</td><td style="color:${tCol};font-weight:700">${r.turno}</td><td>${r.operador||"ó"}</td>
-    <td style="font-size:.8rem;color:var(--muted)">${r.parte||"ó"}</td>
+    tr.innerHTML=`<td>${r.fecha}</td><td style="color:${tCol};font-weight:700">${r.turno}</td><td>${r.operador||"‚Äî"}</td>
+    <td style="font-size:.8rem;color:var(--muted)">${r.parte||"‚Äî"}</td>
     <td><span class="tbadge ${r.maqTipo}">${r.maqNombre}</span></td>
     <td>${r.prod.toLocaleString()}</td><td>${r.def.toLocaleString()}</td><td>${r.scrap.toLocaleString()}</td>
     <td class="${sem(r.pct)}">${r.pct}%</td>
-    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.causaParo?(r.causaParo+(r.minParo?" ("+r.minParo+"m)":"")):"ó"}</td>
-    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.notas||"ó"}</td>
-    <td><button class="dbtn ddl" onclick="delReg('${r.id}')">?</button></td>`;
+    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.causaParo?(r.causaParo+(r.minParo?" ("+r.minParo+"m)":"")):"‚Äî"}</td>
+    <td style="max-width:85px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:.8rem;color:var(--muted)">${r.notas||"‚Äî"}</td>
+    <td><button class="dbtn ddl" onclick="delReg('${r.id}')">‚úï</button></td>`;
     tb.appendChild(tr);
   });
 }
@@ -1651,7 +1651,7 @@ let tvMode=false;
 window.toggleTV=()=>{
   tvMode=!tvMode;
   document.body.classList.toggle("tv-mode",tvMode);
-  document.getElementById("btn-tv").textContent=tvMode?"? Salir TV":"?? TV";
+  document.getElementById("btn-tv").textContent=tvMode?"‚ùå Salir TV":"üì∫ TV";
   document.getElementById("btn-tv").style.background=tvMode?"#3d1a1a":tvMode?"#1a1d27":"#1a1d27";
   if(tvMode){
     document.getElementById("mb-op").style.display="none";
@@ -1667,7 +1667,7 @@ window.toggleTV=()=>{
   }
 };
 
-/* -- EMAILS Y REPORTES -- */
+/* ‚ïê‚ïê EMAILS Y REPORTES ‚ïê‚ïê */
 const EJS_SVC="service_2qhb0mc", EJS_TPL="template_ai4fogx", EJS_KEY="lusY-RyqKX9PNb4Wx";
 const EMAILS_COL=()=>collection(db,"emails_reporte");
 let emailsReporte=[];
@@ -1686,8 +1686,8 @@ function renderEmailsRep(){
   if(!emailsReporte.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem">Sin correos agregados.</div>';return;}
   el.innerHTML=emailsReporte.map(e=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--card2);border-radius:7px;margin-bottom:5px">
-      <span style="font-size:.82rem">?? ${e.email}</span>
-      <button class="abtn abtn-del" onclick="delEmailRep('${e.id}')">?</button>
+      <span style="font-size:.82rem">üìß ${e.email}</span>
+      <button class="abtn abtn-del" onclick="delEmailRep('${e.id}')">‚úï</button>
     </div>`).join("");
 }
 async function loadCausasAdmin(){
@@ -1700,8 +1700,8 @@ function renderCausasAdmin(){
   if(!CAUSAS_PARO.length){el.innerHTML='<div style="color:var(--muted);font-size:.75rem">No causes configured.</div>';return;}
   el.innerHTML=CAUSAS_PARO.map((c,i)=>`
     <div style="display:flex;justify-content:space-between;align-items:center;padding:6px 10px;background:var(--card2);border-radius:7px;margin-bottom:5px">
-      <span style="font-size:.82rem">? ${c}</span>
-      <button class="abtn abtn-del" onclick="delCausa(${i})">?</button>
+      <span style="font-size:.82rem">‚è± ${c}</span>
+      <button class="abtn abtn-del" onclick="delCausa(${i})">‚úï</button>
     </div>`).join("");
 }
 window.addCausa=async()=>{
@@ -1712,7 +1712,7 @@ window.addCausa=async()=>{
   CAUSAS_PARO.push(causa);
   await saveCausas();
   inp.value="";
-  showToast("? Cause added","var(--green)");
+  showToast("‚úÖ Cause added","var(--green)");
   renderCausasAdmin();
   buildCausasSelect();
 };
@@ -1734,11 +1734,11 @@ async function saveCausas(){
 window.addEmailRep=async()=>{
   const inp=document.getElementById("new-email-rep");
   const email=inp.value.trim().toLowerCase();
-  if(!email||!email.includes("@")){showToast("Correo inv·lido","var(--red)");return;}
-  if(emailsReporte.find(e=>e.email===email)){showToast("Ya est· en la lista","var(--yellow)");return;}
+  if(!email||!email.includes("@")){showToast("Correo inv√°lido","var(--red)");return;}
+  if(emailsReporte.find(e=>e.email===email)){showToast("Ya est√° en la lista","var(--yellow)");return;}
   await addDoc(EMAILS_COL(),{email,createdAt:serverTimestamp()});
   inp.value="";
-  showToast("? Correo agregado","var(--green)");
+  showToast("‚úÖ Correo agregado","var(--green)");
   loadEmailsRep();
 };
 window.delEmailRep=async(id)=>{
@@ -1755,20 +1755,20 @@ function buildReporte(tipo){
   if(tipo==="diario"){
     const fechaHoy=hoy.toISOString().slice(0,10);
     registros=REGISTROS.filter(r=>r.fecha===fechaHoy);
-    titulo=`?? Reporte Diario de ProducciÛn ó ${fechaStr}`;
+    titulo=`üìä Reporte Diario de Producci√≥n ‚Äî ${fechaStr}`;
   } else if(tipo==="semanal"){
     const lunes=new Date(hoy);
     lunes.setDate(hoy.getDate()-hoy.getDay()+1);
     const lunesStr=lunes.toISOString().slice(0,10);
     registros=REGISTROS.filter(r=>r.fecha>=lunesStr);
-    titulo=`?? Reporte Semanal de ProducciÛn ó Semana del ${lunes.toLocaleDateString("es-MX")}`;
+    titulo=`üìÖ Reporte Semanal de Producci√≥n ‚Äî Semana del ${lunes.toLocaleDateString("es-MX")}`;
   } else if(tipo==="mensual"){
     const mes=hoy.toISOString().slice(0,7);
     registros=REGISTROS.filter(r=>r.fecha.startsWith(mes));
-    titulo=`?? Reporte Mensual de ProducciÛn ó ${hoy.toLocaleDateString("es-MX",{month:"long",year:"numeric"})}`;
+    titulo=`üìÜ Reporte Mensual de Producci√≥n ‚Äî ${hoy.toLocaleDateString("es-MX",{month:"long",year:"numeric"})}`;
   }
 
-  if(!registros.length) return {titulo, cuerpo:"Sin registros para este perÌodo."};
+  if(!registros.length) return {titulo, cuerpo:"Sin registros para este per√≠odo."};
 
   const tP=registros.reduce((s,r)=>s+r.prod,0);
   const tD=registros.reduce((s,r)=>s+r.def,0);
@@ -1785,31 +1785,31 @@ function buildReporte(tipo){
     const prod=regs.reduce((s,r)=>s+r.prod,0);
     const tgt=regs.reduce((s,r)=>s+r.target,0);
     const pct=tgt>0?(prod/tgt*100).toFixed(1):0;
-    detalle+=`  ï ${m.nombre} (${m.tipo}): ${prod.toLocaleString()} pzas ó ${pct}% cumplimiento\n`;
+    detalle+=`  ‚Ä¢ ${m.nombre} (${m.tipo}): ${prod.toLocaleString()} pzas ‚Äî ${pct}% cumplimiento\n`;
   });
 
-  const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\nï ProducciÛn total: ${tP.toLocaleString()} pzas\nï Cumplimiento: ${cumpl}%\nï Scrap: ${scrapP}%\nï Defectos: ${defP}%\nï Total registros: ${registros.length}\n\nDETALLE POR M¡QUINA\n${detalle}\n${"=".repeat(50)}\nManufacturing MES ∑ Production System ó Eunsung Printing Mex`;
+  const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\n‚Ä¢ Producci√≥n total: ${tP.toLocaleString()} pzas\n‚Ä¢ Cumplimiento: ${cumpl}%\n‚Ä¢ Scrap: ${scrapP}%\n‚Ä¢ Defectos: ${defP}%\n‚Ä¢ Total registros: ${registros.length}\n\nDETALLE POR M√ÅQUINA\n${detalle}\n${"=".repeat(50)}\nManufacturing MES ¬∑ Production System ‚Äî Eunsung Printing Mex`;
   return {titulo, cuerpo};
 }
 
 window.enviarReporteAhora=async(tipo)=>{
   await loadEmailsRep();
   if(!emailsReporte.length){showToast("Agrega correos primero","var(--red)");return;}
-  showToast("? Enviando reporte...","var(--accent)");
+  showToast("‚è≥ Enviando reporte...","var(--accent)");
   const {titulo,cuerpo}=buildReporte(tipo);
   emailjs.init(EJS_KEY);
   let ok=0;
   for(const e of emailsReporte){
     try{
-      await emailjs.send(EJS_SVC,EJS_TPL,{subject:titulo,message:cuerpo,to_email:e.email,name:"MES ProducciÛn"});
+      await emailjs.send(EJS_SVC,EJS_TPL,{subject:titulo,message:cuerpo,to_email:e.email,name:"MES Producci√≥n"});
       ok++;
       await new Promise(r=>setTimeout(r,1000));
     }catch(err){console.error(err);}
   }
-  showToast(`? Reporte enviado a ${ok} correo(s)`,"var(--green)");
+  showToast(`‚úÖ Reporte enviado a ${ok} correo(s)`,"var(--green)");
 };
 
-// Revisar cada minuto si es hora de enviar reporte autom·tico
+// Revisar cada minuto si es hora de enviar reporte autom√°tico
 function chkReporteAuto(){
   const ahora=new Date();
   const h=ahora.getHours(), m=ahora.getMinutes();
@@ -1817,7 +1817,7 @@ function chkReporteAuto(){
   const fecha=ahora.toISOString().slice(0,10);
   const keyD=`rep-diario-${fecha}`, keyS=`rep-semanal-${fecha}`, keyM=`rep-mensual-${fecha}`;
   if(h===16&&m===30){
-    // Diario todos los dÌas
+    // Diario todos los d√≠as
     if(!sessionStorage.getItem(keyD)){
       sessionStorage.setItem(keyD,"1");
       if(emailsReporte.length) enviarReporteAhora("diario");
@@ -1827,7 +1827,7 @@ function chkReporteAuto(){
       sessionStorage.setItem(keyS,"1");
       if(emailsReporte.length) enviarReporteAhora("semanal");
     }
-    // Mensual primer dÌa del mes
+    // Mensual primer d√≠a del mes
     if(ahora.getDate()===1&&!sessionStorage.getItem(keyM)){
       sessionStorage.setItem(keyM,"1");
       if(emailsReporte.length) enviarReporteAhora("mensual");
@@ -1958,7 +1958,7 @@ select,input[type=date]{background:var(--card2);border:1px solid var(--border);c
 .rbs{display:flex;gap:3px;flex-wrap:wrap;}
 .empty{color:var(--muted);text-align:center;padding:16px;font-size:.85rem;}
 .green{color:var(--green);}.yellow{color:var(--yellow);}.red{color:var(--red);}.blue{color:var(--accent);}
-#alp{position:fixed;bottom:16px;right:12px;z-index:9999;display:flex;flex-direction:column;gap:4px;max-width:250px;}
+#alp{position:fixed;top:54px;right:10px;z-index:9999;display:flex;flex-direction:column;gap:4px;max-width:250px;}
 .alerta{background:#1a1a1a;border:1px solid var(--red);border-radius:7px;padding:8px 12px;font-size:.85rem;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
 .ac{cursor:pointer;color:var(--red);}
 .toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:9px;font-size:.85rem;font-weight:600;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
@@ -1972,7 +1972,7 @@ select,input[type=date]{background:var(--card2);border:1px solid var(--border);c
 .model-stack{display:flex;flex-direction:column;gap:2px;align-items:center;}
 .model-divider{width:80%;border-top:1px dashed var(--border);margin:1px auto;}
 canvas{width:100%!important;}
-/* -- MODO TV -- */
+/* ‚ïê‚ïê MODO TV ‚ïê‚ïê */
 body.tv-mode .topbar{padding:6px 16px;}
 body.tv-mode .modebar{display:none;}
 body.tv-mode .kgrid{grid-template-columns:repeat(4,1fr);gap:16px;}
@@ -1994,97 +1994,97 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 <div id="login-view">
   <div class="login-box">
     <div class="login-logo"><img src="logo.jpg" style="width:120px;border-radius:8px;"></div>
-    <div class="login-title">Manufacturing MES ∑ Eunsung Printing Mex</div>
-    <div class="login-sub">Acceso con tu correo y contraseÒa</div>
-    <div class="lfield"><label>Correo electrÛnico</label><input type="email" id="li-user" placeholder="operador@tuempresa.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div class="lfield"><label>ContraseÒa</label><input type="password" id="li-pass" placeholder="ïïïïïï" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="lbtn" onclick="doLogin()">Iniciar sesiÛn</button>
+    <div class="login-title">Manufacturing MES ¬∑ Eunsung Printing Mex</div>
+    <div class="login-sub">Acceso con tu correo y contrase√±a</div>
+    <div class="lfield"><label>Correo electr√≥nico</label><input type="email" id="li-user" placeholder="operador@tuempresa.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="lfield"><label>Contrase√±a</label><input type="password" id="li-pass" placeholder="‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="lbtn" onclick="doLogin()">Iniciar sesi√≥n</button>
     <div style="text-align:center;margin-top:10px">
-      <span onclick="doReset()" style="font-size:.75rem;color:var(--accent);cursor:pointer;text-decoration:underline;">øOlvidaste tu contraseÒa?</span>
+      <span onclick="doReset()" style="font-size:.75rem;color:var(--accent);cursor:pointer;text-decoration:underline;">¬øOlvidaste tu contrase√±a?</span>
     </div>
     <div class="lerr" id="lerr"></div>
   </div>
 </div>
 <div id="app">
   <div class="topbar">
-    <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES ∑ Production System</h1>
-    <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><button class="logout-btn" onclick="logout()">? Salir</button></div>
+    <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES ¬∑ Production System</h1>
+    <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><button class="logout-btn" onclick="logout()">‚èè Salir</button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">?? Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">??? Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">?? Admin</button></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">üì± Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">üñ•Ô∏è Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">‚öôÔ∏è Admin</button></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
   <div class="view active" id="view-op"><div class="op">
     <div class="steps"><div class="step active" id="s0"></div><div class="step" id="s1"></div><div class="step" id="s2"></div><div class="step" id="s3"></div></div>
     <div class="screen active" id="scr0">
-      <div class="oc"><div class="oct">?? InformaciÛn del Registro</div>
+      <div class="oc"><div class="oct">üìÖ Informaci√≥n del Registro</div>
         <div class="field"><label>Fecha</label><input type="date" id="ip-fecha"></div>
-        <div class="field"><label>?? Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
-        <div class="field"><label>?? N∞ Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
-        <div class="field"><label>?? Modelo</label>
+        <div class="field"><label>üë∑ Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
+        <div class="field"><label>üî¢ N¬∞ Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
+        <div class="field"><label>üì± Modelo</label>
           <input type="text" id="ip-modelo" placeholder="Ej. SM2F976UZKAATT" autocomplete="off" list="modelos-dl" oninput="this.value=this.value.toUpperCase()">
           <datalist id="modelos-dl"></datalist>
         </div>
-        <div class="field"><label>?? N∞ Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
+        <div class="field"><label>üî© N¬∞ Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
       </div>
-      <div class="oc"><div class="oct">? Turno</div>
+      <div class="oc"><div class="oct">‚è∞ Turno</div>
         <div class="tgrid">
-          <div class="tc" id="tc-A" onclick="selT('A')"><div class="ticon">??</div><div class="tlbl">Shift A</div><div class="tsub">6:54 AMñ4:30 PM</div></div>
-          <div class="tc" id="tc-B" onclick="selT('B')"><div class="ticon">?</div><div class="tlbl">Overtime</div><div class="tsub">4:45ñ6:30 PM</div></div>
-          <div class="tc" id="tc-C" onclick="selT('C')"><div class="ticon">??</div><div class="tlbl">Saturday OT</div><div class="tsub">7:00 AMñ1:00 PM</div></div>
+          <div class="tc" id="tc-A" onclick="selT('A')"><div class="ticon">üåÖ</div><div class="tlbl">Shift A</div><div class="tsub">6:54 AM‚Äì4:30 PM</div></div>
+          <div class="tc" id="tc-B" onclick="selT('B')"><div class="ticon">‚è∞</div><div class="tlbl">Overtime</div><div class="tsub">4:45‚Äì6:30 PM</div></div>
+          <div class="tc" id="tc-C" onclick="selT('C')"><div class="ticon">üìÖ</div><div class="tlbl">Saturday OT</div><div class="tsub">7:00 AM‚Äì1:00 PM</div></div>
         </div>
-        <div class="oct" style="margin-top:12px">? Production Cut</div>
+        <div class="oct" style="margin-top:12px">‚è± Production Cut</div>
         <div class="tgrid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">??</div><div class="tlbl">Break</div><div class="tsub">7:00ñ8:45 AM</div></div>
-          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">??</div><div class="tlbl">Lunch</div><div class="tsub">9:00ñ12:30 PM</div></div>
-          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">??</div><div class="tlbl">Home</div><div class="tsub">1:00ñ4:30 PM</div></div>
-          <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">?</div><div class="tlbl">OT</div><div class="tsub">4:45ñ6:25 PM</div></div>
+          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">üåÖ</div><div class="tlbl">Break</div><div class="tsub">7:00‚Äì8:45 AM</div></div>
+          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">‚òÄÔ∏è</div><div class="tlbl">Lunch</div><div class="tsub">9:00‚Äì12:30 PM</div></div>
+          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">üåá</div><div class="tlbl">Home</div><div class="tsub">1:00‚Äì4:30 PM</div></div>
+          <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">‚è∞</div><div class="tlbl">OT</div><div class="tsub">4:45‚Äì6:25 PM</div></div>
         </div>
       </div>
     </div>
-    <div class="screen" id="scr1"><div class="oc"><div class="oct">?? Selecciona tu M·quina</div><div class="mgrid" id="mgrid"></div></div></div>
+    <div class="screen" id="scr1"><div class="oc"><div class="oct">üîß Selecciona tu M√°quina</div><div class="mgrid" id="mgrid"></div></div></div>
     <div class="screen" id="scr2">
-      <div class="oc"><div class="oct" id="mhdr">Datos de ProducciÛn</div>
-        <div class="krow"><div class="km"><div class="v blue" id="ktgt">ñ</div><div class="l">Target</div></div><div class="km"><div class="v" id="kpct">ñ</div><div class="l">Cumpl.</div></div><div class="km"><div class="v" id="kscp">ñ</div><div class="l">Scrap%</div></div></div>
+      <div class="oc"><div class="oct" id="mhdr">Datos de Producci√≥n</div>
+        <div class="krow"><div class="km"><div class="v blue" id="ktgt">‚Äì</div><div class="l">Target</div></div><div class="km"><div class="v" id="kpct">‚Äì</div><div class="l">Cumpl.</div></div><div class="km"><div class="v" id="kscp">‚Äì</div><div class="l">Scrap%</div></div></div>
         <div class="pw"><div class="pb" id="pbar" style="width:0%;background:var(--accent)"></div></div>
       </div>
       <div class="oc">
-        <div class="nf"><label>? ProducciÛn</label><div class="nw"><button class="nb" onclick="adj('p',-100)">-</button><input type="number" id="ip-prod" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('p',100)">+</button></div></div>
-        <div class="nf"><label>?? Defectos</label><div class="nw"><button class="nb" onclick="adj('d',-10)">-</button><input type="number" id="ip-def" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('d',10)">+</button></div></div>
-        <div class="nf"><label>?? Scrap</label><div class="nw"><button class="nb" onclick="adj('s',-10)">-</button><input type="number" id="ip-scr" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('s',10)">+</button></div></div>
+        <div class="nf"><label>‚úÖ Producci√≥n</label><div class="nw"><button class="nb" onclick="adj('p',-100)">‚àí</button><input type="number" id="ip-prod" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('p',100)">+</button></div></div>
+        <div class="nf"><label>‚ö†Ô∏è Defectos</label><div class="nw"><button class="nb" onclick="adj('d',-10)">‚àí</button><input type="number" id="ip-def" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('d',10)">+</button></div></div>
+        <div class="nf"><label>üóë Scrap</label><div class="nw"><button class="nb" onclick="adj('s',-10)">‚àí</button><input type="number" id="ip-scr" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('s',10)">+</button></div></div>
       </div>
       <div class="oc">
-        <div class="oct">? Downtime</div>
+        <div class="oct">‚è± Downtime</div>
         <div class="field" style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">
           <select id="ip-causa" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:.85rem;outline:none">
             <option value="">-- No downtime --</option>
           </select>
           <input type="number" id="ip-paro" placeholder="Min" min="0" max="999" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:.85rem;outline:none;text-align:center">
         </div>
-        <div class="oct" style="margin-top:4px">?? Notes</div>
+        <div class="oct" style="margin-top:4px">üìù Notes</div>
         <div class="field"><textarea id="ip-notas" placeholder="Additional notes..."></textarea></div>
       </div>
     </div>
     <div class="screen" id="scr3">
-      <div class="oc"><div class="oct">?? Confirma tu registro</div><div id="res-body"></div></div>
-      <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">?? Notas</div><div id="res-notas" style="font-size:.85rem;color:var(--muted)"></div></div>
+      <div class="oc"><div class="oct">üìã Confirma tu registro</div><div id="res-body"></div></div>
+      <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">üìù Notas</div><div id="res-notas" style="font-size:.85rem;color:var(--muted)"></div></div>
     </div>
     <div class="screen" id="scr4">
-      <div class="si">?</div><div class="st">°Enviado al Dashboard!</div>
+      <div class="si">‚úÖ</div><div class="st">¬°Enviado al Dashboard!</div>
       <div class="ss" id="suc-sub"></div><br>
       <div class="oc">
-        <button class="btn bnext" style="width:100%;margin-bottom:7px;padding:12px" onclick="nuevaCap()">? Nueva captura</button>
-        <button class="btn bprev" style="width:100%;padding:12px" onclick="verMis()">?? Ver mis registros hoy</button>
+        <button class="btn bnext" style="width:100%;margin-bottom:7px;padding:12px" onclick="nuevaCap()">‚ûï Nueva captura</button>
+        <button class="btn bprev" style="width:100%;padding:12px" onclick="verMis()">üìã Ver mis registros hoy</button>
       </div>
       <div id="mis-reg"></div>
     </div>
-    <div class="bottom" id="botnav"><button class="btn bprev" id="btnprev" onclick="prev()">? Atr·s</button><button class="btn bnext" id="btnnext" onclick="next()">Siguiente ?</button></div>
+    <div class="bottom" id="botnav"><button class="btn bprev" id="btnprev" onclick="prev()">‚Üê Atr√°s</button><button class="btn bnext" id="btnnext" onclick="next()">Siguiente ‚Üí</button></div>
   </div></div>
 
   <!-- DASHBOARD -->
   <div class="view" id="view-dash"><div class="dw">
-    <div class="dh"><h2>?? Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div>EN VIVO</div><span class="bsm" id="lupd">ñ</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">?? TV</button></div></div>
-    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">?? Hoy</div><div class="dtab" onclick="showDT('feed')">?? Feed</div><div class="dtab" onclick="showDT('maq')">?? M·quinas</div><div class="dtab" onclick="showDT('tend')">?? Tendencias</div><div class="dtab" onclick="showDT('regs')">?? Registros</div><div class="dtab" onclick="showDT('plan')" style="color:#FFBA00">?? Plan</div></div>
+    <div class="dh"><h2>üè≠ Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div>EN VIVO</div><span class="bsm" id="lupd">‚Äì</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">üì∫ TV</button></div></div>
+    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">üìä Hoy</div><div class="dtab" onclick="showDT('feed')">üì° Feed</div><div class="dtab" onclick="showDT('maq')">üîß M√°quinas</div><div class="dtab" onclick="showDT('tend')">üìà Tendencias</div><div class="dtab" onclick="showDT('regs')">üóÇ Registros</div><div class="dtab" onclick="showDT('plan')" style="color:#FFBA00">üìã Plan</div></div>
 
     <div id="dtab-hoy" class="dtc active">
       <div class="ctrl">
@@ -2093,26 +2093,26 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <option value="todos">Todos los turnos</option>
           <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
-          <option value="C">S·bado TE</option>
+          <option value="C">S√°bado TE</option>
         </select>
-        <button class="dbtn dex" onclick="exportExcel()">? Excel</button>
-        <button class="dbtn dcs" onclick="exportCSV()">? CSV</button>
-        <button class="dbtn drf" onclick="dRefresh()">?? Actualizar</button>
+        <button class="dbtn dex" onclick="exportExcel()">‚¨á Excel</button>
+        <button class="dbtn dcs" onclick="exportCSV()">‚¨á CSV</button>
+        <button class="dbtn drf" onclick="dRefresh()">üîÑ Actualizar</button>
       </div>
       <div class="kgrid">
-        <div class="kpi"><div class="lbl">Production</div><div class="val blue" id="k-p">ñ</div><div class="sub">units</div></div>
-        <div class="kpi"><div class="lbl">Compliance</div><div class="val blue" id="k-c">ñ</div><div class="sub" id="k-cs">ñ</div></div>
-        <div class="kpi"><div class="lbl">Scrap %</div><div class="val blue" id="k-s">ñ</div><div class="sub">vs prod</div></div>
-        <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">ñ</div><div class="sub">vs prod</div></div>
-        <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">ñ</div><div class="sub">minutes</div></div>
+        <div class="kpi"><div class="lbl">Production</div><div class="val blue" id="k-p">‚Äì</div><div class="sub">units</div></div>
+        <div class="kpi"><div class="lbl">Compliance</div><div class="val blue" id="k-c">‚Äì</div><div class="sub" id="k-cs">‚Äì</div></div>
+        <div class="kpi"><div class="lbl">Scrap %</div><div class="val blue" id="k-s">‚Äì</div><div class="sub">vs prod</div></div>
+        <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">‚Äì</div><div class="sub">vs prod</div></div>
+        <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">‚Äì</div><div class="sub">minutes</div></div>
       </div>
-      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00ñ8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00ñ12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00ñ4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45ñ6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00‚Äì8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00‚Äì12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00‚Äì4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45‚Äì6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
         <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3>Production summary ∑ model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
-      <div class="dc"><h3>?? Material listo para SHIPQR ∑ P4 ? P3</h3>
+      <div class="dc"><h3>Production summary ¬∑ model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><h3>üì¶ Material listo para SHIPQR ¬∑ P4 ‚Üí P3</h3>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
           <div>
             <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Desde</label>
@@ -2123,10 +2123,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
             <input type="date" id="shipqr-hasta" style="font-size:13px;padding:6px 10px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none">
           </div>
           <button onclick="renderShipqr()" style="padding:7px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:6px;cursor:pointer">
-            ?? Aplicar
+            üîç Aplicar
           </button>
         </div>
-        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">ProducciÛn</th><th style="text-align:center;padding:10px 6px">AcciÛn</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
+        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">Producci√≥n</th><th style="text-align:center;padding:10px 6px">Acci√≥n</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
       </div>
     </div>
 
@@ -2137,12 +2137,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <option value="todos">Todos los turnos</option>
           <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
-          <option value="C">S·bado TE</option>
+          <option value="C">S√°bado TE</option>
         </select>
-        <button class="dbtn drf" onclick="dRefresh()">??</button>
+        <button class="dbtn drf" onclick="dRefresh()">üîÑ</button>
       </div>
-      <div class="dc"><h3>?? Capturas</h3><div id="feed-body"><div class="empty">Sin capturas.</div></div></div>
-      <div class="dc"><h3>?? Operadores activos</h3><div id="ops-body"></div></div>
+      <div class="dc"><h3>üì° Capturas</h3><div id="feed-body"><div class="empty">Sin capturas.</div></div></div>
+      <div class="dc"><h3>üë∑ Operadores activos</h3><div id="ops-body"></div></div>
     </div>
 
     <div id="dtab-maq" class="dtc">
@@ -2152,11 +2152,11 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <option value="todos">Todos los turnos</option>
           <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
-          <option value="C">S·bado TE</option>
+          <option value="C">S√°bado TE</option>
         </select>
         <div class="rbs" id="rb-maq"><button class="rb active" onclick="setR('maq','diario',this)">Diario</button><button class="rb" onclick="setR('maq','semanal',this)">Semanal</button><button class="rb" onclick="setR('maq','mensual',this)">Mensual</button><button class="rb" onclick="setR('maq','trimestral',this)">Trimestral</button><button class="rb" onclick="setR('maq','anual',this)">Anual</button></div>
       </div></div>
-      <div class="g2"><div class="dc"><h3 id="mt-p">ProducciÛn</h3><canvas id="mP" height="185"></canvas></div><div class="dc"><h3 id="mt-c">Cumpl %</h3><canvas id="mC" height="185"></canvas></div><div class="dc"><h3 id="mt-s">Scrap %</h3><canvas id="mS" height="185"></canvas></div><div class="dc"><h3 id="mt-d">Def %</h3><canvas id="mD" height="185"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3 id="mt-p">Producci√≥n</h3><canvas id="mP" height="185"></canvas></div><div class="dc"><h3 id="mt-c">Cumpl %</h3><canvas id="mC" height="185"></canvas></div><div class="dc"><h3 id="mt-s">Scrap %</h3><canvas id="mS" height="185"></canvas></div><div class="dc"><h3 id="mt-d">Def %</h3><canvas id="mD" height="185"></canvas></div></div>
     </div>
 
     <div id="dtab-tend" class="dtc">
@@ -2165,17 +2165,17 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <option value="todos">Todos los turnos</option>
           <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
-          <option value="C">S·bado TE</option>
+          <option value="C">S√°bado TE</option>
         </select>
         <div class="rbs" id="rb-tend"><button class="rb active" onclick="setR('tend','diario',this)">Diario</button><button class="rb" onclick="setR('tend','semanal',this)">Semanal</button><button class="rb" onclick="setR('tend','mensual',this)">Mensual</button><button class="rb" onclick="setR('tend','trimestral',this)">Trimestral</button><button class="rb" onclick="setR('tend','anual',this)">Anual</button></div>
       </div></div>
-      <div class="g2"><div class="dc"><h3 id="tt-p">ProducciÛn</h3><canvas id="tP" height="185"></canvas></div><div class="dc"><h3 id="tt-c">Cumpl %</h3><canvas id="tC" height="185"></canvas></div><div class="dc"><h3 id="tt-s">Scrap %</h3><canvas id="tS" height="185"></canvas></div><div class="dc"><h3 id="tt-d">Def %</h3><canvas id="tD" height="185"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3 id="tt-p">Producci√≥n</h3><canvas id="tP" height="185"></canvas></div><div class="dc"><h3 id="tt-c">Cumpl %</h3><canvas id="tC" height="185"></canvas></div><div class="dc"><h3 id="tt-s">Scrap %</h3><canvas id="tS" height="185"></canvas></div><div class="dc"><h3 id="tt-d">Def %</h3><canvas id="tD" height="185"></canvas></div></div>
       <div class="dc"><h3 id="tt-comp">Comparativo</h3><canvas id="tComp" height="130"></canvas></div>
     </div>
 
     <div id="dtab-plan" class="dtc">
   <div id="mesPlanEmpty" style="text-align:center;padding:3rem;color:var(--muted)">
-    <div style="font-size:36px;margin-bottom:.5rem">??</div>
+    <div style="font-size:36px;margin-bottom:.5rem">üìã</div>
     <div style="font-weight:600;margin-bottom:.25rem">Sin plan activo</div>
     <div style="font-size:12px">Publica el plan desde el BOM Simulator</div>
   </div>
@@ -2185,7 +2185,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div style="font-weight:700;font-size:15px" id="mesPlanTitulo">Plan activo</div>
         <div style="font-size:12px;color:var(--muted)" id="mesPlanFecha"></div>
       </div>
-      <button onclick="loadMesPlan()" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer">?? Actualizar</button>
+      <button onclick="loadMesPlan()" style="font-size:12px;padding:4px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--fg);cursor:pointer">üîÑ Actualizar</button>
     </div>
     <div id="mesPlanLineas"></div>
   </div>
@@ -2197,11 +2197,11 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <option value="todos">Todos los turnos</option>
           <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
-          <option value="C">S·bado TE</option>
+          <option value="C">S√°bado TE</option>
         </select>
-        <select id="mreg" onchange="rRegs()"><option value="todos">Todas las m·quinas</option></select>
-        <button class="dbtn dex" onclick="exportExcel()">? Excel</button>
-        <button class="dbtn drf" onclick="dRefresh()">??</button>
+        <select id="mreg" onchange="rRegs()"><option value="todos">Todas las m√°quinas</option></select>
+        <button class="dbtn dex" onclick="exportExcel()">‚¨á Excel</button>
+        <button class="dbtn drf" onclick="dRefresh()">üîÑ</button>
       </div>
       <div class="dc"><table><thead><tr><th>Fecha</th><th>T</th><th>Operador</th><th>Parte</th><th>Maq</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Notas</th><th></th></tr></thead><tbody id="tb-reg"></tbody></table></div>
     </div>
@@ -2209,75 +2209,75 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 
   <!-- ADMIN -->
   <div class="view" id="view-admin"><div class="aw">
-    <div class="ahead"><h2>?? AdministraciÛn de Usuarios</h2></div>
+    <div class="ahead"><h2>‚öôÔ∏è Administraci√≥n de Usuarios</h2></div>
     <div class="agrid" id="admin-stats"></div>
-    <div class="acard"><h3>? Agregar nuevo usuario</h3>
+    <div class="acard"><h3>‚ûï Agregar nuevo usuario</h3>
       <div class="form-row">
         <div class="form-field"><label>Correo</label><input type="email" id="nu-user" placeholder="correo@empresa.com"></div>
         <div class="form-field"><label>Nombre completo</label><input type="text" id="nu-nombre" placeholder="Nombre Apellido"></div>
-        <div class="form-field"><label>N∞ Empleado</label><input type="text" id="nu-emp-num" placeholder="00421"></div>
-        <div class="form-field"><label>ContraseÒa (mÌn. 6)</label><input type="password" id="nu-pass" placeholder="ïïïïïï"></div>
+        <div class="form-field"><label>N¬∞ Empleado</label><input type="text" id="nu-emp-num" placeholder="00421"></div>
+        <div class="form-field"><label>Contrase√±a (m√≠n. 6)</label><input type="password" id="nu-pass" placeholder="‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢‚Ä¢"></div>
         <div class="form-field"><label>Rol</label><select id="nu-rol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
       </div>
-      <button class="abtn abtn-add" onclick="addUser()">? Crear usuario</button>
-      <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">?? DespuÈs de crear el perfil aquÌ, ve a <strong>Firebase Console ? Authentication ? Add user</strong> con el mismo correo y contraseÒa.</div>
+      <button class="abtn abtn-add" onclick="addUser()">‚ûï Crear usuario</button>
+      <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">‚ö†Ô∏è Despu√©s de crear el perfil aqu√≠, ve a <strong>Firebase Console ‚Üí Authentication ‚Üí Add user</strong> con el mismo correo y contrase√±a.</div>
     </div>
-    <div class="acard"><h3>?? Usuarios (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
-    <div class="acard"><h3>?? Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>?? Captura</th><th>??? Dashboard</th><th>?? Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>?</td><td>?</td><td>?</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>?</td><td>?</td><td>?</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>?</td><td>?</td><td>?</td></tr></tbody></table></div>
+    <div class="acard"><h3>üë• Usuarios (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
+    <div class="acard"><h3>üîê Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>üì± Captura</th><th>üñ•Ô∏è Dashboard</th><th>‚öôÔ∏è Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>‚úÖ</td><td>‚ùå</td><td>‚ùå</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>‚úÖ</td><td>‚úÖ</td><td>‚ùå</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>‚úÖ</td><td>‚úÖ</td><td>‚úÖ</td></tr></tbody></table></div>
     <div class="acard">
-      <h3>??? Estado de M·quinas</h3>
-      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva m·quinas ó las inactivas se muestran en gris en el dashboard.</div>
+      <h3>üñ•Ô∏è Estado de M√°quinas</h3>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva m√°quinas ‚Äî las inactivas se muestran en gris en el dashboard.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;" id="admin-maquinas-grid"></div>
     </div>
     <div class="acard">
-      <h3>?? Targets por M·quina</h3>
-      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Modifica el target diario ó los cortes se calculan autom·ticamente.</div>
+      <h3>üéØ Targets por M√°quina</h3>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Modifica el target diario ‚Äî los cortes se calculan autom√°ticamente.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;" id="admin-targets-grid"></div>
     </div>
     <div class="acard">
-      <h3>?? Reportes por Email</h3>
-      <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px">Reportes autom·ticos: <strong style="color:var(--green)">Diario 4:30pm ∑ Viernes 4:30pm ∑ 1∞ de mes 4:30pm</strong></div>
+      <h3>üìß Reportes por Email</h3>
+      <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px">Reportes autom√°ticos: <strong style="color:var(--green)">Diario 4:30pm ¬∑ Viernes 4:30pm ¬∑ 1¬∞ de mes 4:30pm</strong></div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <input type="email" id="new-email-rep" placeholder="correo@empresa.com" style="flex:1;min-width:200px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
-        <button class="abtn abtn-add" onclick="addEmailRep()">? Agregar</button>
+        <button class="abtn abtn-add" onclick="addEmailRep()">‚ûï Agregar</button>
       </div>
       <div id="emails-rep-list"></div>
       <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
-        <button class="abtn" style="background:#1a3d2b;color:var(--green);border:1px solid var(--green)" onclick="enviarReporteAhora('diario')">?? Enviar reporte diario ahora</button>
-        <button class="abtn" style="background:#1a1a3d;color:#4f8ef7;border:1px solid #4f8ef7" onclick="enviarReporteAhora('semanal')">?? Enviar reporte semanal ahora</button>
+        <button class="abtn" style="background:#1a3d2b;color:var(--green);border:1px solid var(--green)" onclick="enviarReporteAhora('diario')">üì§ Enviar reporte diario ahora</button>
+        <button class="abtn" style="background:#1a1a3d;color:#4f8ef7;border:1px solid #4f8ef7" onclick="enviarReporteAhora('semanal')">üì§ Enviar reporte semanal ahora</button>
       </div>
     </div>
   <div class="acard">
-    <h3>?? Cierre de Jornada ó Descuento IMS</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS seg˙n el BOM activo.</div>
+    <h3>üîí Cierre de Jornada ‚Äî Descuento IMS</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS seg√∫n el BOM activo.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
         <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
-      <button class="abtn abtn-add" onclick="calcularCierreJornada()">?? Calcular descuentos</button>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.85rem;color:#5BA3FF;font-weight:600" title="Si est· activo, NO toca Firebase. Solo simula el resultado.">
+      <button class="abtn abtn-add" onclick="calcularCierreJornada()">üìä Calcular descuentos</button>
+      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.85rem;color:#5BA3FF;font-weight:600" title="Si est√° activo, NO toca Firebase. Solo simula el resultado.">
         <input type="checkbox" id="cj-modoSim" checked style="cursor:pointer;accent-color:#5BA3FF">
-        ?? Modo simulaciÛn (NO toca Firebase)
+        üß™ Modo simulaci√≥n (NO toca Firebase)
       </label>
     </div>
     <div id="cj-resultado"></div>
   </div>
   <div class="acard">
-    <h3>?? Corregir Registros</h3>
+    <h3>‚úèÔ∏è Corregir Registros</h3>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
         <input type="date" id="edit-reg-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
-      <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">?? Buscar</button>
-      <button class="abtn abtn-add" onclick="abrirNuevoRegistro()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">? Agregar Registro</button>
+      <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">üîç Buscar</button>
+      <button class="abtn abtn-add" onclick="abrirNuevoRegistro()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">‚ûï Agregar Registro</button>
     </div>
     <div id="edit-reg-tabla"></div>
   </div>
   <div class="acard">
-    <h3>?? Corregir modelos en lote</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Reemplaza un modelo incorrecto por uno correcto en TODOS los registros de la base. ⁄til para corregir modelos mal capturados que no cumplen el formato (SM-XXXXXXXXXXX o CRNXXX).</div>
+    <h3>üîÑ Corregir modelos en lote</h3>
+    <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Reemplaza un modelo incorrecto por uno correcto en TODOS los registros de la base. √ötil para corregir modelos mal capturados que no cumplen el formato (SM-XXXXXXXXXXX o CRNXXX).</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo incorrecto (buscar)</div>
@@ -2289,8 +2289,8 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
     </div>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
-      <button onclick="previewCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(255,186,0,.12);color:#FFBA00;border:1px solid rgba(255,186,0,.4);border-radius:8px;cursor:pointer">?? Vista previa</button>
-      <button onclick="ejecutarCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:8px;cursor:pointer">? Ejecutar reemplazo</button>
+      <button onclick="previewCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(255,186,0,.12);color:#FFBA00;border:1px solid rgba(255,186,0,.4);border-radius:8px;cursor:pointer">üîç Vista previa</button>
+      <button onclick="ejecutarCorregirModelo()" style="padding:8px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:8px;cursor:pointer">‚úÖ Ejecutar reemplazo</button>
     </div>
     <div id="cm-resultado" style="font-size:13px"></div>
   </div>
