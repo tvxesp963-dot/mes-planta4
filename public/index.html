@@ -401,7 +401,7 @@ function showAlerta(key, msg, color="#e74c3c"){
   d.style.borderColor=color;
   d.innerHTML=`<span>${msg}</span><span class="ac" onclick="alertasVistas.delete('${key}');this.parentElement.remove()">✕</span>`;
   p.appendChild(d);
-  setTimeout(()=>d&&d.remove(),15000);
+  setTimeout(()=>d&&d.remove(),8000);
 }
 
 function chkAlertas(){
@@ -836,8 +836,8 @@ select,input[type=date]{background:var(--card2);border:1px solid var(--border);c
 .rbs{display:flex;gap:3px;flex-wrap:wrap;}
 .empty{color:var(--muted);text-align:center;padding:16px;font-size:.78rem;}
 .green{color:var(--green);}.yellow{color:var(--yellow);}.red{color:var(--red);}.blue{color:var(--accent);}
-#alp{position:fixed;top:54px;right:10px;z-index:9999;display:flex;flex-direction:column;gap:4px;max-width:250px;}
-.alerta{background:#1a1a1a;border:1px solid var(--red);border-radius:7px;padding:8px 12px;font-size:.72rem;display:flex;justify-content:space-between;align-items:center;gap:8px;box-shadow:0 2px 8px rgba(0,0,0,.4);}
+#alp{position:fixed;bottom:16px;right:12px;z-index:9999;display:flex;flex-direction:column;gap:3px;max-width:220px;}
+.alerta{background:#12151f;border:1px solid;border-radius:6px;padding:5px 9px;font-size:.7rem;display:flex;justify-content:space-between;align-items:center;gap:6px;box-shadow:0 2px 8px rgba(0,0,0,.5);opacity:.85;}
 .ac{cursor:pointer;color:var(--red);}
 .toast{position:fixed;top:110px;left:50%;transform:translateX(-50%);padding:8px 16px;border-radius:9px;font-size:.78rem;font-weight:600;z-index:9999;display:none;white-space:nowrap;max-width:90vw;text-align:center;}
 .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.3);border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;vertical-align:middle;margin-right:5px;}
@@ -881,7 +881,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">MES · Sistema de Producción</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><button class="logout-btn" onclick="logout()">⏏ Salir</button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin')">⚙️ Admin</button></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin')">⚙️ Admin</button><a href="break-management.html" class="mbtn" style="text-decoration:none;color:var(--muted)">⏸ Breaks</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -975,7 +975,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
       <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.65rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Cut 1</span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Cut 2</span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Cut 3</span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>Cut OT</span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
-        <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
+        <div class="dc" id="production-summary"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
     </div>
@@ -1072,5 +1072,22 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     </div>
   </div></div>
 </div>
+
+<script>
+(function(){
+  const params=new URLSearchParams(window.location.search);
+  if(params.get('mode')==='dash'||window.location.hash==='#production-summary'){
+    window.addEventListener('load',function(){
+      setTimeout(function(){
+        if(typeof setMode==='function') setMode('dash');
+        setTimeout(function(){
+          const el=document.getElementById('production-summary');
+          if(el) el.scrollIntoView({behavior:'smooth',block:'start'});
+        },800);
+      },500);
+    });
+  }
+})();
+</script>
 </body>
 </html>
