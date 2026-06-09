@@ -171,6 +171,14 @@ body {
   text-decoration: none; cursor: pointer; transition: all .2s;
 }
 .tb-back:hover { border-color: var(--accent); color: var(--accent); }
+.lang-btn {
+  background: var(--bg3); border: 1px solid var(--border2);
+  border-radius: 6px; padding: 4px 7px; font-size: 1rem;
+  cursor: pointer; transition: all .2s; line-height: 1;
+  opacity: .5;
+}
+.lang-btn:hover { opacity: .85; border-color: var(--border2); transform: scale(1.1); }
+.lang-btn.active { opacity: 1; border-color: var(--accent); background: var(--bg2); box-shadow: 0 0 8px var(--accent)44; }
 
 /* Shift chips */
 .shift-chips { display: flex; gap: 5px; }
@@ -492,6 +500,11 @@ body.flash-mode .sc-cd {
     </div>
     <div class="tb-clock" id="tb-clk">--:--:--</div>
     <div class="user-chip" id="user-chip">---</div>
+    <div style="display:flex;gap:4px;align-items:center">
+      <button class="lang-btn active" id="lang-mx" onclick="setLang('es')" title="Español">🇲🇽</button>
+      <button class="lang-btn" id="lang-us" onclick="setLang('en')" title="English">🇺🇸</button>
+      <button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어">🇰🇷</button>
+    </div>
     <a href="index.html" class="tb-back">← MES</a>
   </div>
 </div>
@@ -618,6 +631,177 @@ body.flash-mode .sc-cd {
 
 <!-- ══ JAVASCRIPT ══ -->
 <script>
+
+// ═══════════════════════════════════════════════════════
+// MULTI-IDIOMA — ES / EN / KO
+// ═══════════════════════════════════════════════════════
+let LANG = localStorage.getItem('bm-lang') || 'es';
+
+const TRANSLATIONS = {
+  es: {
+    // Status strip
+    RUNNING:     'EN PRODUCCIÓN',
+    BREAK:       'BREAK EN CURSO',
+    WARNING:     'REGRESA AL TRABAJO',
+    RETURN_NOW:  'REGRESA AHORA',
+    LATE:        'REGRESO TARDE',
+    SHIFT_OVER:  'JORNADA TERMINADA',
+    // Dashboard labels
+    next_break:  'PRÓXIMO DESCANSO',
+    next_lunch:  'PRÓXIMO ALMUERZO',
+    next_home:   'FIN DE JORNADA',
+    next_ot:     'FIN DE OVERTIME',
+    inicio:      'INICIO DE LABORES',
+    starts_at:   'INICIA A LAS',
+    ends_at:     'REGRESO A LAS',
+    first_break: 'PRIMER BREAK A LAS',
+    countdown:   'CUENTA REGRESIVA',
+    no_breaks:   '✅ Sin más breaks hoy',
+    // Break in progress
+    break_lbl:   'BREAK EN CURSO',
+    return_at:   'REGRESA AL TRABAJO A LAS',
+    remaining:   'TIEMPO RESTANTE',
+    // Home / OT
+    home_warn:   '🏠 FIN DE JORNADA EN',
+    home_at:     'FIN DE JORNADA A LAS',
+    ot_warn:     '⏰ FIN DE TURNO EN',
+    ot_at:       'FIN DE TURNO A LAS',
+    // Warning / Return
+    return_warn: '⚠ REGRESA AL TRABAJO EN',
+    return_now:  '🔴 REGRESA AL TRABAJO AHORA',
+    late_lbl:    '🚨 TARDE — TIEMPO TRANSCURRIDO',
+    // Shift over
+    shift_done:  '✅ JORNADA TERMINADA',
+    redirecting: 'Redirigiendo al MES...',
+    // TV labels
+    tv_no_breaks:'SIN MÁS BREAKS HOY',
+    tv_running:  'EN PRODUCCIÓN',
+    // KPI
+    kpi_prod:    'PRODUCCIÓN TOTAL',
+    kpi_comp:    'CUMPLIMIENTO',
+    kpi_scrap:   'SCRAP',
+    kpi_def:     'DEFECTOS',
+    kpi_cuts:    'Cortes',
+    // Nav
+    nav_dash:    '⏸ Dashboard',
+    nav_admin:   '⚙️ Admin Breaks',
+    nav_tv:      '📺 TV Mode',
+    // Shift labels
+    shift_a:     'Shift A',
+    shift_b:     'Overtime',
+    shift_c:     'Saturday OT',
+    // Back
+    back:        '← MES',
+  },
+  en: {
+    RUNNING:     'RUNNING',
+    BREAK:       'BREAK IN PROGRESS',
+    WARNING:     'RETURN TO WORK',
+    RETURN_NOW:  'RETURN NOW',
+    LATE:        'LATE RETURN',
+    SHIFT_OVER:  'SHIFT COMPLETE',
+    next_break:  'NEXT BREAK',
+    next_lunch:  'NEXT LUNCH',
+    next_home:   'END OF SHIFT',
+    next_ot:     'END OF OVERTIME',
+    inicio:      'START OF SHIFT',
+    starts_at:   'STARTS AT',
+    ends_at:     'RETURN AT',
+    first_break: 'FIRST BREAK AT',
+    countdown:   'COUNTDOWN',
+    no_breaks:   '✅ No more breaks today',
+    break_lbl:   'BREAK IN PROGRESS',
+    return_at:   'RETURN TO WORK AT',
+    remaining:   'REMAINING TIME',
+    home_warn:   '🏠 END OF SHIFT IN',
+    home_at:     'END OF SHIFT AT',
+    ot_warn:     '⏰ END OF OVERTIME IN',
+    ot_at:       'END OF OVERTIME AT',
+    return_warn: '⚠ RETURN TO WORK IN',
+    return_now:  '🔴 RETURN TO WORK NOW',
+    late_lbl:    '🚨 LATE — ELAPSED TIME',
+    shift_done:  '✅ SHIFT COMPLETE',
+    redirecting: 'Redirecting to MES...',
+    tv_no_breaks:'NO MORE BREAKS TODAY',
+    tv_running:  'RUNNING',
+    kpi_prod:    'TOTAL PRODUCTION',
+    kpi_comp:    'COMPLIANCE',
+    kpi_scrap:   'SCRAP',
+    kpi_def:     'DEFECTS',
+    kpi_cuts:    'Cuts',
+    nav_dash:    '⏸ Dashboard',
+    nav_admin:   '⚙️ Admin Breaks',
+    nav_tv:      '📺 TV Mode',
+    shift_a:     'Shift A',
+    shift_b:     'Overtime',
+    shift_c:     'Saturday OT',
+    back:        '← MES',
+  },
+  ko: {
+    RUNNING:     '생산 중',
+    BREAK:       '휴식 중',
+    WARNING:     '복귀 준비',
+    RETURN_NOW:  '지금 복귀',
+    LATE:        '지각 복귀',
+    SHIFT_OVER:  '근무 종료',
+    next_break:  '다음 휴식',
+    next_lunch:  '다음 점심',
+    next_home:   '퇴근 시간',
+    next_ot:     '야근 종료',
+    inicio:      '업무 시작',
+    starts_at:   '시작 시간',
+    ends_at:     '복귀 시간',
+    first_break: '첫 번째 휴식',
+    countdown:   '카운트다운',
+    no_breaks:   '✅ 오늘 휴식 없음',
+    break_lbl:   '휴식 중',
+    return_at:   '복귀 시간',
+    remaining:   '남은 시간',
+    home_warn:   '🏠 퇴근까지',
+    home_at:     '퇴근 시간',
+    ot_warn:     '⏰ 야근 종료까지',
+    ot_at:       '야근 종료 시간',
+    return_warn: '⚠ 복귀까지',
+    return_now:  '🔴 지금 복귀하세요',
+    late_lbl:    '🚨 지각 — 경과 시간',
+    shift_done:  '✅ 근무 종료',
+    redirecting: 'MES로 이동 중...',
+    tv_no_breaks:'오늘 휴식 없음',
+    tv_running:  '생산 중',
+    kpi_prod:    '총 생산량',
+    kpi_comp:    '달성률',
+    kpi_scrap:   '불량률',
+    kpi_def:     '결함',
+    kpi_cuts:    '교대',
+    nav_dash:    '⏸ 대시보드',
+    nav_admin:   '⚙️ 관리자',
+    nav_tv:      '📺 TV 모드',
+    shift_a:     'Shift A',
+    shift_b:     '초과 근무',
+    shift_c:     '토요일 OT',
+    back:        '← MES',
+  }
+};
+
+function t(key){ return (TRANSLATIONS[LANG]||TRANSLATIONS.es)[key] || TRANSLATIONS.es[key] || key; }
+
+function setLang(lang){
+  LANG = lang;
+  localStorage.setItem('bm-lang', lang);
+  // Update active button
+  ['mx','us','kr'].forEach(id=>document.getElementById('lang-'+id)?.classList.remove('active'));
+  const map = { es:'mx', en:'us', ko:'kr' };
+  document.getElementById('lang-'+map[lang])?.classList.add('active');
+  // Update nav labels
+  document.getElementById('mb-dash')?.setAttribute('data-label', t('nav_dash'));
+  document.getElementById('mb-dash').textContent = t('nav_dash');
+  document.getElementById('mb-admin').textContent = t('nav_admin');
+  document.getElementById('mb-tv').textContent = t('nav_tv');
+  document.getElementById('tb-back').textContent = t('back');
+  // Force re-render
+  renderAll();
+}
+
 // ── State ──────────────────────────────────────────────
 let breaks      = [];
 let settings    = { sound_on_start:true, sound_before_return:true, sound_on_end:true, warning_minutes:3 };
@@ -679,6 +863,7 @@ const ST = {
 
 const SHIFT_COLORS = { A:'#4f8ef7', B:'#2ecc71', C:'#e67e22' };
 const SHIFT_LABELS = { A:'Shift A', B:'Overtime', C:'Saturday OT' };
+const getShiftLabel = (s) => { const m={A:'shift_a',B:'shift_b',C:'shift_c'}; return t(m[s]||'shift_a'); };
 
 // ── Utils ──────────────────────────────────────────────
 const pad    = n => String(n).padStart(2,'0');
@@ -836,7 +1021,7 @@ function renderAll(){
   const timeStr = now.toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false});
   const dateStr = now.toLocaleDateString('es-MX',{weekday:'long',year:'numeric',month:'long',day:'numeric'});
   const status  = getStatus();
-  const cfg     = ST[status];
+  const cfg     = getCfg(status);
   const cur     = getCurrent();
   const nxt     = getNext();
 
@@ -995,22 +1180,22 @@ function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
     const dp = kpiColor(realKpis.defects, 2, true);
     document.getElementById('tv-kpi').innerHTML = `
       <div class="tv-kcard" style="border-top-color:#4f8ef7">
-        <div class="tv-klbl">PRODUCCIÓN TOTAL</div>
+        <div class="tv-klbl">${t('kpi_prod')}</div>
         <div class="tv-kval" style="color:#4f8ef7">${realKpis.prod}</div>
-        <div class="tv-ktgt">Cortes: ${realKpis.cortes}</div>
+        <div class="tv-ktgt">${t('kpi_cuts')}: ${realKpis.cortes}</div>
       </div>
       <div class="tv-kcard" style="border-top-color:${cp}">
-        <div class="tv-klbl">CUMPLIMIENTO</div>
+        <div class="tv-klbl">${t('kpi_comp')}</div>
         <div class="tv-kval" style="color:${cp}">${realKpis.compliance}%</div>
         <div class="tv-ktgt">Target: 90%</div>
       </div>
       <div class="tv-kcard" style="border-top-color:${sp}">
-        <div class="tv-klbl">SCRAP</div>
+        <div class="tv-klbl">${t('kpi_scrap')}</div>
         <div class="tv-kval" style="color:${sp}">${realKpis.scrap}%</div>
         <div class="tv-ktgt">Target: &lt;3%</div>
       </div>
       <div class="tv-kcard" style="border-top-color:${dp}">
-        <div class="tv-klbl">DEFECTOS</div>
+        <div class="tv-klbl">${t('kpi_def')}</div>
         <div class="tv-kval" style="color:${dp}">${realKpis.defects}%</div>
         <div class="tv-ktgt">Target: &lt;2% · ${realKpis.records} registros</div>
       </div>`;
@@ -1091,6 +1276,16 @@ function showToast(msg){
 // ── Init ───────────────────────────────────────────────
 document.addEventListener('fb-ready',()=>{ loadSettings(); loadBreaks(); });
 setTimeout(()=>{ if(!breaks.length){ breaks=demoBreaks(); renderAll(); } },3000);
+
+// Restore saved language
+(function(){
+  const saved = localStorage.getItem('bm-lang')||'es';
+  const map = { es:'mx', en:'us', ko:'kr' };
+  document.querySelectorAll('.lang-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('lang-'+map[saved])?.classList.add('active');
+  LANG = saved;
+})();
+
 renderAll();
 setInterval(renderAll,1000);
 </script>
