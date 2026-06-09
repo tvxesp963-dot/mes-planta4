@@ -2111,7 +2111,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc" id="production-summary"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
       <div class="dc"><h3>📦 Material listo para SHIPQR · P4 → P3</h3>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
           <div>
@@ -2296,5 +2296,26 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   </div>
   </div></div>
 </div>
+
+<script>
+// Auto scroll to production summary if redirected from Break Management
+(function(){
+  const params = new URLSearchParams(window.location.search);
+  if(params.get('mode')==='dash' || window.location.hash==='#production-summary'){
+    window.addEventListener('load', function(){
+      setTimeout(function(){
+        // Open dashboard view
+        if(typeof setMode === 'function') setMode('dash');
+        // Scroll to production summary
+        setTimeout(function(){
+          const el = document.getElementById('production-summary');
+          if(el) el.scrollIntoView({ behavior:'smooth', block:'start' });
+        }, 600);
+      }, 400);
+    });
+  }
+})();
+</script>
+
 </body>
 </html>
