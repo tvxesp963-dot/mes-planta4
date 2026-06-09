@@ -172,13 +172,12 @@ body {
 }
 .tb-back:hover { border-color: var(--accent); color: var(--accent); }
 .lang-btn {
-  background: var(--bg3); border: 1px solid var(--border2);
-  border-radius: 6px; padding: 4px 7px; font-size: 1rem;
-  cursor: pointer; transition: all .2s; line-height: 1;
-  opacity: .5;
+  background: transparent; border: 2px solid transparent;
+  border-radius: 6px; padding: 2px; line-height: 0;
+  cursor: pointer; transition: all .2s; opacity: .55;
 }
-.lang-btn:hover { opacity: .85; border-color: var(--border2); transform: scale(1.1); }
-.lang-btn.active { opacity: 1; border-color: var(--accent); background: var(--bg2); box-shadow: 0 0 8px var(--accent)44; }
+.lang-btn:hover { opacity: 1; transform: scale(1.12); }
+.lang-btn.active { opacity: 1; border-color: var(--accent); box-shadow: 0 0 10px var(--accent)55; }
 
 /* Shift chips */
 .shift-chips { display: flex; gap: 5px; }
@@ -501,9 +500,15 @@ body.flash-mode .sc-cd {
     <div class="tb-clock" id="tb-clk">--:--:--</div>
     <div class="user-chip" id="user-chip">---</div>
     <div style="display:flex;gap:4px;align-items:center">
-      <button class="lang-btn active" id="lang-mx" onclick="setLang('es')" title="Español">🇲🇽</button>
-      <button class="lang-btn" id="lang-us" onclick="setLang('en')" title="English">🇺🇸</button>
-      <button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어">🇰🇷</button>
+      <button class="lang-btn active" id="lang-mx" onclick="setLang('es')" title="Español">
+        <img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX">
+      </button>
+      <button class="lang-btn" id="lang-us" onclick="setLang('en')" title="English">
+        <img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US">
+      </button>
+      <button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어">
+        <img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR">
+      </button>
     </div>
     <a href="index.html" class="tb-back">← MES</a>
   </div>
@@ -888,55 +893,7 @@ function countdown(b){ if(!b)return 0; const n=new Date(),s=new Date(); const[h,
 function lateTime(b){ if(!b)return 0; const n=new Date(),e=new Date(); const[h,m]=b.end_time.split(':').map(Number); e.setHours(h,m,0,0); return Math.max(0,Math.floor((n-e)/1000)); }
 function breakPct(b){ if(!b)return 0; const s=toMin(b.start_time)*60,e=toMin(b.end_time)*60,n=new Date(),ns=n.getHours()*3600+n.getMinutes()*60+n.getSeconds(); return Math.min(100,Math.max(0,(ns-s)/(e-s)*100)); }
 
-
-// ── Helper functions ──────────────────────────────────────────────
-function isFirstBreak(b){
-  if(!b) return false;
-  const sorted=[...shiftBreaks()].sort((a,x)=>toMin(a.start_time)-toMin(x.start_time));
-  return sorted.length>0 && sorted[0].id===b.id;
-}
-
-function getEndOfShift(){
-  const all=shiftBreaks();
-  if(!all.length) return null;
-  return [...all].sort((a,b)=>toMin(b.end_time)-toMin(a.end_time))[0];
-}
-
-function isShiftOver(){
-  const last=getEndOfShift();
-  if(!last) return false;
-  return nowMin()>=toMin(last.end_time);
-}
-
-function getNextLabel(b){
-  if(!b) return { title:t('next_break'), startLbl:t('starts_at'), endLbl:t('ends_at') };
-  const desc=(b.description||'').toLowerCase();
-  if(isFirstBreak(b)&&nowMin()<toMin(b.start_time)){
-    return { title:t('inicio'), startLbl:t('starts_at'), endLbl:t('first_break') };
-  }
-  if(desc.includes('home')){
-    return { title:t('next_home'), startLbl:t('starts_at'), endLbl:'' };
-  } else if(desc.includes('ot')||desc.includes('tiempo extra')||desc.includes('overtime')){
-    return { title:t('next_ot'), startLbl:t('starts_at'), endLbl:t('ends_at') };
-  } else if(desc.includes('lunch')||desc.includes('almuerzo')){
-    return { title:t('next_lunch'), startLbl:t('starts_at'), endLbl:t('ends_at') };
-  }
-  return { title:t('next_break'), startLbl:t('starts_at'), endLbl:t('ends_at') };
-}
-
-function getWarningLabel(b){
-  if(!b) return { warning:t('return_warn'), action:t('return_at'), label:t('break_lbl') };
-  const desc=(b.description||'').toLowerCase();
-  if(desc.includes('home')){
-    return { warning:t('home_warn'), action:t('home_at'), label:t('next_home') };
-  } else if(desc.includes('ot')||desc.includes('tiempo extra')||desc.includes('overtime')){
-    return { warning:t('ot_warn'), action:t('ot_at'), label:t('next_ot') };
-  }
-  return { warning:t('return_warn'), action:t('return_at'), label:t('break_lbl') };
-}
-
 function getStatus(){
-  if(isShiftOver()) return 'SHIFT_OVER';
   const cur=getCurrent(), wm=settings.warning_minutes||3;
   if(cur){
     const r=remaining(cur);
@@ -1336,17 +1293,6 @@ function showToast(msg){
   const el=document.getElementById('toast');
   el.textContent=msg; el.classList.add('show');
   clearTimeout(_tt); _tt=setTimeout(()=>el.classList.remove('show'),3000);
-}
-
-
-let _redirectTimer = null;
-function scheduleRedirect(){
-  if(_redirectTimer) return;
-  fetchDayKPIs().then(()=>{
-    _redirectTimer = setTimeout(()=>{
-      window.location.href = 'index.html?mode=dash#production-summary';
-    }, 5000);
-  });
 }
 
 // ── Init ───────────────────────────────────────────────
