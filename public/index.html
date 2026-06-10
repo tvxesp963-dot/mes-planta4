@@ -163,7 +163,7 @@ async function editarRegistro(id) {
     const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
-    modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:320px;border:1px solid var(--border)">
+    modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:340px;border:1px solid var(--border);max-height:90vh;overflow-y:auto">
       <div style="font-weight:700;margin-bottom:14px;font-size:14px">✏️ Editar Registro — ${hora}</div>
       <div style="display:grid;gap:10px">
         <div>
@@ -184,10 +184,10 @@ async function editarRegistro(id) {
         </div>
         <div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Cantidad</div>
-          <input id="er-qty" type="number" value="${reg.qty||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
+          <input id="er-qty" type="number" value="${reg.qty||reg.prod||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
         </div>
         <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Defectos</div><input id="er-def" type="number" value="${reg.def||reg.defectos||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Scrap</div><input id="er-scrap" type="number" value="${reg.scrap||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
           <select id="er-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
         </div>
         <div>
@@ -230,7 +230,7 @@ async function guardarRegistroEdit(id, btn) {
     const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
     const pct = target > 0 ? +(qty/target*100).toFixed(2) : 0;
     const parte = document.getElementById('er-parte') ? document.getElementById('er-parte').value.trim().toUpperCase() : '';
-    const updateData = {maquina:maq, maqNombre:maq, maqTipo:tipo, modelo, parte, tipo, qty, prod:qty, turno, corte, target, pct};
+    const def=parseInt(document.getElementById('er-def')?document.getElementById('er-def').value:0)||0; const scrap=parseInt(document.getElementById('er-scrap')?document.getElementById('er-scrap').value:0)||0; const scrapPct=qty>0?+(scrap/qty*100).toFixed(2):0; const defPct=qty>0?+(def/qty*100).toFixed(2):0; const updateData={maquina:maq,maqNombre:maq,maqTipo:tipo,tipo,modelo,parte,qty,prod:qty,def,defectos:def,scrap,scrapPct,defPct,turno,corte,target,pct};
     if (maqIdx !== null) updateData.maqIdx = maqIdx;
     await setDoc(doc(db,'registros',id), updateData, {merge:true});
     btn.closest('div[style*=fixed]').remove();
@@ -288,7 +288,7 @@ window.abrirNuevoRegistro = function() {
         <select id="nr-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
       </div>
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Defectos</div><input id="er-def" type="number" value="${reg.def||reg.defectos||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Scrap</div><input id="er-scrap" type="number" value="${reg.scrap||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
         <select id="nr-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
       </div>
       <div>
