@@ -1361,6 +1361,16 @@ setTimeout(()=>{ if(!breaks.length){ breaks=demoBreaks(); renderAll(); } },3000)
 
 renderAll();
 setInterval(renderAll,1000);
+
+// Pre-carga KPIs: al abrir, cada 5 min, y cuando faltan <=15 min para fin de turno
+fetchDayKPIs();
+setInterval(()=>{
+  const last = getEndOfShift();
+  if(!last) return;
+  const minLeft = toMin(last.end_time) - nowMin();
+  if(minLeft <= 15) fetchDayKPIs();
+}, 60 * 1000); // revisa cada minuto
+setInterval(fetchDayKPIs, 5 * 60 * 1000); // refresco general cada 5 min
 </script>
 </body>
 </html>
