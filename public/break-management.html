@@ -935,12 +935,10 @@ function getWarningLabel(b){
 }
 let _redirectTimer=null;
 function scheduleRedirect(){
+  // Redireccion desactivada — pantalla se queda fija en SHIFT_OVER
   if(_redirectTimer) return;
-  fetchDayKPIs().then(()=>{
-    _redirectTimer=setTimeout(()=>{
-      window.location.href='index.html?mode=dash#production-summary';
-    },5000);
-  });
+  _redirectTimer=true;
+  fetchDayKPIs();
 }
 
 function getStatus(){
