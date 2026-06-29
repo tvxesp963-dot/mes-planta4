@@ -9,7 +9,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword }
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, getDoc, getDocs, deleteDoc, setDoc,
   onSnapshot, query, orderBy, where, updateDoc, serverTimestamp }
@@ -855,19 +855,11 @@ window.addUser = async () => {
   const emp=document.getElementById("nu-emp-num").value.trim();
   if(!email||!nombre||!pass||pass.length<6){showToast("Completa todos los campos (contraseña mín. 6)","var(--red)");return;}
   try {
-    const secondApp = initializeApp(firebaseConfig, "secondApp_"+Date.now());
-    const secondAuth = getAuth(secondApp);
-    const cred = await createUserWithEmailAndPassword(secondAuth, email, pass);
-    const newUid = cred.user.uid;
-    await signOut(secondAuth);
-    await addDoc(USERS_COL(),{email,nombre,rol,empleado:emp,activo:true,uid:newUid,createdAt:serverTimestamp()});
-    showToast(`✅ Usuario "${nombre}" creado. Ya puede iniciar sesión de inmediato.`,"var(--green)");
+    await addDoc(USERS_COL(),{email,nombre,rol,empleado:emp,activo:true,uid:"PENDIENTE",createdAt:serverTimestamp()});
+    showToast(`✅ Perfil de "${nombre}" guardado. Crea sus credenciales en Firebase Console → Authentication.`,"var(--green)");
     ["nu-user","nu-nombre","nu-pass","nu-emp-num"].forEach(id=>document.getElementById(id).value="");
     loadUsuarios();
-  } catch(e){
-    const msg=e.code==="auth/email-already-in-use"?"Ese correo ya existe en el sistema":e.message;
-    showToast("Error: "+msg,"var(--red)");
-  }
+  } catch(e){showToast("Error: "+e.message,"var(--red)");}
 };
 window.toggleUser = async (docId,activo) => {
   await updateDoc(doc(db,"usuarios",docId),{activo:!activo});
@@ -1279,7 +1271,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod)=>{
     console.error('Error registrando envío a ShipQR:', err);
   }
   const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${prod}`;
-  window.open(url,'shipqr_window');
+  window.open(url,'_blank');
   if(typeof renderShipqr==='function') renderShipqr();
 };
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};

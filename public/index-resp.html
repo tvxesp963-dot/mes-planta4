@@ -9,7 +9,7 @@
 
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
-import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword }
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, getDoc, getDocs, deleteDoc, setDoc,
   onSnapshot, query, orderBy, where, updateDoc, serverTimestamp }
@@ -764,7 +764,6 @@ const MAQUINAS = [
 ];
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
-let SHIPQR_ENVIADOS={};
 let QR_MACHINE=(()=>{try{const p=new URLSearchParams(window.location.search);const m=p.get('m');return(m!==null&&!isNaN(m))?parseInt(m):null;}catch(e){return null;}})();
 let charts={}, ranges={maq:"diario",tend:"diario"};
 let opStep=0, opTurno=null, opCorte=null, opMaq=null, alertasVistas=new Set();
@@ -855,19 +854,11 @@ window.addUser = async () => {
   const emp=document.getElementById("nu-emp-num").value.trim();
   if(!email||!nombre||!pass||pass.length<6){showToast("Completa todos los campos (contraseña mín. 6)","var(--red)");return;}
   try {
-    const secondApp = initializeApp(firebaseConfig, "secondApp_"+Date.now());
-    const secondAuth = getAuth(secondApp);
-    const cred = await createUserWithEmailAndPassword(secondAuth, email, pass);
-    const newUid = cred.user.uid;
-    await signOut(secondAuth);
-    await addDoc(USERS_COL(),{email,nombre,rol,empleado:emp,activo:true,uid:newUid,createdAt:serverTimestamp()});
-    showToast(`✅ Usuario "${nombre}" creado. Ya puede iniciar sesión de inmediato.`,"var(--green)");
+    await addDoc(USERS_COL(),{email,nombre,rol,empleado:emp,activo:true,uid:"PENDIENTE",createdAt:serverTimestamp()});
+    showToast(`✅ Perfil de "${nombre}" guardado. Crea sus credenciales en Firebase Console → Authentication.`,"var(--green)");
     ["nu-user","nu-nombre","nu-pass","nu-emp-num"].forEach(id=>document.getElementById(id).value="");
     loadUsuarios();
-  } catch(e){
-    const msg=e.code==="auth/email-already-in-use"?"Ese correo ya existe en el sistema":e.message;
-    showToast("Error: "+msg,"var(--red)");
-  }
+  } catch(e){showToast("Error: "+e.message,"var(--red)");}
 };
 window.toggleUser = async (docId,activo) => {
   await updateDoc(doc(db,"usuarios",docId),{activo:!activo});
@@ -1236,51 +1227,13 @@ window.desconfirmarLinea = desconfirmarLinea;
 
 window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
 
-// ── Envío a SHIPQR (conectado con ShipQR Web v2.0, con registro de movimientos) ──
-async function loadShipqrEnviados(){
-  try{
-    const snap=await getDocs(collection(db,'shipqr_envios_mes'));
-    SHIPQR_ENVIADOS={};
-    snap.forEach(d=>{ SHIPQR_ENVIADOS[d.id]=d.data(); });
-    pintarHistorialShipqr();
-    if(typeof renderShipqr==='function') renderShipqr();
-  }catch(err){ console.error('Error cargando shipqr_envios_mes:', err); }
-}
-function pintarHistorialShipqr(){
-  const el=document.getElementById('tb-shipqr-historial');
-  if(!el) return;
-  const envios=Object.values(SHIPQR_ENVIADOS).sort((a,b)=>new Date(b.fecha_envio)-new Date(a.fecha_envio));
-  if(!envios.length){
-    el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:10px">Sin envíos registrados</div>`;
-    return;
-  }
-  el.innerHTML=envios.map(e=>`
-    <div style="display:flex;justify-content:space-between;background:var(--card2);border-radius:6px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px">
-      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.prod||0).toLocaleString()} pzas</span>
-      <span style="color:var(--muted)">${e.enviado_por} · ${new Date(e.fecha_envio).toLocaleString('es-MX')}</span>
-    </div>
-  `).join('');
-}
-window.enviarShipqr=async(modeloEnc,parteEnc,prod)=>{
+// ── Envío a SHIPQR (conexión pendiente con sistema externo) ──
+window.enviarShipqr=(modeloEnc,parteEnc,prod)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
-  const key=modelo+'||'+parte;
-  if(SHIPQR_ENVIADOS[key]){ return; }
-  const registro={
-    modelo, parte, prod,
-    enviado_por: CURRENT_USER?.nombre || 'Desconocido',
-    fecha_envio: new Date().toISOString()
-  };
-  try{
-    await setDoc(doc(db,'shipqr_envios_mes',key), registro);
-    SHIPQR_ENVIADOS[key]=registro;
-    pintarHistorialShipqr();
-  }catch(err){
-    console.error('Error registrando envío a ShipQR:', err);
-  }
-  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${prod}`;
-  window.open(url,'shipqr_window');
-  if(typeof renderShipqr==='function') renderShipqr();
+  const msg=`📱 Enviar a SHIPQR:\n\nModelo: ${modelo}\nPart Number: ${parte}\nProducción: ${prod.toLocaleString()} pzas\n\n(La conexión con el sistema SHIPQR aún no está implementada. Solo se está validando que la tabla del MES capture bien los datos.)`;
+  alert(msg);
+  console.log('[SHIPQR pendiente]', {modelo, parte, prod});
 };
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
@@ -1290,7 +1243,6 @@ function initApp(){
   if(CURRENT_USER)document.getElementById("ip-op").value=CURRENT_USER.nombre;
   buildMaqGrid();buildSelects();showStep(0);
   loadCausasParo();
-  loadShipqrEnviados();
 }
 function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
@@ -1496,7 +1448,7 @@ function renderShipqr(){
     return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="5" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="4" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
     return;
   }
   const modPnMap={};
@@ -1511,21 +1463,13 @@ function renderShipqr(){
   let totalShip=0;
   rows.forEach(m=>{
     totalShip+=m.prod;
-    const key=m.modelo+"||"+m.parte;
-    const env=SHIPQR_ENVIADOS[key];
     const tr=document.createElement("tr");
     tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
       <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
       <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
       <td style="text-align:center;padding:10px 6px">
-        ${env
-          ? `<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">✓ ENVIADO</span>`
-          : `<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`}
-      </td>
-      <td style="text-align:center;padding:10px 6px">
         <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod})"
-          ${env?'disabled':''}
-          style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
+          style="background:rgba(77,166,255,.12);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
           🚚 SHIPQR
         </button>
       </td>`;
@@ -1535,7 +1479,7 @@ function renderShipqr(){
   trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
   trTot.innerHTML=`<td colspan="2" style="font-size:.9rem;padding:10px 6px">TOTAL</td>
     <td class="blue" style="text-align:right;font-size:.95rem;padding:10px 6px">${totalShip.toLocaleString()}</td>
-    <td></td><td></td>`;
+    <td></td>`;
   tbShipqr.appendChild(trTot);
 }
 window.renderShipqr=renderShipqr;
@@ -2194,11 +2138,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
             🔍 Aplicar
           </button>
         </div>
-        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">Producción</th><th style="text-align:center;padding:10px 6px">Estado</th><th style="text-align:center;padding:10px 6px">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
-        <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
-          <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Historial de envíos a ShipQR</div>
-          <div id="tb-shipqr-historial" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
-        </div>
+        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">Producción</th><th style="text-align:center;padding:10px 6px">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
       </div>
     </div>
 
