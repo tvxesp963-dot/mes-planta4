@@ -934,7 +934,7 @@ window.enviar = async () => {
     document.getElementById("suc-sub").textContent=`${m.nombre} · ${opCorte||opTurno} · ${p.toLocaleString()} piezas enviadas.`;
     showStep(4);
   } catch(e){showToast("❌ Error: "+e.message,"var(--red)");}
-  btn.innerHTML='<span id="btn-enviar">'+t("btn_enviar")+'</span>';btn.disabled=false;
+  btn.innerHTML="📤 Enviar al Dashboard";btn.disabled=false;
 };
 window.delReg = async (id) => { await deleteDoc(doc(db,"registros",id)); rRegs();rFeed();updateDashStats(); };
 
@@ -1901,116 +1901,6 @@ function chkReporteAuto(){
   }
 }
 setInterval(chkReporteAuto, 60000);
-
-// ══ LANGUAGE SYSTEM ══
-let LANG = localStorage.getItem('mes-lang') || 'es';
-
-const TRANSLATIONS = {
-  es: {
-    menu_op:    '📱 Operador',
-    menu_dash:  '🖥️ Dashboard',
-    menu_admin: '⚙️ Admin',
-    menu_breaks:'⏸ Breaks',
-    btn_logout: '⏏ Salir',
-    lbl_fecha:  'Fecha',
-    lbl_modelo: '📱 Modelo',
-    lbl_turno:  '⏰ Turno',
-    lbl_prod:   '✅ Producción',
-    lbl_target: 'Target',
-    lbl_cumpl:  'Cumpl.',
-    lbl_scrap:  'Scrap%',
-    lbl_datos:  'Datos de Producción',
-    btn_enviar: '📤 Enviar al Dashboard',
-    lbl_turno_a:'Turno A',
-    lbl_ot:     'Overtime',
-    sent_ok:    '¡Enviado al Dashboard!',
-  },
-  en: {
-    menu_op:    '📱 Operator',
-    menu_dash:  '🖥️ Dashboard',
-    menu_admin: '⚙️ Admin',
-    menu_breaks:'⏸ Breaks',
-    btn_logout: '⏏ Logout',
-    lbl_fecha:  'Date',
-    lbl_modelo: '📱 Model',
-    lbl_turno:  '⏰ Shift',
-    lbl_prod:   '✅ Production',
-    lbl_target: 'Target',
-    lbl_cumpl:  'Compl.',
-    lbl_scrap:  'Scrap%',
-    lbl_datos:  'Production Data',
-    btn_enviar: '📤 Send to Dashboard',
-    lbl_turno_a:'Shift A',
-    lbl_ot:     'Overtime',
-    sent_ok:    'Sent to Dashboard!',
-  },
-  ko: {
-    menu_op:    '📱 작업자',
-    menu_dash:  '🖥️ 대시보드',
-    menu_admin: '⚙️ 관리자',
-    menu_breaks:'⏸ 휴식',
-    btn_logout: '⏏ 로그아웃',
-    lbl_fecha:  '날짜',
-    lbl_modelo: '📱 모델',
-    lbl_turno:  '⏰ 교대',
-    lbl_prod:   '✅ 생산량',
-    lbl_target: '목표',
-    lbl_cumpl:  '달성률',
-    lbl_scrap:  '불량률',
-    lbl_datos:  '생산 데이터',
-    btn_enviar: '📤 대시보드 전송',
-    lbl_turno_a:'A 교대',
-    lbl_ot:     '초과 근무',
-    sent_ok:    '대시보드에 전송됨!',
-  }
-};
-
-function t(key){ return (TRANSLATIONS[LANG]||TRANSLATIONS.es)[key] || TRANSLATIONS.es[key] || key; }
-
-window.setLang = function(lang){
-  LANG = lang;
-  localStorage.setItem('mes-lang', lang);
-  ['mx','us','kr'].forEach(id=>{ const el=document.getElementById('lang-'+id); if(el) el.classList.remove('active'); });
-  const map = { es:'mx', en:'us', ko:'kr' };
-  const active = document.getElementById('lang-'+map[lang]);
-  if(active) active.classList.add('active');
-  applyTranslations();
-};
-
-function applyTranslations(){
-  const ids = {
-    'mb-op':     t('menu_op'),
-    'mb-dash':   t('menu_dash'),
-    'mb-admin':  t('menu_admin'),
-    'mb-breaks': t('menu_breaks'),
-    'logout-lbl':t('btn_logout'),
-    'lbl-fecha': t('lbl_fecha'),
-    'lbl-modelo':t('lbl_modelo'),
-    'lbl-turno': t('lbl_turno'),
-    'lbl-prod':  t('lbl_prod'),
-    'lbl-target':t('lbl_target'),
-    'lbl-cumpl': t('lbl_cumpl'),
-    'lbl-scrap': t('lbl_scrap'),
-    'mhdr':      t('lbl_datos'),
-    'btn-enviar':t('btn_enviar'),
-  };
-  Object.entries(ids).forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
-  // Shift options
-  document.querySelectorAll('.opt-turno-a').forEach(el=>el.textContent=t('lbl_turno_a'));
-  document.querySelectorAll('.opt-ot').forEach(el=>el.textContent=t('lbl_ot'));
-}
-
-// Apply saved language on load
-document.addEventListener('DOMContentLoaded', ()=>{
-  const saved = localStorage.getItem('mes-lang')||'es';
-  LANG = saved;
-  const map = { es:'mx', en:'us', ko:'kr' };
-  ['mx','us','kr'].forEach(id=>{ const el=document.getElementById('lang-'+id); if(el) el.classList.remove('active'); });
-  const active = document.getElementById('lang-'+map[saved]);
-  if(active) active.classList.add('active');
-  applyTranslations();
-});
-
 </script>
 
 <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -2042,9 +1932,6 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .user-chip{display:flex;align-items:center;gap:5px;background:var(--card2);border:1px solid var(--border);border-radius:20px;padding:3px 11px;font-size:.85rem;}
 .logout-btn{background:transparent;border:1px solid var(--border);color:var(--muted);border-radius:7px;padding:3px 9px;font-size:.85rem;cursor:pointer;}
 .logout-btn:hover{border-color:var(--red);color:var(--red);}
-.lang-btn{background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;transition:all .2s;opacity:.5;}
-.lang-btn:hover{opacity:.85;transform:scale(1.1);}
-.lang-btn.active{opacity:1;border-color:var(--accent);background:var(--card);box-shadow:0 0 8px rgba(79,142,247,.3);}
 #clk{font-size:.85rem;color:var(--muted);}
 .modebar{display:flex;background:var(--card);border-bottom:2px solid var(--border);}
 .mbtn{flex:1;padding:11px;text-align:center;cursor:pointer;font-size:.8rem;font-weight:700;color:var(--muted);border:none;background:none;border-bottom:3px solid transparent;transition:all .2s;}
@@ -2187,9 +2074,9 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 <div id="app">
   <div class="topbar">
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES · Production System</h1>
-    <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn active" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
+    <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><button class="logout-btn" onclick="logout()">⏏ Salir</button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -2197,10 +2084,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div class="steps"><div class="step active" id="s0"></div><div class="step" id="s1"></div><div class="step" id="s2"></div><div class="step" id="s3"></div></div>
     <div class="screen active" id="scr0">
       <div class="oc"><div class="oct">📅 Información del Registro</div>
-        <div class="field"><label id="lbl-fecha">Fecha</label><input type="date" id="ip-fecha"></div>
+        <div class="field"><label>Fecha</label><input type="date" id="ip-fecha"></div>
         <div class="field"><label>👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label>🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
-        <div class="field"><label id="lbl-modelo">📱 Modelo</label>
+        <div class="field"><label>📱 Modelo</label>
           <select id="ip-modelo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
             <option value="">— Cargando modelos del BOM... —</option>
           </select>
@@ -2208,7 +2095,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
         <div class="field"><label>🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
       </div>
-      <div class="oc"><div class="oct" id="lbl-turno">⏰ Turno</div>
+      <div class="oc"><div class="oct">⏰ Turno</div>
         <div class="tgrid">
           <div class="tc" id="tc-A" onclick="selT('A')"><div class="ticon">🌅</div><div class="tlbl">Shift A</div><div class="tsub">6:54 AM–4:30 PM</div></div>
           <div class="tc" id="tc-B" onclick="selT('B')"><div class="ticon">⏰</div><div class="tlbl">Overtime</div><div class="tsub">4:45–6:30 PM</div></div>
@@ -2226,11 +2113,11 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div class="screen" id="scr1"><div class="oc"><div class="oct">🔧 Selecciona tu Máquina</div><div class="mgrid" id="mgrid"></div></div></div>
     <div class="screen" id="scr2">
       <div class="oc"><div class="oct" id="mhdr">Datos de Producción</div>
-        <div class="krow"><div class="km"><div class="v blue" id="ktgt">–</div><div class="l" id="lbl-target">Target</div></div><div class="km"><div class="v" id="kpct">–</div><div class="l" id="lbl-cumpl">Cumpl.</div></div><div class="km"><div class="v" id="kscp">–</div><div class="l" id="lbl-scrap">Scrap%</div></div></div>
+        <div class="krow"><div class="km"><div class="v blue" id="ktgt">–</div><div class="l">Target</div></div><div class="km"><div class="v" id="kpct">–</div><div class="l">Cumpl.</div></div><div class="km"><div class="v" id="kscp">–</div><div class="l">Scrap%</div></div></div>
         <div class="pw"><div class="pb" id="pbar" style="width:0%;background:var(--accent)"></div></div>
       </div>
       <div class="oc">
-        <div class="nf"><label id="lbl-prod">✅ Producción</label><div class="nw"><button class="nb" onclick="adj('p',-100)">−</button><input type="number" id="ip-prod" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('p',100)">+</button></div></div>
+        <div class="nf"><label>✅ Producción</label><div class="nw"><button class="nb" onclick="adj('p',-100)">−</button><input type="number" id="ip-prod" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('p',100)">+</button></div></div>
         <div class="nf"><label>⚠️ Defectos</label><div class="nw"><button class="nb" onclick="adj('d',-10)">−</button><input type="number" id="ip-def" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('d',10)">+</button></div></div>
         <div class="nf"><label>🗑 Scrap</label><div class="nw"><button class="nb" onclick="adj('s',-10)">−</button><input type="number" id="ip-scr" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('s',10)">+</button></div></div>
       </div>
@@ -2272,7 +2159,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <input type="date" id="fhoy" onchange="rHoy()">
         <select id="thoy" onchange="rHoy()">
           <option value="todos">Todos los turnos</option>
-          <option value="A" class="opt-turno-a">Turno A</option>
+          <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
@@ -2320,7 +2207,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <input type="date" id="ffeed" onchange="rFeed()">
         <select id="tfeed" onchange="rFeed()">
           <option value="todos">Todos los turnos</option>
-          <option value="A" class="opt-turno-a">Turno A</option>
+          <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
@@ -2335,7 +2222,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <select id="smaq" onchange="rMaq()"></select>
         <select id="tmaq" onchange="rMaq()">
           <option value="todos">Todos los turnos</option>
-          <option value="A" class="opt-turno-a">Turno A</option>
+          <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
@@ -2348,7 +2235,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div class="dc" style="margin-bottom:8px"><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         <select id="ttend" onchange="rTend()">
           <option value="todos">Todos los turnos</option>
-          <option value="A" class="opt-turno-a">Turno A</option>
+          <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
@@ -2380,7 +2267,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <input type="date" id="freg" onchange="rRegs()">
         <select id="treg" onchange="rRegs()">
           <option value="todos">Todos los turnos</option>
-          <option value="A" class="opt-turno-a">Turno A</option>
+          <option value="A">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
