@@ -811,6 +811,7 @@ function showApp() {
   document.getElementById("app").style.display="flex";
   document.getElementById("app").style.flexDirection="column";
   applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos();});
+  if(typeof applyTranslations==='function')applyTranslations();
 }
 function applyRoleUI() {
   const r=CURRENT_USER.rol;
@@ -2436,8 +2437,8 @@ function applyTranslations(){
   document.querySelectorAll('.opt-no-dt').forEach(el=>el.textContent=t('lbl_no_dt'));
 }
 
-// Apply saved language on load
-document.addEventListener('DOMContentLoaded', ()=>{
+// Apply saved language on load (works even if DOMContentLoaded already fired, e.g. inside type="module")
+function initLangOnLoad(){
   const saved = localStorage.getItem('mes-lang')||'en';
   LANG = saved;
   const map = { es:'mx', en:'us', ko:'kr' };
@@ -2445,7 +2446,13 @@ document.addEventListener('DOMContentLoaded', ()=>{
   const active = document.getElementById('lang-'+map[saved]);
   if(active) active.classList.add('active');
   applyTranslations();
-});
+}
+window.initLangOnLoad = initLangOnLoad;
+if (document.readyState === 'loading') {
+  document.addEventListener('DOMContentLoaded', initLangOnLoad);
+} else {
+  initLangOnLoad();
+}
 
 </script>
 
