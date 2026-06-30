@@ -742,7 +742,7 @@ async function loadCausasParo(){
 function buildCausasSelect(){
   const sel=document.getElementById("ip-causa");
   if(!sel)return;
-  sel.innerHTML='<option value="" class="opt-no-dt">-- Sin downtime --</option>'+CAUSAS_PARO.map(c=>`<option value="${c}">${c}</option>`).join("");
+  sel.innerHTML='<option value="">-- No downtime --</option>'+CAUSAS_PARO.map(c=>`<option value="${c}">${c}</option>`).join("");
 }
 
 const CORTES = [
@@ -1646,7 +1646,7 @@ function rMaq(){
   const mi=parseInt(document.getElementById("smaq").value),m=MAQUINAS[mi];
   const turno=document.getElementById("tmaq").value;
   const data=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
-  const rL={diario:"Diario" class="rb-diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
+  const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
   document.getElementById("mt-p").textContent=m.nombre+" · Producción ("+rL+")";
   document.getElementById("mt-c").textContent=m.nombre+" · Cumpl% ("+rL+")";
   document.getElementById("mt-s").textContent=m.nombre+" · Scrap% ("+rL+")";
@@ -1661,7 +1661,7 @@ function rMaq(){
 
 function rTend(){
   const turno=document.getElementById("ttend").value,data=filt(REGISTROS,null,turno);
-  const rL={diario:"Diario" class="rb-diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
+  const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
   ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`Producción total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
   document.getElementById("tt-comp").textContent=`Comparativo por máquina (${rL})`;
   if(!data.length)return;
@@ -1907,355 +1907,61 @@ let LANG = localStorage.getItem('mes-lang') || 'es';
 
 const TRANSLATIONS = {
   es: {
-    // Menu
-    menu_op:       '📱 Operador',
-    menu_dash:     '🖥️ Dashboard',
-    menu_admin:    '⚙️ Admin',
-    menu_breaks:   '⏸ Breaks',
-    btn_logout:    '⏏ Salir',
-    // Operator form
-    lbl_info:      '📅 Información del Registro',
-    lbl_fecha:     'Fecha',
-    lbl_operador:  '👷 Operador',
-    lbl_op_ph:     'Nombre completo',
-    lbl_emp:       '🔢 N° Empleado',
-    lbl_emp_ph:    'Ej. 00421',
-    lbl_modelo:    '📱 Modelo',
-    lbl_bom_load:  '— Cargando modelos del BOM... —',
-    lbl_parte:     '🔩 N° Parte / Ensamble',
-    lbl_turno:     '⏰ Turno',
-    lbl_cut:       '⏱ Production Cut',
-    lbl_maquina:   '🔧 Selecciona tu Máquina',
-    lbl_datos:     'Datos de Producción',
-    lbl_target:    'Target',
-    lbl_cumpl:     'Cumpl.',
-    lbl_scrap:     'Scrap%',
-    lbl_prod:      '✅ Producción',
-    lbl_def:       '⚠️ Defectos',
-    lbl_scrap_lbl: '🗑 Scrap',
-    lbl_downtime:  '⏱ Downtime',
-    lbl_no_dt:     '-- Sin downtime --',
-    lbl_notes:     '📝 Notas',
-    lbl_notes_ph:  'Notas adicionales...',
-    lbl_confirm:   '📋 Confirma tu registro',
-    sent_ok:       '¡Enviado al Dashboard!',
-    btn_nueva:     '➕ Nueva captura',
-    btn_ver_reg:   '📋 Ver mis registros hoy',
-    btn_prev:      '← Atrás',
-    btn_next:      'Siguiente →',
-    btn_enviar:    '📤 Enviar al Dashboard',
-    // Dashboard tabs
-    dash_tab_hoy:  '📊 Hoy',
-    dash_tab_feed: '📡 Feed',
-    dash_tab_maq:  '🔧 Máquinas',
-    dash_tab_tend: '📈 Tendencias',
-    dash_tab_regs: '🗂 Registros',
-    dash_tab_plan: '📋 Plan',
-    // Dashboard KPIs
-    kpi_prod:      'Production',
-    kpi_comp:      'Compliance',
-    kpi_scrap:     'Scrap %',
-    kpi_def:       'Defects %',
-    kpi_down:      'Downtime',
-    kpi_units:     'units',
-    kpi_min:       'minutes',
-    kpi_vs:        'vs prod',
-    // Dashboard filters
-    dash_all_shifts: 'Todos los turnos',
-    dash_diario:   'Diario',
-    dash_semanal:  'Semanal',
-    dash_mensual:  'Mensual',
-    dash_trimest:  'Trimestral',
-    dash_anual:    'Anual',
-    dash_refresh:  '🔄 Actualizar',
-    dash_live:     'EN VIVO',
-    // Dashboard table headers
-    th_machine:    'Machine',
-    th_type:       'Type',
-    th_target:     'Target',
-    th_prod:       'Prod',
-    th_def:        'Def',
-    th_scrap:      'Scrap',
-    th_pct:        '%',
-    th_status:     'Status',
-    th_cause:      'Cause',
-    th_min:        'Min',
-    th_shift:      '% shift',
-    th_model:      'Model',
-    th_part:       'Part No.',
-    th_qty:        'Qty',
-    th_defects:    'Defects',
-    th_mail:       'Correo',
-    th_nombre:     'Nombre',
-    th_rol:        'Rol',
-    th_estado:     'Estado',
-    th_registros:  'Registros',
-    th_acciones:   'Acciones',
-    // Dashboard chart titles
-    ch_compliance: 'Compliance by machine',
-    ch_prod_cut:   'Production by cut',
-    ch_detail:     'Machine detail',
-    ch_downtime:   'Downtime detail',
-    ch_summary:    'Production summary · model & parts',
-    ch_prod:       'Producción',
-    ch_cumpl:      'Cumpl %',
-    ch_scrap_ch:   'Scrap %',
-    ch_def_ch:     'Def %',
-    ch_comp:       'Comparativo',
-    // Feed
-    feed_caps:     '📡 Capturas',
-    feed_ops:      '👷 Operadores activos',
-    feed_empty:    'Sin capturas.',
-    // Admin
-    adm_new_user:  '👤 Nuevo Usuario',
-    adm_correo:    'Correo',
-    adm_nombre:    'Nombre',
-    adm_pass:      'Contraseña (mín. 6)',
-    adm_emp_num:   'N° Empleado',
-    adm_rol:       'Rol',
-    adm_add_user:  '➕ Crear usuario',
-    adm_users:     '👥 Usuarios',
-    adm_permisos:  '🔐 Permisos por Rol',
-    adm_captura:   '📱 Captura',
-    adm_maquinas:  '🖥️ Estado de Máquinas',
-    adm_targets:   '🎯 Targets por Máquina',
-    adm_email:     '📧 Reportes por Email',
-    adm_cierre:    '🔒 Cierre de Jornada — Descuento IMS',
-    adm_corregir:  '✏️ Corregir Registros',
-    adm_lote:      '🔄 Corregir modelos en lote',
-    adm_buscar:    '🔍 Buscar',
-    adm_agregar:   '➕ Agregar Registro',
-    adm_guardar:   '💾 Guardar',
-    adm_calcular:  '📊 Calcular descuentos',
-    adm_sim:       '🧪 Modo simulación (NO toca Firebase)',
+    menu_op:    '📱 Operador',
+    menu_dash:  '🖥️ Dashboard',
+    menu_admin: '⚙️ Admin',
+    menu_breaks:'⏸ Breaks',
+    btn_logout: '⏏ Salir',
+    lbl_fecha:  'Fecha',
+    lbl_modelo: '📱 Modelo',
+    lbl_turno:  '⏰ Turno',
+    lbl_prod:   '✅ Producción',
+    lbl_target: 'Target',
+    lbl_cumpl:  'Cumpl.',
+    lbl_scrap:  'Scrap%',
+    lbl_datos:  'Datos de Producción',
+    btn_enviar: '📤 Enviar al Dashboard',
+    lbl_turno_a:'Turno A',
+    lbl_ot:     'Overtime',
+    sent_ok:    '¡Enviado al Dashboard!',
   },
   en: {
-    menu_op:       '📱 Operator',
-    menu_dash:     '🖥️ Dashboard',
-    menu_admin:    '⚙️ Admin',
-    menu_breaks:   '⏸ Breaks',
-    btn_logout:    '⏏ Logout',
-    lbl_info:      '📅 Record Information',
-    lbl_fecha:     'Date',
-    lbl_operador:  '👷 Operator',
-    lbl_op_ph:     'Full name',
-    lbl_emp:       '🔢 Employee No.',
-    lbl_emp_ph:    'Ex. 00421',
-    lbl_modelo:    '📱 Model',
-    lbl_bom_load:  '— Loading BOM models... —',
-    lbl_parte:     '🔩 Part No. / Assembly',
-    lbl_turno:     '⏰ Shift',
-    lbl_cut:       '⏱ Production Cut',
-    lbl_maquina:   '🔧 Select your Machine',
-    lbl_datos:     'Production Data',
-    lbl_target:    'Target',
-    lbl_cumpl:     'Compl.',
-    lbl_scrap:     'Scrap%',
-    lbl_prod:      '✅ Production',
-    lbl_def:       '⚠️ Defects',
-    lbl_scrap_lbl: '🗑 Scrap',
-    lbl_downtime:  '⏱ Downtime',
-    lbl_no_dt:     '-- No downtime --',
-    lbl_notes:     '📝 Notes',
-    lbl_notes_ph:  'Additional notes...',
-    lbl_confirm:   '📋 Confirm your record',
-    sent_ok:       'Sent to Dashboard!',
-    btn_nueva:     '➕ New capture',
-    btn_ver_reg:   '📋 View my records today',
-    btn_prev:      '← Back',
-    btn_next:      'Next →',
-    btn_enviar:    '📤 Send to Dashboard',
-    dash_tab_hoy:  '📊 Today',
-    dash_tab_feed: '📡 Feed',
-    dash_tab_maq:  '🔧 Machines',
-    dash_tab_tend: '📈 Trends',
-    dash_tab_regs: '🗂 Records',
-    dash_tab_plan: '📋 Plan',
-    kpi_prod:      'Production',
-    kpi_comp:      'Compliance',
-    kpi_scrap:     'Scrap %',
-    kpi_def:       'Defects %',
-    kpi_down:      'Downtime',
-    kpi_units:     'units',
-    kpi_min:       'minutes',
-    kpi_vs:        'vs prod',
-    dash_all_shifts: 'All shifts',
-    dash_diario:   'Daily',
-    dash_semanal:  'Weekly',
-    dash_mensual:  'Monthly',
-    dash_trimest:  'Quarterly',
-    dash_anual:    'Annual',
-    dash_refresh:  '🔄 Refresh',
-    dash_live:     'LIVE',
-    th_machine:    'Machine',
-    th_type:       'Type',
-    th_target:     'Target',
-    th_prod:       'Prod',
-    th_def:        'Def',
-    th_scrap:      'Scrap',
-    th_pct:        '%',
-    th_status:     'Status',
-    th_cause:      'Cause',
-    th_min:        'Min',
-    th_shift:      '% shift',
-    th_model:      'Model',
-    th_part:       'Part No.',
-    th_qty:        'Qty',
-    th_defects:    'Defects',
-    th_mail:       'Email',
-    th_nombre:     'Name',
-    th_rol:        'Role',
-    th_estado:     'Status',
-    th_registros:  'Records',
-    th_acciones:   'Actions',
-    ch_compliance: 'Compliance by machine',
-    ch_prod_cut:   'Production by cut',
-    ch_detail:     'Machine detail',
-    ch_downtime:   'Downtime detail',
-    ch_summary:    'Production summary · model & parts',
-    ch_prod:       'Production',
-    ch_cumpl:      'Compl %',
-    ch_scrap_ch:   'Scrap %',
-    ch_def_ch:     'Def %',
-    ch_comp:       'Comparison',
-    feed_caps:     '📡 Records',
-    feed_ops:      '👷 Active operators',
-    feed_empty:    'No records.',
-    adm_new_user:  '👤 New User',
-    adm_correo:    'Email',
-    adm_nombre:    'Name',
-    adm_pass:      'Password (min. 6)',
-    adm_emp_num:   'Employee No.',
-    adm_rol:       'Role',
-    adm_add_user:  '➕ Create user',
-    adm_users:     '👥 Users',
-    adm_permisos:  '🔐 Role Permissions',
-    adm_captura:   '📱 Capture',
-    adm_maquinas:  '🖥️ Machine Status',
-    adm_targets:   '🎯 Targets per Machine',
-    adm_email:     '📧 Email Reports',
-    adm_cierre:    '🔒 Day Close — IMS Deduction',
-    adm_corregir:  '✏️ Edit Records',
-    adm_lote:      '🔄 Batch model correction',
-    adm_buscar:    '🔍 Search',
-    adm_agregar:   '➕ Add Record',
-    adm_guardar:   '💾 Save',
-    adm_calcular:  '📊 Calculate deductions',
-    adm_sim:       '🧪 Simulation mode (NO Firebase)',
+    menu_op:    '📱 Operator',
+    menu_dash:  '🖥️ Dashboard',
+    menu_admin: '⚙️ Admin',
+    menu_breaks:'⏸ Breaks',
+    btn_logout: '⏏ Logout',
+    lbl_fecha:  'Date',
+    lbl_modelo: '📱 Model',
+    lbl_turno:  '⏰ Shift',
+    lbl_prod:   '✅ Production',
+    lbl_target: 'Target',
+    lbl_cumpl:  'Compl.',
+    lbl_scrap:  'Scrap%',
+    lbl_datos:  'Production Data',
+    btn_enviar: '📤 Send to Dashboard',
+    lbl_turno_a:'Shift A',
+    lbl_ot:     'Overtime',
+    sent_ok:    'Sent to Dashboard!',
   },
   ko: {
-    menu_op:       '📱 작업자',
-    menu_dash:     '🖥️ 대시보드',
-    menu_admin:    '⚙️ 관리자',
-    menu_breaks:   '⏸ 휴식',
-    btn_logout:    '⏏ 로그아웃',
-    lbl_info:      '📅 기록 정보',
-    lbl_fecha:     '날짜',
-    lbl_operador:  '👷 작업자',
-    lbl_op_ph:     '성명',
-    lbl_emp:       '🔢 사원 번호',
-    lbl_emp_ph:    '예: 00421',
-    lbl_modelo:    '📱 모델',
-    lbl_bom_load:  '— BOM 모델 로딩 중... —',
-    lbl_parte:     '🔩 부품 번호 / 조립',
-    lbl_turno:     '⏰ 교대',
-    lbl_cut:       '⏱ 생산 구간',
-    lbl_maquina:   '🔧 기계 선택',
-    lbl_datos:     '생산 데이터',
-    lbl_target:    '목표',
-    lbl_cumpl:     '달성률',
-    lbl_scrap:     '불량률',
-    lbl_prod:      '✅ 생산량',
-    lbl_def:       '⚠️ 불량',
-    lbl_scrap_lbl: '🗑 스크랩',
-    lbl_downtime:  '⏱ 다운타임',
-    lbl_no_dt:     '-- 다운타임 없음 --',
-    lbl_notes:     '📝 메모',
-    lbl_notes_ph:  '추가 메모...',
-    lbl_confirm:   '📋 기록 확인',
-    sent_ok:       '대시보드에 전송됨!',
-    btn_nueva:     '➕ 새 캡처',
-    btn_ver_reg:   '📋 오늘 내 기록 보기',
-    btn_prev:      '← 이전',
-    btn_next:      '다음 →',
-    btn_enviar:    '📤 대시보드 전송',
-    dash_tab_hoy:  '📊 오늘',
-    dash_tab_feed: '📡 피드',
-    dash_tab_maq:  '🔧 기계',
-    dash_tab_tend: '📈 추세',
-    dash_tab_regs: '🗂 기록',
-    dash_tab_plan: '📋 계획',
-    kpi_prod:      '생산량',
-    kpi_comp:      '달성률',
-    kpi_scrap:     '불량률',
-    kpi_def:       '결함률',
-    kpi_down:      '다운타임',
-    kpi_units:     '단위',
-    kpi_min:       '분',
-    kpi_vs:        'vs 생산',
-    dash_all_shifts: '전체 교대',
-    dash_diario:   '일별',
-    dash_semanal:  '주별',
-    dash_mensual:  '월별',
-    dash_trimest:  '분기별',
-    dash_anual:    '연간',
-    dash_refresh:  '🔄 새로고침',
-    dash_live:     '실시간',
-    th_machine:    '기계',
-    th_type:       '유형',
-    th_target:     '목표',
-    th_prod:       '생산',
-    th_def:        '불량',
-    th_scrap:      '스크랩',
-    th_pct:        '%',
-    th_status:     '상태',
-    th_cause:      '원인',
-    th_min:        '분',
-    th_shift:      '% 교대',
-    th_model:      '모델',
-    th_part:       '부품번호',
-    th_qty:        '수량',
-    th_defects:    '불량',
-    th_mail:       '이메일',
-    th_nombre:     '이름',
-    th_rol:        '역할',
-    th_estado:     '상태',
-    th_registros:  '기록',
-    th_acciones:   '작업',
-    ch_compliance: '기계별 달성률',
-    ch_prod_cut:   '구간별 생산량',
-    ch_detail:     '기계 상세',
-    ch_downtime:   '다운타임 상세',
-    ch_summary:    '생산 요약 · 모델 & 부품',
-    ch_prod:       '생산량',
-    ch_cumpl:      '달성률 %',
-    ch_scrap_ch:   '불량률 %',
-    ch_def_ch:     '결함률 %',
-    ch_comp:       '비교',
-    feed_caps:     '📡 캡처',
-    feed_ops:      '👷 활성 작업자',
-    feed_empty:    '기록 없음.',
-    adm_new_user:  '👤 새 사용자',
-    adm_correo:    '이메일',
-    adm_nombre:    '이름',
-    adm_pass:      '비밀번호 (최소 6자)',
-    adm_emp_num:   '사원 번호',
-    adm_rol:       '역할',
-    adm_add_user:  '➕ 사용자 생성',
-    adm_users:     '👥 사용자',
-    adm_permisos:  '🔐 역할 권한',
-    adm_captura:   '📱 캡처',
-    adm_maquinas:  '🖥️ 기계 상태',
-    adm_targets:   '🎯 기계별 목표',
-    adm_email:     '📧 이메일 보고서',
-    adm_cierre:    '🔒 일일 마감 — IMS 차감',
-    adm_corregir:  '✏️ 기록 수정',
-    adm_lote:      '🔄 모델 일괄 수정',
-    adm_buscar:    '🔍 검색',
-    adm_agregar:   '➕ 기록 추가',
-    adm_guardar:   '💾 저장',
-    adm_calcular:  '📊 차감 계산',
-    adm_sim:       '🧪 시뮬레이션 모드 (Firebase 미적용)',
+    menu_op:    '📱 작업자',
+    menu_dash:  '🖥️ 대시보드',
+    menu_admin: '⚙️ 관리자',
+    menu_breaks:'⏸ 휴식',
+    btn_logout: '⏏ 로그아웃',
+    lbl_fecha:  '날짜',
+    lbl_modelo: '📱 모델',
+    lbl_turno:  '⏰ 교대',
+    lbl_prod:   '✅ 생산량',
+    lbl_target: '목표',
+    lbl_cumpl:  '달성률',
+    lbl_scrap:  '불량률',
+    lbl_datos:  '생산 데이터',
+    btn_enviar: '📤 대시보드 전송',
+    lbl_turno_a:'A 교대',
+    lbl_ot:     '초과 근무',
+    sent_ok:    '대시보드에 전송됨!',
   }
 };
 
@@ -2272,109 +1978,26 @@ window.setLang = function(lang){
 };
 
 function applyTranslations(){
-  // Simple id → text map
   const ids = {
-    'mb-op':        t('menu_op'),
-    'mb-dash':      t('menu_dash'),
-    'mb-admin':     t('menu_admin'),
-    'mb-breaks':    t('menu_breaks'),
-    'logout-lbl':   t('btn_logout'),
-    // Operator form
-    'lbl-info':     t('lbl_info'),
-    'lbl-fecha':    t('lbl_fecha'),
-    'lbl-operador': t('lbl_operador'),
-    'lbl-emp':      t('lbl_emp'),
-    'lbl-modelo':   t('lbl_modelo'),
-    'lbl-parte':    t('lbl_parte'),
-    'lbl-turno':    t('lbl_turno'),
-    'lbl-cut':      t('lbl_cut'),
-    'lbl-maquina':  t('lbl_maquina'),
-    'mhdr':         t('lbl_datos'),
-    'lbl-target':   t('lbl_target'),
-    'lbl-cumpl':    t('lbl_cumpl'),
-    'lbl-scrap':    t('lbl_scrap'),
-    'lbl-prod':     t('lbl_prod'),
-    'lbl-def':      t('lbl_def'),
-    'lbl-scrap-lbl':t('lbl_scrap_lbl'),
-    'lbl-downtime': t('lbl_downtime'),
-    'lbl-notes':    t('lbl_notes'),
-    'lbl-confirm':  t('lbl_confirm'),
-    'btn-nueva':    t('btn_nueva'),
-    'btn-ver-reg':  t('btn_ver_reg'),
-    'btnprev':      t('btn_prev'),
-    'btnnext':      t('btn_next'),
-    'btn-enviar':   t('btn_enviar'),
-    // Dashboard tabs
-    'dtab-btn-hoy':  t('dash_tab_hoy'),
-    'dtab-btn-feed': t('dash_tab_feed'),
-    'dtab-btn-maq':  t('dash_tab_maq'),
-    'dtab-btn-tend': t('dash_tab_tend'),
-    'dtab-btn-regs': t('dash_tab_regs'),
-    'dtab-btn-plan': t('dash_tab_plan'),
-    // KPI labels
-    'kpi-lbl-prod':  t('kpi_prod'),
-    'kpi-lbl-comp':  t('kpi_comp'),
-    'kpi-lbl-scrap': t('kpi_scrap'),
-    'kpi-lbl-def':   t('kpi_def'),
-    'kpi-lbl-down':  t('kpi_down'),
-    'kpi-sub-prod':  t('kpi_units'),
-    'kpi-sub-down':  t('kpi_min'),
-    'dash-live-lbl': t('dash_live'),
-    // Chart titles
-    'ch-compliance': t('ch_compliance'),
-    'ch-prod-cut':   t('ch_prod_cut'),
-    'ch-detail':     t('ch_detail'),
-    'ch-downtime':   t('ch_downtime'),
-    'ch-summary':    t('ch_summary'),
-    'mt-p':          t('ch_prod'),
-    'mt-c':          t('ch_cumpl'),
-    'mt-s':          t('ch_scrap_ch'),
-    'mt-d':          t('ch_def_ch'),
-    'tt-p':          t('ch_prod'),
-    'tt-c':          t('ch_cumpl'),
-    'tt-s':          t('ch_scrap_ch'),
-    'tt-d':          t('ch_def_ch'),
-    'tt-comp':       t('ch_comp'),
-    // Feed
-    'feed-caps-hdr': t('feed_caps'),
-    'feed-ops-hdr':  t('feed_ops'),
-    // Admin
-    'adm-new-user':  t('adm_new_user'),
-    'adm-lbl-correo':t('adm_correo'),
-    'adm-lbl-nombre':t('adm_nombre'),
-    'adm-lbl-pass':  t('adm_pass'),
-    'adm-lbl-emp':   t('adm_emp_num'),
-    'adm-lbl-rol':   t('adm_rol'),
-    'adm-btn-add':   t('adm_add_user'),
-    'adm-h-users':   t('adm_users'),
-    'adm-h-permisos':t('adm_permisos'),
-    'adm-h-maquinas':t('adm_maquinas'),
-    'adm-h-targets': t('adm_targets'),
-    'adm-h-email':   t('adm_email'),
-    'adm-h-cierre':  t('adm_cierre'),
-    'adm-h-corregir':t('adm_corregir'),
-    'adm-h-lote':    t('adm_lote'),
-    'adm-btn-buscar':t('adm_buscar'),
-    'adm-btn-agregar':t('adm_agregar'),
+    'mb-op':     t('menu_op'),
+    'mb-dash':   t('menu_dash'),
+    'mb-admin':  t('menu_admin'),
+    'mb-breaks': t('menu_breaks'),
+    'logout-lbl':t('btn_logout'),
+    'lbl-fecha': t('lbl_fecha'),
+    'lbl-modelo':t('lbl_modelo'),
+    'lbl-turno': t('lbl_turno'),
+    'lbl-prod':  t('lbl_prod'),
+    'lbl-target':t('lbl_target'),
+    'lbl-cumpl': t('lbl_cumpl'),
+    'lbl-scrap': t('lbl_scrap'),
+    'mhdr':      t('lbl_datos'),
+    'btn-enviar':t('btn_enviar'),
   };
   Object.entries(ids).forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
-  // Placeholders
-  const phs = {
-    'ip-op':   t('lbl_op_ph'),
-    'ip-emp':  t('lbl_emp_ph'),
-    'ip-notas':t('lbl_notes_ph'),
-  };
-  Object.entries(phs).forEach(([id,ph])=>{ const el=document.getElementById(id); if(el) el.placeholder=ph; });
-  // Shift filter selects — "Todos los turnos"
-  document.querySelectorAll('.opt-all-shifts').forEach(el=>el.textContent=t('dash_all_shifts'));
-  // Range buttons
-  document.querySelectorAll('.rb-diario').forEach(el=>el.textContent=t('dash_diario'));
-  document.querySelectorAll('.rb-semanal').forEach(el=>el.textContent=t('dash_semanal'));
-  document.querySelectorAll('.rb-mensual').forEach(el=>el.textContent=t('dash_mensual'));
-  document.querySelectorAll('.rb-trimest').forEach(el=>el.textContent=t('dash_trimest'));
-  document.querySelectorAll('.rb-anual').forEach(el=>el.textContent=t('dash_anual'));
-  // Downtime no-dt option
-  document.querySelectorAll('.opt-no-dt').forEach(el=>el.textContent=t('lbl_no_dt'));
+  // Shift options
+  document.querySelectorAll('.opt-turno-a').forEach(el=>el.textContent=t('lbl_turno_a'));
+  document.querySelectorAll('.opt-ot').forEach(el=>el.textContent=t('lbl_ot'));
 }
 
 // Apply saved language on load
@@ -2573,17 +2196,17 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   <div class="view active" id="view-op"><div class="op">
     <div class="steps"><div class="step active" id="s0"></div><div class="step" id="s1"></div><div class="step" id="s2"></div><div class="step" id="s3"></div></div>
     <div class="screen active" id="scr0">
-      <div class="oc"><div class="oct" id="lbl-info">📅 Información del Registro</div>
+      <div class="oc"><div class="oct">📅 Información del Registro</div>
         <div class="field"><label id="lbl-fecha">Fecha</label><input type="date" id="ip-fecha"></div>
-        <div class="field"><label id="lbl-operador">👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
-        <div class="field"><label id="lbl-emp">🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
+        <div class="field"><label>👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
+        <div class="field"><label>🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
         <div class="field"><label id="lbl-modelo">📱 Modelo</label>
           <select id="ip-modelo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
             <option value="">— Cargando modelos del BOM... —</option>
           </select>
           <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div>
         </div>
-        <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
+        <div class="field"><label>🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
       </div>
       <div class="oc"><div class="oct" id="lbl-turno">⏰ Turno</div>
         <div class="tgrid">
@@ -2591,7 +2214,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <div class="tc" id="tc-B" onclick="selT('B')"><div class="ticon">⏰</div><div class="tlbl">Overtime</div><div class="tsub">4:45–6:30 PM</div></div>
           <div class="tc" id="tc-C" onclick="selT('C')"><div class="ticon">📅</div><div class="tlbl">Saturday OT</div><div class="tsub">7:00 AM–1:00 PM</div></div>
         </div>
-        <div class="oct" style="margin-top:12px" id="lbl-cut">⏱ Production Cut</div>
+        <div class="oct" style="margin-top:12px">⏱ Production Cut</div>
         <div class="tgrid" style="grid-template-columns:repeat(2,1fr)">
           <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">🌅</div><div class="tlbl">Break</div><div class="tsub">7:00–8:45 AM</div></div>
           <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Lunch</div><div class="tsub">9:00–12:30 PM</div></div>
@@ -2600,7 +2223,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
       </div>
     </div>
-    <div class="screen" id="scr1"><div class="oc"><div class="oct" id="lbl-maquina">🔧 Selecciona tu Máquina</div><div class="mgrid" id="mgrid"></div></div></div>
+    <div class="screen" id="scr1"><div class="oc"><div class="oct">🔧 Selecciona tu Máquina</div><div class="mgrid" id="mgrid"></div></div></div>
     <div class="screen" id="scr2">
       <div class="oc"><div class="oct" id="mhdr">Datos de Producción</div>
         <div class="krow"><div class="km"><div class="v blue" id="ktgt">–</div><div class="l" id="lbl-target">Target</div></div><div class="km"><div class="v" id="kpct">–</div><div class="l" id="lbl-cumpl">Cumpl.</div></div><div class="km"><div class="v" id="kscp">–</div><div class="l" id="lbl-scrap">Scrap%</div></div></div>
@@ -2608,31 +2231,31 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
       <div class="oc">
         <div class="nf"><label id="lbl-prod">✅ Producción</label><div class="nw"><button class="nb" onclick="adj('p',-100)">−</button><input type="number" id="ip-prod" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('p',100)">+</button></div></div>
-        <div class="nf"><label id="lbl-def">⚠️ Defectos</label><div class="nw"><button class="nb" onclick="adj('d',-10)">−</button><input type="number" id="ip-def" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('d',10)">+</button></div></div>
-        <div class="nf"><label id="lbl-scrap-lbl">🗑 Scrap</label><div class="nw"><button class="nb" onclick="adj('s',-10)">−</button><input type="number" id="ip-scr" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('s',10)">+</button></div></div>
+        <div class="nf"><label>⚠️ Defectos</label><div class="nw"><button class="nb" onclick="adj('d',-10)">−</button><input type="number" id="ip-def" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('d',10)">+</button></div></div>
+        <div class="nf"><label>🗑 Scrap</label><div class="nw"><button class="nb" onclick="adj('s',-10)">−</button><input type="number" id="ip-scr" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('s',10)">+</button></div></div>
       </div>
       <div class="oc">
-        <div class="oct" id="lbl-downtime">⏱ Downtime</div>
+        <div class="oct">⏱ Downtime</div>
         <div class="field" style="display:grid;grid-template-columns:1fr 100px;gap:8px;margin-bottom:8px">
           <select id="ip-causa" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:.85rem;outline:none">
-            <option value="" class="opt-no-dt">-- Sin downtime --</option>
+            <option value="">-- No downtime --</option>
           </select>
           <input type="number" id="ip-paro" placeholder="Min" min="0" max="999" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:10px;font-size:.85rem;outline:none;text-align:center">
         </div>
-        <div class="oct" style="margin-top:4px" id="lbl-notes">📝 Notes</div>
-        <div class="field"><textarea id="ip-notas" placeholder="Notas adicionales..."></textarea></div>
+        <div class="oct" style="margin-top:4px">📝 Notes</div>
+        <div class="field"><textarea id="ip-notas" placeholder="Additional notes..."></textarea></div>
       </div>
     </div>
     <div class="screen" id="scr3">
-      <div class="oc"><div class="oct" id="lbl-confirm">📋 Confirma tu registro</div><div id="res-body"></div></div>
+      <div class="oc"><div class="oct">📋 Confirma tu registro</div><div id="res-body"></div></div>
       <div class="oc" id="res-nc" style="display:none"><div class="oct" style="color:var(--yellow)">📝 Notas</div><div id="res-notas" style="font-size:.85rem;color:var(--muted)"></div></div>
     </div>
     <div class="screen" id="scr4">
       <div class="si">✅</div><div class="st">¡Enviado al Dashboard!</div>
       <div class="ss" id="suc-sub"></div><br>
       <div class="oc">
-        <button class="btn bnext" style="width:100%;margin-bottom:7px;padding:12px" id="btn-nueva" onclick="nuevaCap()">➕ Nueva captura</button>
-        <button class="btn bprev" style="width:100%;padding:12px" id="btn-ver-reg" onclick="verMis()">📋 Ver mis registros hoy</button>
+        <button class="btn bnext" style="width:100%;margin-bottom:7px;padding:12px" onclick="nuevaCap()">➕ Nueva captura</button>
+        <button class="btn bprev" style="width:100%;padding:12px" onclick="verMis()">📋 Ver mis registros hoy</button>
       </div>
       <div id="mis-reg"></div>
     </div>
@@ -2641,14 +2264,14 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 
   <!-- DASHBOARD -->
   <div class="view" id="view-dash"><div class="dw">
-    <div class="dh"><h2>🏭 Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div><span id="dash-live-lbl">EN VIVO</span></div><span class="bsm" id="lupd">–</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">📺 TV</button></div></div>
-    <div class="dtabs"><div class="dtab active" id="dtab-btn-hoy" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" id="dtab-btn-feed" onclick="showDT('feed')">📡 Feed</div><div class="dtab" id="dtab-btn-maq" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" id="dtab-btn-tend" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" id="dtab-btn-regs" onclick="showDT('regs')">🗂 Registros</div><div class="dtab" id="dtab-btn-plan" onclick="showDT('plan')" style="color:#FFBA00">📋 Plan</div></div>
+    <div class="dh"><h2>🏭 Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div>EN VIVO</div><span class="bsm" id="lupd">–</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">📺 TV</button></div></div>
+    <div class="dtabs"><div class="dtab active" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" onclick="showDT('feed')">📡 Feed</div><div class="dtab" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" onclick="showDT('regs')">🗂 Registros</div><div class="dtab" onclick="showDT('plan')" style="color:#FFBA00">📋 Plan</div></div>
 
     <div id="dtab-hoy" class="dtc active">
       <div class="ctrl">
         <input type="date" id="fhoy" onchange="rHoy()">
         <select id="thoy" onchange="rHoy()">
-          <option value="todos" class="opt-all-shifts">Todos los turnos</option>
+          <option value="todos">Todos los turnos</option>
           <option value="A" class="opt-turno-a">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
@@ -2658,11 +2281,11 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <button class="dbtn drf" onclick="dRefresh()">🔄 Actualizar</button>
       </div>
       <div class="kgrid">
-        <div class="kpi"><div class="lbl" id="kpi-lbl-prod">Production</div><div class="val blue" id="k-p">–</div><div class="sub" id="kpi-sub-prod">units</div></div>
-        <div class="kpi"><div class="lbl" id="kpi-lbl-comp">Compliance</div><div class="val blue" id="k-c">–</div><div class="sub" id="k-cs">–</div></div>
-        <div class="kpi"><div class="lbl" id="kpi-lbl-scrap">Scrap %</div><div class="val blue" id="k-s">–</div><div class="sub">vs prod</div></div>
-        <div class="kpi"><div class="lbl" id="kpi-lbl-def">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
-        <div class="kpi"><div class="lbl" id="kpi-lbl-down">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub" id="kpi-sub-down">minutes</div></div>
+        <div class="kpi"><div class="lbl">Production</div><div class="val blue" id="k-p">–</div><div class="sub">units</div></div>
+        <div class="kpi"><div class="lbl">Compliance</div><div class="val blue" id="k-c">–</div><div class="sub" id="k-cs">–</div></div>
+        <div class="kpi"><div class="lbl">Scrap %</div><div class="val blue" id="k-s">–</div><div class="sub">vs prod</div></div>
+        <div class="kpi"><div class="lbl">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
+        <div class="kpi"><div class="lbl">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub">minutes</div></div>
       </div>
       <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00–8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00–12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00–4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45–6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
@@ -2696,27 +2319,27 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div class="ctrl">
         <input type="date" id="ffeed" onchange="rFeed()">
         <select id="tfeed" onchange="rFeed()">
-          <option value="todos" class="opt-all-shifts">Todos los turnos</option>
+          <option value="todos">Todos los turnos</option>
           <option value="A" class="opt-turno-a">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
         <button class="dbtn drf" onclick="dRefresh()">🔄</button>
       </div>
-      <div class="dc"><h3 id="feed-caps-hdr">📡 Capturas</h3><div id="feed-body"><div class="empty">Sin capturas.</div></div></div>
-      <div class="dc"><h3 id="feed-ops-hdr">👷 Operadores activos</h3><div id="ops-body"></div></div>
+      <div class="dc"><h3>📡 Capturas</h3><div id="feed-body"><div class="empty">Sin capturas.</div></div></div>
+      <div class="dc"><h3>👷 Operadores activos</h3><div id="ops-body"></div></div>
     </div>
 
     <div id="dtab-maq" class="dtc">
       <div class="dc" style="margin-bottom:8px"><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         <select id="smaq" onchange="rMaq()"></select>
         <select id="tmaq" onchange="rMaq()">
-          <option value="todos" class="opt-all-shifts">Todos los turnos</option>
+          <option value="todos">Todos los turnos</option>
           <option value="A" class="opt-turno-a">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
-        <div class="rbs" id="rb-maq"><button class="rb active rb-diario" onclick="setR('maq','diario',this)">Diario</button><button class="rb rb-semanal" onclick="setR('maq','semanal',this)">Semanal</button><button class="rb rb-mensual" onclick="setR('maq','mensual',this)">Mensual</button><button class="rb rb-trimest" onclick="setR('maq','trimestral',this)">Trimestral</button><button class="rb rb-anual" onclick="setR('maq','anual',this)">Anual</button></div>
+        <div class="rbs" id="rb-maq"><button class="rb active" onclick="setR('maq','diario',this)">Diario</button><button class="rb" onclick="setR('maq','semanal',this)">Semanal</button><button class="rb" onclick="setR('maq','mensual',this)">Mensual</button><button class="rb" onclick="setR('maq','trimestral',this)">Trimestral</button><button class="rb" onclick="setR('maq','anual',this)">Anual</button></div>
       </div></div>
       <div class="g2"><div class="dc"><h3 id="mt-p">Producción</h3><canvas id="mP" height="185"></canvas></div><div class="dc"><h3 id="mt-c">Cumpl %</h3><canvas id="mC" height="185"></canvas></div><div class="dc"><h3 id="mt-s">Scrap %</h3><canvas id="mS" height="185"></canvas></div><div class="dc"><h3 id="mt-d">Def %</h3><canvas id="mD" height="185"></canvas></div></div>
     </div>
@@ -2724,12 +2347,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div id="dtab-tend" class="dtc">
       <div class="dc" style="margin-bottom:8px"><div style="display:flex;gap:7px;flex-wrap:wrap;align-items:center">
         <select id="ttend" onchange="rTend()">
-          <option value="todos" class="opt-all-shifts">Todos los turnos</option>
+          <option value="todos">Todos los turnos</option>
           <option value="A" class="opt-turno-a">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
-        <div class="rbs" id="rb-tend"><button class="rb active rb-diario" onclick="setR('tend','diario',this)">Diario</button><button class="rb rb-semanal" onclick="setR('tend','semanal',this)">Semanal</button><button class="rb rb-mensual" onclick="setR('tend','mensual',this)">Mensual</button><button class="rb rb-trimest" onclick="setR('tend','trimestral',this)">Trimestral</button><button class="rb rb-anual" onclick="setR('tend','anual',this)">Anual</button></div>
+        <div class="rbs" id="rb-tend"><button class="rb active" onclick="setR('tend','diario',this)">Diario</button><button class="rb" onclick="setR('tend','semanal',this)">Semanal</button><button class="rb" onclick="setR('tend','mensual',this)">Mensual</button><button class="rb" onclick="setR('tend','trimestral',this)">Trimestral</button><button class="rb" onclick="setR('tend','anual',this)">Anual</button></div>
       </div></div>
       <div class="g2"><div class="dc"><h3 id="tt-p">Producción</h3><canvas id="tP" height="185"></canvas></div><div class="dc"><h3 id="tt-c">Cumpl %</h3><canvas id="tC" height="185"></canvas></div><div class="dc"><h3 id="tt-s">Scrap %</h3><canvas id="tS" height="185"></canvas></div><div class="dc"><h3 id="tt-d">Def %</h3><canvas id="tD" height="185"></canvas></div></div>
       <div class="dc"><h3 id="tt-comp">Comparativo</h3><canvas id="tComp" height="130"></canvas></div>
@@ -2756,7 +2379,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div class="ctrl">
         <input type="date" id="freg" onchange="rRegs()">
         <select id="treg" onchange="rRegs()">
-          <option value="todos" class="opt-all-shifts">Todos los turnos</option>
+          <option value="todos">Todos los turnos</option>
           <option value="A" class="opt-turno-a">Turno A</option>
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
@@ -2775,29 +2398,29 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div class="agrid" id="admin-stats"></div>
     <div class="acard"><h3>➕ Agregar nuevo usuario</h3>
       <div class="form-row">
-        <div class="form-field"><label id="adm-lbl-correo">Correo</label><input type="email" id="nu-user" placeholder="correo@empresa.com"></div>
+        <div class="form-field"><label>Correo</label><input type="email" id="nu-user" placeholder="correo@empresa.com"></div>
         <div class="form-field"><label>Nombre completo</label><input type="text" id="nu-nombre" placeholder="Nombre Apellido"></div>
-        <div class="form-field"><label id="adm-lbl-emp">N° Empleado</label><input type="text" id="nu-emp-num" placeholder="00421"></div>
-        <div class="form-field"><label id="adm-lbl-pass">Contraseña (mín. 6)</label><input type="password" id="nu-pass" placeholder="••••••"></div>
-        <div class="form-field"><label id="adm-lbl-rol">Rol</label><select id="nu-rol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
+        <div class="form-field"><label>N° Empleado</label><input type="text" id="nu-emp-num" placeholder="00421"></div>
+        <div class="form-field"><label>Contraseña (mín. 6)</label><input type="password" id="nu-pass" placeholder="••••••"></div>
+        <div class="form-field"><label>Rol</label><select id="nu-rol"><option value="operador">Operador</option><option value="supervisor">Supervisor</option><option value="admin">Admin</option></select></div>
       </div>
-      <button class="abtn abtn-add" id="adm-btn-add" onclick="addUser()">➕ Crear usuario</button>
+      <button class="abtn abtn-add" onclick="addUser()">➕ Crear usuario</button>
       <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
     </div>
-    <div class="acard"><h3><span id="adm-h-users">👥 Usuarios</span> (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
-    <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
+    <div class="acard"><h3>👥 Usuarios (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
+    <div class="acard"><h3>🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
-      <h3 id="adm-h-maquinas">🖥️ Estado de Máquinas</h3>
+      <h3>🖥️ Estado de Máquinas</h3>
       <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva máquinas — las inactivas se muestran en gris en el dashboard.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;" id="admin-maquinas-grid"></div>
     </div>
     <div class="acard">
-      <h3 id="adm-h-targets">🎯 Targets por Máquina</h3>
+      <h3>🎯 Targets por Máquina</h3>
       <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Modifica el target diario — los cortes se calculan automáticamente.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;" id="admin-targets-grid"></div>
     </div>
     <div class="acard">
-      <h3 id="adm-h-email">📧 Reportes por Email</h3>
+      <h3>📧 Reportes por Email</h3>
       <div style="font-size:.75rem;color:var(--muted);margin-bottom:12px">Reportes automáticos: <strong style="color:var(--green)">Diario 4:30pm · Viernes 4:30pm · 1° de mes 4:30pm</strong></div>
       <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap">
         <input type="email" id="new-email-rep" placeholder="correo@empresa.com" style="flex:1;min-width:200px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
@@ -2810,7 +2433,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
     </div>
   <div class="acard">
-    <h3 id="adm-h-cierre">🔒 Cierre de Jornada — Descuento IMS</h3>
+    <h3>🔒 Cierre de Jornada — Descuento IMS</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
       <div>
@@ -2826,19 +2449,19 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div id="cj-resultado"></div>
   </div>
   <div class="acard">
-    <h3 id="adm-h-corregir">✏️ Corregir Registros</h3>
+    <h3>✏️ Corregir Registros</h3>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha</div>
         <input type="date" id="edit-reg-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
       </div>
-      <button class="abtn abtn-add" id="adm-btn-buscar" onclick="buscarRegistrosEdit()">🔍 Buscar</button>
-      <button class="abtn abtn-add" id="adm-btn-agregar" onclick="abrirNuevoRegistro()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">➕ Agregar Registro</button>
+      <button class="abtn abtn-add" onclick="buscarRegistrosEdit()">🔍 Buscar</button>
+      <button class="abtn abtn-add" onclick="abrirNuevoRegistro()" style="background:rgba(0,212,255,.1);border-color:var(--accent);color:var(--accent)">➕ Agregar Registro</button>
     </div>
     <div id="edit-reg-tabla"></div>
   </div>
   <div class="acard">
-    <h3 id="adm-h-lote">🔄 Corregir modelos en lote</h3>
+    <h3>🔄 Corregir modelos en lote</h3>
     <div style="font-size:12px;color:var(--muted);margin-bottom:12px">Reemplaza un modelo incorrecto por uno correcto en TODOS los registros de la base. Útil para corregir modelos mal capturados que no cumplen el formato (SM-XXXXXXXXXXX o CRN-XXXXXX).</div>
     <div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-bottom:12px">
       <div>
