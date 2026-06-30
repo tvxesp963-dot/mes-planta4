@@ -1646,7 +1646,7 @@ function rMaq(){
   const mi=parseInt(document.getElementById("smaq").value),m=MAQUINAS[mi];
   const turno=document.getElementById("tmaq").value;
   const data=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
-  const rL={diario:"Diario" class="rb-diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
+  const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
   document.getElementById("mt-p").textContent=m.nombre+" · Producción ("+rL+")";
   document.getElementById("mt-c").textContent=m.nombre+" · Cumpl% ("+rL+")";
   document.getElementById("mt-s").textContent=m.nombre+" · Scrap% ("+rL+")";
@@ -1661,7 +1661,7 @@ function rMaq(){
 
 function rTend(){
   const turno=document.getElementById("ttend").value,data=filt(REGISTROS,null,turno);
-  const rL={diario:"Diario" class="rb-diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
+  const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
   ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`Producción total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
   document.getElementById("tt-comp").textContent=`Comparativo por máquina (${rL})`;
   if(!data.length)return;
