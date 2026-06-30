@@ -2028,6 +2028,16 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 Guardar',
     adm_calcular:  '📊 Calcular descuentos',
     adm_sim:       '🧪 Modo simulación (NO toca Firebase)',
+    // Table headers
+    ch_shipqr:     '📦 Material listo para SHIPQR · P4 → P3',
+    lbl_desde:     'Desde',
+    lbl_hasta:     'Hasta',
+    lbl_aplicar:   '🔍 Aplicar',
+    th_modelosm:   'Modelo SM',
+    th_partnum:    'Part Number',
+    th_produccion: 'Producción',
+    th_estado:     'Estado',
+    th_accion:     'Acción',
   },
   en: {
     menu_op:       '📱 Operator',
@@ -2142,6 +2152,15 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 Save',
     adm_calcular:  '📊 Calculate deductions',
     adm_sim:       '🧪 Simulation mode (NO Firebase)',
+    ch_shipqr:     '📦 Material ready for SHIPQR · P4 → P3',
+    lbl_desde:     'From',
+    lbl_hasta:     'To',
+    lbl_aplicar:   '🔍 Apply',
+    th_modelosm:   'SM Model',
+    th_partnum:    'Part Number',
+    th_produccion: 'Production',
+    th_estado:     'Status',
+    th_accion:     'Action',
   },
   ko: {
     menu_op:       '📱 작업자',
@@ -2256,6 +2275,15 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 저장',
     adm_calcular:  '📊 차감 계산',
     adm_sim:       '🧪 시뮬레이션 모드 (Firebase 미적용)',
+    ch_shipqr:     '📦 SHIPQR 출하 준비 · P4 → P3',
+    lbl_desde:     '시작일',
+    lbl_hasta:     '종료일',
+    lbl_aplicar:   '🔍 적용',
+    th_modelosm:   'SM 모델',
+    th_partnum:    '부품번호',
+    th_produccion: '생산량',
+    th_estado:     '상태',
+    th_accion:     '작업',
   }
 };
 
@@ -2356,6 +2384,36 @@ function applyTranslations(){
     'adm-h-lote':    t('adm_lote'),
     'adm-btn-buscar':t('adm_buscar'),
     'adm-btn-agregar':t('adm_agregar'),
+    // Table headers & ShipQR
+    'ch-shipqr':    t('ch_shipqr'),
+    'lbl-desde':    t('lbl_desde'),
+    'lbl-hasta':    t('lbl_hasta'),
+    'lbl-aplicar':  t('lbl_aplicar'),
+    'th-modelosm':  t('th_modelosm'),
+    'th-partnum':   t('th_partnum'),
+    'th-produccion':t('th_produccion'),
+    'th-estado':    t('th_estado'),
+    'th-accion':    t('th_accion'),
+    'th-machine1':  t('th_machine'),
+    'th-type1':     t('th_type'),
+    'th-target1':   t('th_target'),
+    'th-prod1':     t('th_prod'),
+    'th-def1':      t('th_def'),
+    'th-scrap1':    t('th_scrap'),
+    'th-status1':   t('th_status'),
+    'th-machine2':  t('th_machine'),
+    'th-cause2':    t('th_cause'),
+    'th-min2':      t('th_min'),
+    'th-shift2':    t('th_shift'),
+    'th-status2':   t('th_status'),
+    'th-machine3':  t('th_machine'),
+    'th-model3':    t('th_model'),
+    'th-type3':     t('th_type'),
+    'th-part3':     t('th_part'),
+    'th-shift3':    t('th_shift'),
+    'th-qty3':      t('th_qty'),
+    'th-defects3':  t('th_defects'),
+    'th-scrap3':    t('th_scrap'),
   };
   Object.entries(ids).forEach(([id,txt])=>{ const el=document.getElementById(id); if(el) el.textContent=txt; });
   // Placeholders
@@ -2666,25 +2724,25 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
       <div class="g2"><div class="dc"><h3>Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3>Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00–8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00–12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00–4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45–6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
-        <div class="dc"><h3>Machine detail</h3><table><thead><tr><th>Machine</th><th>Type</th><th>Target</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
-        <div class="dc"><h3>Downtime detail</h3><table><thead><tr><th>Machine</th><th>Cause</th><th style="text-align:right">Min</th><th style="text-align:right">% shift</th><th style="text-align:right">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
+        <div class="dc"><h3 id="ch-detail">Machine detail</h3><table><thead><tr><th id="th-machine1">Machine</th><th id="th-type1">Type</th><th id="th-target1">Target</th><th id="th-prod1">Prod</th><th id="th-def1">Def</th><th id="th-scrap1">Scrap</th><th>%</th><th id="th-status1">Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
+        <div class="dc"><h3 id="ch-downtime">Downtime detail</h3><table><thead><tr><th id="th-machine2">Machine</th><th id="th-cause2">Cause</th><th style="text-align:right" id="th-min2">Min</th><th style="text-align:right" id="th-shift2">% shift</th><th style="text-align:right" id="th-status2">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3>Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th><th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
-      <div class="dc"><h3>📦 Material listo para SHIPQR · P4 → P3</h3>
+      <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P4 → P3</h3>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
           <div>
-            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Desde</label>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px" id="lbl-desde">Desde</label>
             <input type="date" id="shipqr-desde" style="font-size:13px;padding:6px 10px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none">
           </div>
           <div>
-            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px">Hasta</label>
+            <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px" id="lbl-hasta">Hasta</label>
             <input type="date" id="shipqr-hasta" style="font-size:13px;padding:6px 10px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;outline:none">
           </div>
           <button onclick="renderShipqr()" style="padding:7px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:6px;cursor:pointer">
-            🔍 Aplicar
+            <span id="lbl-aplicar">🔍 Aplicar</span>
           </button>
         </div>
-        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px">Modelo SM</th><th style="padding:10px 6px">Part Number</th><th style="text-align:right;padding:10px 6px">Producción</th><th style="text-align:center;padding:10px 6px">Estado</th><th style="text-align:center;padding:10px 6px">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
+        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px" id="th-modelosm">Modelo SM</th><th style="padding:10px 6px" id="th-partnum">Part Number</th><th style="text-align:right;padding:10px 6px" id="th-produccion">Producción</th><th style="text-align:center;padding:10px 6px" id="th-estado">Estado</th><th style="text-align:center;padding:10px 6px" id="th-accion">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Historial de envíos a ShipQR</div>
           <div id="tb-shipqr-historial" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
