@@ -1498,7 +1498,7 @@ function renderShipqr(){
     return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
     return;
   }
   const modPnMap={};
@@ -1522,8 +1522,7 @@ function renderShipqr(){
     const tr=document.createElement("tr");
     tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
       <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
-      <td style="text-align:center;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.fecha}</td>
-      <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.85rem">${m.turno}</span></td>
+      <td style="text-align:center;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.fecha} <span style="color:${tCol};font-weight:700;margin-left:4px">${m.turno}</span></td>
       <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
       <td style="text-align:center;padding:10px 6px">
         ${env
@@ -1541,7 +1540,7 @@ function renderShipqr(){
   });
   const trTot=document.createElement("tr");
   trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
-  trTot.innerHTML=`<td colspan="4" style="font-size:.9rem;padding:10px 6px">TOTAL</td>
+  trTot.innerHTML=`<td colspan="3" style="font-size:.9rem;padding:10px 6px">TOTAL</td>
     <td class="blue" style="text-align:right;font-size:.95rem;padding:10px 6px">${totalShip.toLocaleString()}</td>
     <td></td><td></td>`;
   tbShipqr.appendChild(trTot);
@@ -2043,8 +2042,7 @@ const TRANSLATIONS = {
     lbl_aplicar:   '🔍 Aplicar',
     th_modelosm:   'Modelo SM',
     th_partnum:    'Part Number',
-    th_fecha:      'Fecha',
-    th_turno_col:  'Turno',
+    th_fechaturno: 'Fecha / Turno',
     th_produccion: 'Producción',
     th_estado:     'Estado',
     th_accion:     'Acción',
@@ -2168,8 +2166,7 @@ const TRANSLATIONS = {
     lbl_aplicar:   '🔍 Apply',
     th_modelosm:   'SM Model',
     th_partnum:    'Part Number',
-    th_fecha:      'Date',
-    th_turno_col:  'Shift',
+    th_fechaturno: 'Date / Shift',
     th_produccion: 'Production',
     th_estado:     'Status',
     th_accion:     'Action',
@@ -2293,8 +2290,7 @@ const TRANSLATIONS = {
     lbl_aplicar:   '🔍 적용',
     th_modelosm:   'SM 모델',
     th_partnum:    '부품번호',
-    th_fecha:      '날짜',
-    th_turno_col:  '교대',
+    th_fechaturno: '날짜 / 교대',
     th_produccion: '생산량',
     th_estado:     '상태',
     th_accion:     '작업',
@@ -2405,8 +2401,7 @@ function applyTranslations(){
     'lbl-aplicar':  t('lbl_aplicar'),
     'th-modelosm':  t('th_modelosm'),
     'th-partnum':   t('th_partnum'),
-    'th-fecha':     t('th_fecha'),
-    'th-turno':     t('th_turno_col'),
+    'th-fechaturno':t('th_fechaturno'),
     'th-produccion':t('th_produccion'),
     'th-estado':    t('th_estado'),
     'th-accion':    t('th_accion'),
@@ -2764,7 +2759,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
             <span id="lbl-aplicar">🔍 Aplicar</span>
           </button>
         </div>
-        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px" id="th-modelosm">Modelo SM</th><th style="padding:10px 6px" id="th-partnum">Part Number</th><th style="text-align:center;padding:10px 6px" id="th-fecha">Fecha</th><th style="text-align:center;padding:10px 6px" id="th-turno">Turno</th><th style="text-align:right;padding:10px 6px" id="th-produccion">Producción</th><th style="text-align:center;padding:10px 6px" id="th-estado">Estado</th><th style="text-align:center;padding:10px 6px" id="th-accion">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
+        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px" id="th-modelosm">Modelo SM</th><th style="padding:10px 6px" id="th-partnum">Part Number</th><th style="text-align:center;padding:10px 6px" id="th-fechaturno">Fecha / Turno</th><th style="text-align:right;padding:10px 6px" id="th-produccion">Producción</th><th style="text-align:center;padding:10px 6px" id="th-estado">Estado</th><th style="text-align:center;padding:10px 6px" id="th-accion">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Historial de envíos a ShipQR</div>
           <div id="tb-shipqr-historial" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
