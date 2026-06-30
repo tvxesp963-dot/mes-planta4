@@ -1507,9 +1507,8 @@ function renderShipqr(){
     const parte=r.parte||"—";
     const fecha=r.fecha||"—";
     const turno=r.turno||"—";
-    const horaCaptura = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.tsLocal ? new Date(r.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—');
-    const key=modelo+"||"+parte+"||"+fecha+"||"+turno+"||"+horaCaptura;
-    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0};}
+    const key=modelo+"||"+parte+"||"+fecha+"||"+turno;
+    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,prod:0};}
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
   });
   const rows=Object.values(modPnMap).sort((a,b)=>(a.fecha+a.modelo).localeCompare(b.fecha+b.modelo));
@@ -1524,7 +1523,7 @@ function renderShipqr(){
     tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
       <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
       <td style="text-align:center;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.fecha}</td>
-      <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.8rem;white-space:nowrap">${m.horaCaptura}</span></td>
+      <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.85rem">${m.turno}</span></td>
       <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
       <td style="text-align:center;padding:10px 6px">
         ${env
