@@ -1262,10 +1262,10 @@ function pintarHistorialShipqr(){
     </div>
   `).join('');
 }
-window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
+window.enviarShipqr=async(modeloEnc,parteEnc,prod)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
-  const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
+  const key=modelo+'||'+parte;
   if(SHIPQR_ENVIADOS[key]){ return; }
   const registro={
     modelo, parte, prod,
@@ -1517,7 +1517,7 @@ function renderShipqr(){
   const turnoColor={A:'#4f8ef7',B:'#2ecc71',C:'#e67e22'};
   rows.forEach(m=>{
     totalShip+=m.prod;
-    const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
+    const key=m.modelo+"||"+m.parte;
     const env=SHIPQR_ENVIADOS[key];
     const tCol=turnoColor[m.turno]||'#7f8c9a';
     const tr=document.createElement("tr");
@@ -1532,7 +1532,7 @@ function renderShipqr(){
           : `<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`}
       </td>
       <td style="text-align:center;padding:10px 6px">
-        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}')"
+        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod})"
           ${env?'disabled':''}
           style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
