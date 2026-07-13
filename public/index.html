@@ -1,4 +1,4 @@
-﻿<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
@@ -1499,6 +1499,7 @@ function renderShipqr(){
   });
   if(!assyRango.length){
     tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    window._shipqrExportRows=[];
     return;
   }
   const modPnMap={};
@@ -1513,6 +1514,7 @@ function renderShipqr(){
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
   });
   const rows=Object.values(modPnMap).sort((a,b)=>(a.fecha+a.modelo).localeCompare(b.fecha+b.modelo));
+  window._shipqrExportRows=rows; // espejo exacto de lo mostrado en pantalla para exportar a Excel
   let totalShip=0;
   const turnoColor={A:'#4f8ef7',B:'#2ecc71',C:'#e67e22'};
   rows.forEach(m=>{
@@ -1548,6 +1550,31 @@ function renderShipqr(){
   tbShipqr.appendChild(trTot);
 }
 window.renderShipqr=renderShipqr;
+
+// Exporta a Excel exactamente lo que se ve en la tabla ShipQR (respeta el filtro de fecha aplicado)
+function exportarShipqrExcel(){
+  const rows=window._shipqrExportRows||[];
+  if(!rows.length){ alert('No hay datos para exportar. Aplica un rango de fechas con producción primero.'); return; }
+  const desde=document.getElementById("shipqr-desde")?.value||"";
+  const hasta=document.getElementById("shipqr-hasta")?.value||"";
+  const headers=['Modelo SM','Part Number','Fecha','Turno','Hora Captura','Producción','Estado'];
+  const data=[headers];
+  let totalShip=0;
+  rows.forEach(m=>{
+    totalShip+=m.prod;
+    const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
+    const estado=SHIPQR_ENVIADOS[key]?'ENVIADO':'PENDIENTE';
+    data.push([m.modelo,m.parte,m.fecha,m.turno,m.horaCaptura,m.prod,estado]);
+  });
+  data.push(['','','','','TOTAL',totalShip,'']);
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:16},{wch:16},{wch:12},{wch:8},{wch:12},{wch:12},{wch:12}];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,'ShipQR P4-P3');
+  const nombreArchivo=`ShipQR_P4_a_P3_${desde}_a_${hasta}.xlsx`;
+  XLSX.writeFile(wb,nombreArchivo);
+}
+window.exportarShipqrExcel=exportarShipqrExcel;
 
 function rFeed(){
   const fecha=document.getElementById("ffeed").value,turno=document.getElementById("tfeed").value;
@@ -2763,6 +2790,9 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           </div>
           <button onclick="renderShipqr()" style="padding:7px 14px;font-size:13px;font-weight:600;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);border-radius:6px;cursor:pointer">
             <span id="lbl-aplicar">🔍 Aplicar</span>
+          </button>
+          <button onclick="exportarShipqrExcel()" style="padding:7px 14px;font-size:13px;font-weight:600;background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.4);border-radius:6px;cursor:pointer">
+            📊 Excel
           </button>
         </div>
         <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px" id="th-modelosm">Modelo SM</th><th style="padding:10px 6px" id="th-partnum">Part Number</th><th style="text-align:center;padding:10px 6px" id="th-fecha">Fecha</th><th style="text-align:center;padding:10px 6px" id="th-turno">Turno</th><th style="text-align:right;padding:10px 6px" id="th-produccion">Producción</th><th style="text-align:center;padding:10px 6px" id="th-estado">Estado</th><th style="text-align:center;padding:10px 6px" id="th-accion">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
