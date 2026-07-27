@@ -827,7 +827,7 @@ async function loadMesPlan() {
 // Carga inventario actual del IMS — guarda por PN+DESC para distinguir Virgen vs Ranurado
 async function sincronizarInvMES() {
   try {
-    const snap = await getDocs(collection(db, 'ims_p1_inventario'));
+    const snap = await getDocs(collection(db, 'planta1_papel_inventario'));
     mesPlanInvSnapshot = {};
     snap.forEach(d => {
       const data = d.data();
@@ -863,7 +863,7 @@ function getInvMES(pn, desc) {
 
 async function actualizarSnapshotIMS() {
   try {
-    const snap = await getDocs(collection(db, 'ims_p1_inventario'));
+    const snap = await getDocs(collection(db, 'planta1_papel_inventario'));
     const invActual = {};
     snap.forEach(d => {
       const data = d.data();
@@ -1025,7 +1025,7 @@ function arrancarListenerIMS() {
   if (!pnsDelPlan.length) return;
 
   unsubImsListener = onSnapshot(
-    collection(db, 'ims_p1_inventario'),
+    collection(db, 'planta1_papel_inventario'),
     (snap) => {
       // Construir inventario actual
       const invActual = {};
