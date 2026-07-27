@@ -276,7 +276,7 @@ window.abrirNuevoRegistro = function() {
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
-        <select id="nr-modelo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">${'<option value="">— Seleccionar modelo —</option>'+(typeof MODELOS_LIST!=='undefined'?MODELOS_LIST:[]).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+        <input id="nr-modelo" placeholder="Escribe el modelo" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N° Parte</div>
@@ -329,7 +329,7 @@ window.guardarNuevoRegistro = async function(btn) {
     const def    = parseInt(document.getElementById('nr-def').value)||0;
     const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
     if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
-    if (!modelo) { showToast('Selecciona un modelo del BOM','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
+    if (!modelo) { showToast('Escribe el modelo','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
     const maqObj = (typeof LINEAS!=='undefined'?LINEAS:[]).find(m=>m.nombre===maq);
     const maqIdx = maqObj ? LINEAS.indexOf(maqObj) : null;
     // Target correcto según corte seleccionado
