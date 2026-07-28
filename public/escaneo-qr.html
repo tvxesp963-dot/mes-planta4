@@ -1,0 +1,393 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Escaneo QR · MES P4</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a23; --card2:#1e2230; --border:#2a2f3f;
+    --text:#e8eaed; --muted:#7f8c9a; --blue:#4f8ef7; --green:#2ecc71;
+    --red:#ff5b5b; --amber:#FFBA00; --purple:#9b59b6;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px}
+  h1{font-size:1.15rem;display:flex;align-items:center;gap:8px;margin:0 0 18px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+  label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:5px}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px;font-size:.95rem;margin-bottom:14px}
+  input:focus,select:focus{outline:2px solid var(--blue)}
+  button{cursor:pointer;border:none;border-radius:10px;font-weight:700;font-size:.9rem;padding:12px 16px}
+  .btn-main{width:100%;background:var(--blue);color:#fff}
+  .btn-main:disabled{opacity:.4;cursor:not-allowed}
+  .btn-green{background:var(--green);color:#04220f}
+  .btn-red{background:var(--red);color:#2a0303}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .err{color:var(--red);font-size:.85rem;margin-top:-6px;margin-bottom:10px;min-height:16px}
+  .hidden{display:none !important}
+  .counter{font-size:4rem;font-weight:800;text-align:center;color:var(--green);line-height:1}
+  .counter-sub{text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:16px}
+  .scanbox{border:2px dashed var(--blue);border-radius:14px;padding:22px;text-align:center;margin-bottom:16px;background:rgba(79,142,247,.06)}
+  .scanbox input{margin:0;text-align:center;font-size:1.1rem;letter-spacing:1px}
+  .log{max-height:170px;overflow-y:auto;font-size:.8rem;color:var(--muted);font-family:monospace}
+  .log div{padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+  .log div.dup{color:var(--red)}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card2);
+    border:1px solid var(--border);padding:10px 18px;border-radius:10px;font-size:.85rem;z-index:99;
+    opacity:0;transition:opacity .25s;pointer-events:none}
+  .toast.show{opacity:1}
+  .badge{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:6px;
+    padding:2px 8px;font-size:.75rem;color:var(--muted);margin-right:6px}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);
+    border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;margin-right:6px;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <h1>📷 Escaneo QR — Captura de Producción</h1>
+
+  <!-- LOGIN -->
+  <div id="scr-login" class="card">
+    <label>Correo</label>
+    <input id="lg-email" type="email" autocomplete="username">
+    <label>Contraseña</label>
+    <input id="lg-pass" type="password" autocomplete="current-password">
+    <div class="err" id="lg-err"></div>
+    <button class="btn-main" onclick="doLogin()">Entrar</button>
+  </div>
+
+  <!-- SETUP -->
+  <div id="scr-setup" class="card hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span class="badge" id="setup-user"></span>
+      <span onclick="doLogout()" style="font-size:.8rem;color:var(--red);cursor:pointer">Salir</span>
+    </div>
+    <label>Fecha</label>
+    <input id="s-fecha" type="date">
+    <label>Turno</label>
+    <select id="s-turno">
+      <option value="A">Shift A (6:54 AM–4:30 PM)</option>
+      <option value="B">Overtime (4:45–6:30 PM)</option>
+      <option value="C">Saturday OT (7:00 AM–1:00 PM)</option>
+    </select>
+    <label>Máquina</label>
+    <select id="s-maquina"></select>
+    <label>Corte</label>
+    <select id="s-corte">
+      <option value="C1">Break (7:00–8:45 AM)</option>
+      <option value="C2">Lunch (9:00–12:30 PM)</option>
+      <option value="C3">Home (1:00–4:30 PM)</option>
+      <option value="OT">OT (4:45–6:25 PM)</option>
+    </select>
+    <label>Modelo</label>
+    <select id="s-modelo" onchange="onModeloChangeScan()"></select>
+    <label>N° Parte</label>
+    <select id="s-parte"></select>
+    <label>Operador</label>
+    <input id="s-operador" placeholder="Nombre del operador">
+    <label>N° Empleado</label>
+    <input id="s-empleado" placeholder="Ej. 12345">
+    <div class="err" id="setup-err"></div>
+    <button class="btn-main" onclick="iniciarEscaneo()">▶️ Iniciar Escaneo</button>
+  </div>
+
+  <!-- ESCANEO -->
+  <div id="scr-scan" class="hidden">
+    <div class="card">
+      <div class="counter" id="sc-counter">0</div>
+      <div class="counter-sub" id="sc-sub">piezas escaneadas</div>
+      <div class="scanbox">
+        <input id="sc-input" placeholder="Apunta y dispara la pistola aquí…" autocomplete="off">
+      </div>
+      <div class="row">
+        <button class="btn-ghost" onclick="deshacerUltimo()">↩️ Deshacer último</button>
+        <button class="btn-ghost" onclick="pausarReanudar()" id="sc-pause-btn">⏸️ Pausar</button>
+      </div>
+    </div>
+    <div class="card">
+      <label style="margin-bottom:8px">Últimos escaneos</label>
+      <div class="log" id="sc-log"></div>
+    </div>
+    <div class="card">
+      <button class="btn-green" style="width:100%;margin-bottom:8px" onclick="abrirFinalizar()">✅ Finalizar y Guardar</button>
+      <button class="btn-red" style="width:100%" onclick="cancelarSesion()">🗑️ Cancelar sesión (borra el conteo)</button>
+    </div>
+  </div>
+
+  <!-- FINALIZAR -->
+  <div id="scr-final" class="card hidden">
+    <div style="margin-bottom:12px">Total escaneado: <strong id="fin-total" style="color:var(--green);font-size:1.2rem"></strong> piezas</div>
+    <label>Defectuosas</label>
+    <input id="f-def" type="number" min="0" value="0">
+    <label>Scrap</label>
+    <input id="f-scr" type="number" min="0" value="0">
+    <label>Notas (opcional)</label>
+    <input id="f-notas" placeholder="Comentario adicional">
+    <div class="err" id="fin-err"></div>
+    <div class="row">
+      <button class="btn-ghost" onclick="volverAEscaneo()">← Regresar</button>
+      <button class="btn-green" id="fin-guardar-btn" onclick="guardarRegistroFinal()">💾 Guardar registro</button>
+    </div>
+  </div>
+
+  <!-- EXITO -->
+  <div id="scr-exito" class="card hidden" style="text-align:center">
+    <div style="font-size:3rem">✅</div>
+    <div style="margin:10px 0" id="exito-msg"></div>
+    <button class="btn-main" onclick="nuevaSesion()">➕ Nueva captura</button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, getDoc, getDocs, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef",
+  measurementId:     "G-SGJTX6W9HS"
+};
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const REGS_COL = () => collection(db, "registros");
+const USERS_COL = () => collection(db, "usuarios");
+
+const MAQUINAS = [
+  {nombre:"S1",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
+  {nombre:"S2",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
+  {nombre:"S3",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
+  {nombre:"S4",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
+  {nombre:"Zhongke",tipo:"AUTO",target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:2000}},
+  {nombre:"ASSY1", tipo:"ASSY", target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
+  {nombre:"VC1",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"VC2",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+];
+
+let CURRENT_USER = null;
+let BOM_ACTIVO = [];
+let MODELOS_LIST = [];
+let scannedCodes = [];   // códigos únicos escaneados en esta sesión
+let paused = false;
+
+const $ = id => document.getElementById(id);
+const show = id => { ["scr-login","scr-setup","scr-scan","scr-final","scr-exito"].forEach(s=>$(s).classList.add("hidden")); $(id).classList.remove("hidden"); };
+function toast(msg,ms=1800){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),ms); }
+
+/* ---------- LOGIN ---------- */
+window.doLogin = async () => {
+  const email = $("lg-email").value.trim();
+  const pass  = $("lg-pass").value;
+  $("lg-err").textContent = "";
+  if(!email || !pass){ $("lg-err").textContent = "Escribe correo y contraseña"; return; }
+  try{
+    await signInWithEmailAndPassword(auth, email, pass);
+  }catch(e){
+    $("lg-err").textContent = "Correo o contraseña incorrectos";
+  }
+};
+window.doLogout = async () => { await signOut(auth); };
+
+onAuthStateChanged(auth, async (fireUser) => {
+  if(!fireUser){ CURRENT_USER=null; show("scr-login"); return; }
+  const snap = await getDocs(query(USERS_COL(), where("uid","==",fireUser.uid)));
+  if(snap.empty){ toast("Tu cuenta no tiene perfil en este MES"); await signOut(auth); return; }
+  const perfil = snap.docs[0].data();
+  if(perfil.activo === false){ toast("Tu usuario está desactivado"); await signOut(auth); return; }
+  CURRENT_USER = {uid:fireUser.uid, ...perfil};
+  $("setup-user").textContent = `${perfil.nombre||perfil.email}`;
+  await initSetup();
+  checkSesionGuardada();
+});
+
+/* ---------- SETUP ---------- */
+async function initSetup(){
+  const selM = $("s-maquina");
+  selM.innerHTML = MAQUINAS.map(m=>`<option value="${m.nombre}">${m.nombre} (${m.tipo})</option>`).join("");
+  $("s-fecha").value = new Date().toISOString().slice(0,10);
+  await loadBom();
+  show("scr-setup");
+}
+async function loadBom(){
+  try{
+    const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
+    if(!bomDoc.exists()) return;
+    BOM_ACTIVO = JSON.parse(bomDoc.data().bom || '[]');
+    MODELOS_LIST = [...new Set(BOM_ACTIVO.map(r=>r.sm).filter(Boolean))].sort();
+    $("s-modelo").innerHTML = '<option value="">— Seleccionar modelo —</option>' + MODELOS_LIST.map(m=>`<option value="${m}">${m}</option>`).join("");
+  }catch(e){ toast("Error cargando BOM: "+e.message,3000); }
+}
+window.onModeloChangeScan = () => {
+  const modelo = $("s-modelo").value;
+  const partes = [...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
+  $("s-parte").innerHTML = partes.length
+    ? '<option value="">— Seleccionar N° Parte —</option>' + partes.map(p=>`<option value="${p}">${p}</option>`).join("")
+    : '<option value="">⚠️ Sin partes para este modelo</option>';
+};
+
+/* ---------- SESIÓN (persistencia local) ---------- */
+function sesionKey(){ return "escaneoqr_session"; }
+function guardarSesionLocal(){
+  const setup = {
+    fecha:$("s-fecha").value, turno:$("s-turno").value, maquina:$("s-maquina").value,
+    corte:$("s-corte").value, modelo:$("s-modelo").value, parte:$("s-parte").value,
+    operador:$("s-operador").value, empleado:$("s-empleado").value,
+  };
+  localStorage.setItem(sesionKey(), JSON.stringify({setup, scannedCodes, ts:Date.now()}));
+}
+function checkSesionGuardada(){
+  const raw = localStorage.getItem(sesionKey());
+  if(!raw) return;
+  try{
+    const data = JSON.parse(raw);
+    if(data.scannedCodes && data.scannedCodes.length){
+      if(confirm(`Hay una sesión sin guardar con ${data.scannedCodes.length} piezas escaneadas. ¿Quieres continuarla?`)){
+        scannedCodes = data.scannedCodes;
+        $("s-fecha").value=data.setup.fecha; $("s-turno").value=data.setup.turno;
+        $("s-maquina").value=data.setup.maquina; $("s-corte").value=data.setup.corte;
+        $("s-modelo").value=data.setup.modelo; onModeloChangeScan();
+        setTimeout(()=>{ $("s-parte").value=data.setup.parte; },100);
+        $("s-operador").value=data.setup.operador; $("s-empleado").value=data.setup.empleado;
+        iniciarEscaneo(true);
+      } else {
+        localStorage.removeItem(sesionKey());
+      }
+    }
+  }catch(e){ localStorage.removeItem(sesionKey()); }
+}
+
+/* ---------- ESCANEO ---------- */
+window.iniciarEscaneo = (resumida=false) => {
+  $("setup-err").textContent = "";
+  if(!$("s-maquina").value){ $("setup-err").textContent="Selecciona una máquina"; return; }
+  if(!$("s-modelo").value){ $("setup-err").textContent="Selecciona un modelo"; return; }
+  if(!$("s-parte").value){ $("setup-err").textContent="Selecciona un N° de parte"; return; }
+  if(!$("s-operador").value.trim()){ $("setup-err").textContent="Escribe el nombre del operador"; return; }
+  if(!resumida) scannedCodes = [];
+  paused = false;
+  $("sc-pause-btn").textContent = "⏸️ Pausar";
+  renderContador();
+  renderLog();
+  show("scr-scan");
+  focoScan();
+};
+function focoScan(){ if(!paused) setTimeout(()=>$("sc-input").focus(), 50); }
+function renderContador(){
+  $("sc-counter").textContent = scannedCodes.length;
+  $("sc-sub").textContent = `piezas escaneadas · ${$("s-maquina").value} · ${$("s-modelo").value}`;
+}
+function renderLog(){
+  const ultimos = scannedCodes.slice(-8).reverse();
+  $("sc-log").innerHTML = ultimos.length
+    ? ultimos.map(c=>`<div><span>${c.codigo}</span><span>${c.hora}</span></div>`).join("")
+    : '<div style="color:var(--muted)">Aún no hay escaneos</div>';
+}
+
+$("sc-input").addEventListener("keydown", (e)=>{
+  if(e.key !== "Enter") return;
+  e.preventDefault();
+  const val = $("sc-input").value.trim();
+  $("sc-input").value = "";
+  if(!val || paused) return;
+  const yaExiste = scannedCodes.some(c=>c.codigo===val);
+  if(yaExiste){
+    toast("⚠️ Código ya escaneado, no se contó de nuevo");
+    return;
+  }
+  scannedCodes.push({codigo:val, hora:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'})});
+  renderContador();
+  renderLog();
+  guardarSesionLocal();
+});
+
+window.pausarReanudar = () => {
+  paused = !paused;
+  $("sc-pause-btn").textContent = paused ? "▶️ Reanudar" : "⏸️ Pausar";
+  if(!paused) focoScan();
+};
+window.deshacerUltimo = () => {
+  if(!scannedCodes.length) return;
+  scannedCodes.pop();
+  renderContador(); renderLog(); guardarSesionLocal();
+  focoScan();
+};
+window.cancelarSesion = () => {
+  if(!confirm("¿Seguro? Se borrará todo el conteo de esta sesión sin guardar nada.")) return;
+  scannedCodes = [];
+  localStorage.removeItem(sesionKey());
+  show("scr-setup");
+};
+
+/* ---------- FINALIZAR / GUARDAR ---------- */
+window.abrirFinalizar = () => {
+  if(!scannedCodes.length){ toast("Escanea al menos una pieza antes de finalizar"); return; }
+  $("fin-total").textContent = scannedCodes.length.toLocaleString();
+  $("f-def").value=0; $("f-scr").value=0; $("f-notas").value=""; $("fin-err").textContent="";
+  show("scr-final");
+};
+window.volverAEscaneo = () => { show("scr-scan"); focoScan(); };
+
+window.guardarRegistroFinal = async () => {
+  const btn = $("fin-guardar-btn");
+  const def = parseInt($("f-def").value)||0;
+  const scr = parseInt($("f-scr").value)||0;
+  const prod = scannedCodes.length;
+  const maqNombre = $("s-maquina").value;
+  const m = MAQUINAS.find(x=>x.nombre===maqNombre);
+  const corte = $("s-corte").value;
+  const target = corte && m.cortes ? m.cortes[corte] : m.target;
+
+  btn.innerHTML = '<span class="spin"></span>Guardando...'; btn.disabled = true;
+
+  const reg = {
+    userId: CURRENT_USER.uid,
+    operador: $("s-operador").value.trim(),
+    empleado: $("s-empleado").value.trim(),
+    parte: $("s-parte").value.trim(),
+    modelo: $("s-modelo").value.trim().toUpperCase(),
+    fecha: $("s-fecha").value,
+    turno: $("s-turno").value,
+    corte: corte,
+    maqIdx: MAQUINAS.indexOf(m), maqNombre: m.nombre, maqTipo: m.tipo, target: target,
+    prod: prod, def: def, scrap: scr,
+    pct: +(prod/target*100).toFixed(2),
+    scrapPct: prod>0 ? +(scr/prod*100).toFixed(2) : 0,
+    defPct: prod>0 ? +(def/prod*100).toFixed(2) : 0,
+    notas: $("f-notas").value.trim(),
+    causaParo: "", minParo: 0,
+    origenCaptura: "escaneo_qr",
+    codigosEscaneados: scannedCodes.map(c=>c.codigo),
+    tsLocal: new Date().toISOString(),
+  };
+  try{
+    await addDoc(REGS_COL(), reg);
+    localStorage.removeItem(sesionKey());
+    $("exito-msg").innerHTML = `${m.nombre} · ${corte||reg.turno} · <strong>${prod.toLocaleString()}</strong> piezas guardadas.`;
+    show("scr-exito");
+  }catch(e){
+    $("fin-err").textContent = "Error al guardar: " + e.message;
+  }
+  btn.innerHTML = '💾 Guardar registro'; btn.disabled = false;
+};
+
+window.nuevaSesion = () => {
+  scannedCodes = [];
+  show("scr-setup");
+};
+</script>
+</body>
+</html>
