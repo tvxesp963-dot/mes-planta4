@@ -276,7 +276,7 @@ window.abrirNuevoRegistro = function() {
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
-        <select id="nr-modelo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">${'<option value="">— Seleccionar modelo —</option>'+(typeof MODELOS_LIST!=='undefined'?MODELOS_LIST:[]).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+        <input id="nr-modelo" placeholder="Escribe el modelo" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N° Parte</div>
@@ -329,7 +329,7 @@ window.guardarNuevoRegistro = async function(btn) {
     const def    = parseInt(document.getElementById('nr-def').value)||0;
     const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
     if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
-    if (!modelo) { showToast('Selecciona un modelo del BOM','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
+    if (!modelo) { showToast('Escribe el modelo','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
     const maqObj = (typeof MAQUINAS!=='undefined'?MAQUINAS:[]).find(m=>m.nombre===maq);
     const maqIdx = maqObj ? MAQUINAS.indexOf(maqObj) : null;
     // Target correcto según corte seleccionado
@@ -496,15 +496,13 @@ window.renderAdminTargets=renderAdminTargets;
 let MODELOS_LIST = [];
 let BOM_ACTIVO = [];
 async function loadModelos(){
-  const sel=document.getElementById("ip-modelo");
   const status=document.getElementById("ip-modelo-status");
   try{
     const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
     if(!bomDoc.exists()){
       MODELOS_LIST=[];
       BOM_ACTIVO=[];
-      if(sel)sel.innerHTML='<option value="">⚠️ Sin BOM activo</option>';
-      if(status){status.textContent='⚠️ No hay BOM cargado en BOM Simulator. Carga el BOM antes de capturar producción.';status.style.color='var(--red)';}
+      if(status){status.textContent='⚠️ No hay BOM cargado en BOM Simulator.';status.style.color='var(--red)';}
       return;
     }
     const bomData = bomDoc.data();
@@ -514,8 +512,8 @@ async function loadModelos(){
     buildModelosDL();
     if(status){
       if(MODELOS_LIST.length){
-        status.textContent=`✅ ${MODELOS_LIST.length} modelos cargados del BOM (${bomData.semana||''})`;
-        status.style.color='var(--green)';
+        status.textContent=`ℹ️ ${MODELOS_LIST.length} modelos en el BOM (${bomData.semana||''}) — escribe el modelo y la parte tal como aparecen`;
+        status.style.color='var(--muted)';
       }else{
         status.textContent='⚠️ El BOM activo no contiene modelos.';
         status.style.color='var(--red)';
@@ -524,14 +522,11 @@ async function loadModelos(){
   }catch(e){
     MODELOS_LIST=[];
     BOM_ACTIVO=[];
-    if(sel)sel.innerHTML='<option value="">⚠️ Error cargando BOM</option>';
     if(status){status.textContent='⚠️ Error al leer el BOM activo: '+e.message;status.style.color='var(--red)';}
   }
 }
 function buildModelosDL(){
   const opts='<option value="">— Seleccionar modelo —</option>'+MODELOS_LIST.map(m=>`<option value="${m}">${m}</option>`).join("");
-  const sel=document.getElementById("ip-modelo");
-  if(sel)sel.innerHTML=opts;
   const cmBueno=document.getElementById("cm-bueno");
   if(cmBueno)cmBueno.innerHTML=opts;
 }
@@ -1160,11 +1155,11 @@ window.adj=(f,d)=>{const id=f==="p"?"ip-prod":f==="d"?"ip-def":"ip-scr";const el
 window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
 function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"📤 Enviar al Dashboard":"Siguiente →";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
 window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim();
-      if(!modVal){showToast("Selecciona un modelo del BOM","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("Selecciona un N° Parte del catálogo","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+      if(!modVal){showToast("Escribe el modelo","var(--red)");document.getElementById("ip-modelo").focus();return;}
+      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("Escribe el N° de parte","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
 function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
-window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";buildPartesDL("");document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
+window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-parte").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
 window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
 /* ══ DASHBOARD ══ */
@@ -2537,15 +2532,11 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="field"><label id="lbl-operador">👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label id="lbl-emp">🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
         <div class="field"><label id="lbl-modelo">📱 Modelo</label>
-          <select id="ip-modelo" onchange="onModeloChange()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
-            <option value="">— Cargando modelos del BOM... —</option>
-          </select>
+          <input type="text" id="ip-modelo" placeholder="Escribe el modelo" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
           <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div>
         </div>
         <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label>
-          <select id="ip-parte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
-            <option value="">— Selecciona primero un modelo —</option>
-          </select>
+          <input type="text" id="ip-parte" placeholder="Escribe el N° de parte" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
         </div>
       </div>
       <div class="oc"><div class="oct" id="lbl-turno">⏰ Turno</div>
