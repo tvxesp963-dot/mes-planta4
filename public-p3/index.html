@@ -1230,13 +1230,12 @@ function rHoy(){
     } else {
             const maqModelMap={};
       data.forEach(r=>{
-        const key=r.maqIdx+"_"+(r.modelo||"—");
+        const key=r.maqIdx+"_"+(r.modelo||"—")+"_"+(r.parte||"—");
         if(!maqModelMap[key]){maqModelMap[key]={maqNombre:r.maqNombre,maqTipo:r.maqTipo,modelo:r.modelo||"—",parte:r.parte||"—",turno:r.turno,prod:0,def:0,scrap:0,target:0};}
         maqModelMap[key].prod+=r.prod||0;
         maqModelMap[key].def+=r.def||0;
         maqModelMap[key].scrap+=r.scrap||0;
         maqModelMap[key].target+=r.target||0;
-        if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
       });
       // Ordenar: Pre-Kit → Bundle → Pre-Folding
       const ordenMaq = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
