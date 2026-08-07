@@ -104,7 +104,7 @@ async function buscarRegistrosEdit() {
     if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
     regs.sort((a,b) => (b.ts?.seconds||0)-(a.ts?.seconds||0));
     // Ordenar igual que Production Summary
-    const ordenMaqEdit = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
+    const ordenMaqEdit = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
     const getOrdenEdit = n => { const i = ordenMaqEdit.findIndex(o=>(n||'').toUpperCase().includes(o.toUpperCase())); return i>=0?i:ordenMaqEdit.length; };
     regs.sort((a,b) => {
       const om = getOrdenEdit(a.maquina||a.maqNombre) - getOrdenEdit(b.maquina||b.maqNombre);
@@ -155,10 +155,10 @@ async function editarRegistro(id) {
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
     const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
+    const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
-    const opcTipo = ['Pre-Kit','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
+    const opcTipo = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
     const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -251,10 +251,10 @@ window.eliminarRegistroEdit=eliminarRegistroEdit;
 // ── AGREGAR REGISTRO MANUAL ──
 window.abrirNuevoRegistro = function() {
   const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
-  const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
+  const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
-  const opcTipo = ['Pre-Kit','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const opcTipo = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcCorte = [
     {id:'C1',label:'Break (7:00–8:45 AM)'},
     {id:'C2',label:'Lunch (9:00–12:30 PM)'},
@@ -563,6 +563,7 @@ const CORTES = [
 // Estado activo/inactivo se carga desde Firestore
 const LINEAS = [
   {nombre:"Pre-Kit",     tipo:"Pre-Kit",     target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"PKB",         tipo:"PKB",         target:9000, cortes:{C1:1800,C2:3600,C3:3600,OT:2000}},
   {nombre:"Bundle",      tipo:"Bundle",      target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
   {nombre:"Pre-Folding", tipo:"Pre-Folding", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
   {nombre:"Bandita",     tipo:"Bandita",     target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
@@ -836,9 +837,9 @@ function renderMesPlan() {
   document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
   document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
 
-  const colores = {'Pre-Kit':'#FFBA00','Bundle':'#4da6ff','Pre-Folding':'#00B8A0','Bandita':'#e07be0'};
-  const iconos = {'Pre-Kit':'📦','Bundle':'🧩','Pre-Folding':'📐','Bandita':'🎀'};
-  const ordenLineas = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
+  const colores = {'Pre-Kit':'#FFBA00','PKB':'#F5C518','Bundle':'#4da6ff','Pre-Folding':'#00B8A0','Bandita':'#e07be0'};
+  const iconos = {'Pre-Kit':'📦','PKB':'🟡','Bundle':'🧩','Pre-Folding':'📐','Bandita':'🎀'};
+  const ordenLineas = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
   const lineas = mesPlanActivo.lineas || {};
   const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
 
@@ -1238,7 +1239,7 @@ function rHoy(){
         maqModelMap[key].target+=r.target||0;
       });
       // Ordenar: Pre-Kit → Bundle → Pre-Folding
-      const ordenMaq = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
+      const ordenMaq = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
       const getOrden = nombre => {
         const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
         return idx >= 0 ? idx : ordenMaq.length;
@@ -2356,7 +2357,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .mc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;}
 .mc.sel{border-color:var(--accent);background:#0d1f35;}.mc-done{opacity:0.5;border-color:#2ecc71!important;cursor:not-allowed!important;}.mn{font-size:.86rem;font-weight:700;}
 .tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.75rem;font-weight:600;margin-top:3px;}
-.Pre-Kit{background:#3d2f1a;color:#FFBA00;}.Bundle{background:#1a3a5c;color:#4f8ef7;}.Pre-Folding{background:#1a3d2b;color:#2ecc71;}.Bandita{background:#3a1a3d;color:#e07be0;}
+.Pre-Kit{background:#3d2f1a;color:#FFBA00;}.PKB{background:#3d3a1a;color:#F5C518;}.Bundle{background:#1a3a5c;color:#4f8ef7;}.Pre-Folding{background:#1a3d2b;color:#2ecc71;}.Bandita{background:#3a1a3d;color:#e07be0;}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
 .km{background:var(--card2);border-radius:8px;padding:7px;text-align:center;}
 .km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.75rem;color:var(--muted);margin-top:1px;}
