@@ -518,17 +518,19 @@ async function calcularCierreJornada() {
     descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
       const imsDoc = buscarIMS(d.pn, d.desc);
       const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
-      const nuevoInv = invAct !== null ? invAct - d.total : -d.total;
+      const nuevoInvCrudo = invAct !== null ? invAct - d.total : -d.total;
+      const nuevoInv = Math.max(0, nuevoInvCrudo);
       const sinIMS = imsDoc === null || imsDoc === undefined;
-      const negativo = nuevoInv < 0;
-      if (sinIMS || negativo) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--fg)';
+      const faltante = nuevoInvCrudo < 0 ? Math.abs(nuevoInvCrudo) : 0;
+      if (sinIMS || faltante>0) conFaltante++;
+      const colorNuevo = sinIMS?'var(--red)':faltante>0?'var(--red)':'var(--fg)';
       const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
+      const tagNuevo = faltante>0 ? `0 <span style="font-size:10px;opacity:.8">(faltan ${faltante.toLocaleString()})</span>` : nuevoInv.toLocaleString();
+      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr>`;
     });
     html += '</table></div>';
     if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (registrará faltante).</div>`;
+      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (quedará en 0, se registrará el faltante).</div>`;
     }
     window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, buscarIMS, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
     html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
@@ -564,12 +566,14 @@ async function confirmarCierreJornada() {
       }
       const invAnterior = Number(imsDoc.actual)||0;
       const salidasAnt = Number(imsDoc.salidas)||0;
-      const nuevoActual = invAnterior - d.total;
+      const nuevoActualCrudo = invAnterior - d.total;
+      const nuevoActual = Math.max(0, nuevoActualCrudo);
+      const faltante = nuevoActualCrudo < 0 ? Math.abs(nuevoActualCrudo) : 0;
 
       if (modoSim) {
-        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ⚠️ NEGATIVO':''}`);
+        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${faltante>0?` ⚠️ FALTANTE ${faltante.toLocaleString()} (queda en 0)`:''}`);
         actualizados++; movimientos++;
-        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedaría en ${nuevoActual}`); }
+        if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, queda en 0`); }
         continue;
       }
 
@@ -580,9 +584,9 @@ async function confirmarCierreJornada() {
         actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
         ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
       });
-      if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: queda en ${nuevoActual}`); }
+      if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, quedó en 0`); }
       await addDoc(collection(db,'planta4_movimientos'), {
-        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total,
+        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total, faltante:faltante,
         fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
         usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
       });
