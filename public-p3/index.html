@@ -8,6 +8,9 @@
 <link rel="manifest" href="manifest.json">
 
 <script type="module">
+// Etiqueta visible de línea (no cambia el identificador interno 'tipo', solo lo que ve el usuario)
+const LABEL_LINEA = {'PKB':'B2','Bundle':'B1'};
+function lbl(t){ return LABEL_LINEA[t] || t; }
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
@@ -70,7 +73,7 @@ function renderAdminMaquinas(){
     const activa=m.activa!==false;
     return `<div style="background:${activa?"var(--card2)":"#1a1117"};border:1px solid ${activa?"#2ecc7133":"#e74c3c33"};border-radius:9px;padding:12px;opacity:${activa?1:0.8}">
       <div style="font-size:.9rem;font-weight:700;margin-bottom:3px">${m.nombre}</div>
-      <div style="margin-bottom:8px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
+      <div style="margin-bottom:8px"><span class="tbadge ${m.tipo}">${lbl(m.tipo)}</span></div>
       <div style="font-size:.75rem;margin-bottom:10px">
         <span style="display:inline-block;width:8px;height:8px;border-radius:50%;background:${activa?"#2ecc71":"#e74c3c"};margin-right:4px"></span>
         ${activa?"Activa":"Inactiva"}
@@ -158,7 +161,7 @@ async function editarRegistro(id) {
     const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
-    const opcTipo = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
+    const opcTipo = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${lbl(t)}</option>`).join('');
     const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -254,7 +257,7 @@ window.abrirNuevoRegistro = function() {
   const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'];
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
-  const opcTipo = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const opcTipo = ['Pre-Kit','PKB','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}">${lbl(t)}</option>`).join('');
   const opcCorte = [
     {id:'C1',label:'Break (7:00–8:45 AM)'},
     {id:'C2',label:'Lunch (9:00–12:30 PM)'},
@@ -474,7 +477,7 @@ function renderAdminTargets(){
   el.innerHTML=LINEAS.map((m,i)=>`
     <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;">
       <div style="font-size:.85rem;font-weight:700;margin-bottom:2px">${m.nombre}</div>
-      <div style="margin-bottom:10px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
+      <div style="margin-bottom:10px"><span class="tbadge ${m.tipo}">${lbl(m.tipo)}</span></div>
       <label style="font-size:.75rem;color:var(--muted);display:block;margin-bottom:3px">Target diario</label>
       <input type="number" id="tgt-inp-${i}" value="${m.target}"
         style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.85rem;font-family:'IBM Plex Mono',monospace;text-align:right;outline:none;">
@@ -563,8 +566,8 @@ const CORTES = [
 // Estado activo/inactivo se carga desde Firestore
 const LINEAS = [
   {nombre:"Pre-Kit",     tipo:"Pre-Kit",     target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"PKB",         tipo:"PKB",         target:9000, cortes:{C1:1800,C2:3600,C3:3600,OT:2000}},
-  {nombre:"Bundle",      tipo:"Bundle",      target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"B2",          tipo:"PKB",         target:9000, cortes:{C1:1800,C2:3600,C3:3600,OT:2000}},
+  {nombre:"B1",          tipo:"Bundle",      target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
   {nombre:"Pre-Folding", tipo:"Pre-Folding", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
   {nombre:"Bandita",     tipo:"Bandita",     target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
 ];
@@ -1099,8 +1102,8 @@ function initApp(){
   loadCausasParo();
   loadShipqrEnviados();
 }
-function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";LINEAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
-function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las líneas</option>";LINEAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
+function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";LINEAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${lbl(m.tipo)}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
+function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las líneas</option>";LINEAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre}`,i));s2.appendChild(new Option(`${m.nombre}`,i));});}
 window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
@@ -1114,7 +1117,7 @@ window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.
       if(!modVal){showToast("Escribe el modelo","var(--red)");document.getElementById("ip-modelo").focus();return;}
       document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N° Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a line","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${LINEAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
-function buildRes(){const m=LINEAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Línea",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
+function buildRes(){const m=LINEAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Línea",`${m.nombre}`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
 window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-parte").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
 window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
@@ -1188,7 +1191,7 @@ function rHoy(){
     </tr>`;
   }
   const tb=document.getElementById("tb-hoy");tb.innerHTML="";
-  agg.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${m.tipo}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"✅":pct>=80?"⚠️":"🔴"}</td>`;tb.appendChild(tr);});
+  agg.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${lbl(m.tipo)}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"✅":pct>=80?"⚠️":"🔴"}</td>`;tb.appendChild(tr);});
   const pcts=agg.map(m=>m.target>0?+(m.prod/m.target*100).toFixed(1):0);
   const cols=pcts.map(p=>p>=95?"#2ecc71":p>=80?"#f1c40f":"#e74c3c");
   rebuildChart("chC",{type:"bar",data:{labels:LINEAS.map(m=>m.nombre),datasets:[{label:"% Cumpl",data:pcts,backgroundColor:cols,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
@@ -1692,7 +1695,7 @@ function buildReporte(tipo){
     const prod=regs.reduce((s,r)=>s+r.prod,0);
     const tgt=regs.reduce((s,r)=>s+r.target,0);
     const pct=tgt>0?(prod/tgt*100).toFixed(1):0;
-    detalle+=`  • ${m.nombre} (${m.tipo}): ${prod.toLocaleString()} pzas — ${pct}% cumplimiento\n`;
+    detalle+=`  • ${m.nombre}: ${prod.toLocaleString()} pzas — ${pct}% cumplimiento\n`;
   });
 
   const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\n• Producción total: ${tP.toLocaleString()} pzas\n• Cumplimiento: ${cumpl}%\n• Scrap: ${scrapP}%\n• Defectos: ${defP}%\n• Total registros: ${registros.length}\n\nDETALLE POR LÍNEA\n${detalle}\n${"=".repeat(50)}\nManufacturing MES P3 · Production System — Eunsung Printing Mex`;
