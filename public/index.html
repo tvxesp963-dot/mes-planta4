@@ -463,13 +463,11 @@ async function calcularCierreJornada() {
       const consumo = qty + defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      const FAMILIAS_DESCUENTO = ['TOP','BOT','STRIP','BUNDLE'];
-      const DESC_EXTRA_DESCUENTO = ['CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER'];
+      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER'];
       const compsModelo = BOM.filter(b => {
         if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
-        const fam = (b.familia||'').trim().toUpperCase();
         const desc = (b.desc||'').trim().toUpperCase();
-        return FAMILIAS_DESCUENTO.includes(fam) || DESC_EXTRA_DESCUENTO.includes(desc);
+        return DESC_DESCUENTO.includes(desc);
       });
       compsModelo.forEach(c => {
         const pnKey = (c.pn||'').toUpperCase();
