@@ -688,6 +688,12 @@ window.delUser = async (docId,nombre) => {
   await deleteDoc(doc(db,"usuarios_p3",docId));
   showToast(`Perfil eliminado`,"var(--yellow)"); loadUsuarios();
 };
+window.cambiarRol = async (docId, nuevoRol, nombre) => {
+  if(!confirm(`¿Cambiar el rol de "${nombre}" a "${nuevoRol}"?`))return;
+  await updateDoc(doc(db,"usuarios_p3",docId),{rol:nuevoRol});
+  showToast(`Rol de "${nombre}" actualizado a ${nuevoRol}`,"var(--green)");
+  loadUsuarios();
+};
 function renderAdmin() {
   const total=USUARIOS.length,activos=USUARIOS.filter(u=>u.activo).length;
   const byRol=r=>USUARIOS.filter(u=>u.rol===r).length;
@@ -705,7 +711,12 @@ function renderAdmin() {
     const isMe=u.uid===CURRENT_USER.uid;
     const tr=document.createElement("tr");
     tr.innerHTML=`<td>${u.email}</td><td><strong>${u.nombre}</strong><br><span style="font-size:.8rem;color:var(--muted)">${u.empleado||""}</span></td>
-      <td><span class="role-badge role-${u.rol}">${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[u.rol]}</span></td>
+      <td><span class="role-badge role-${u.rol}">${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[u.rol]}</span>
+        ${!isMe?`<select onchange="cambiarRol('${u.docId}',this.value,'${u.nombre}')" style="margin-left:6px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:2px 4px;font-size:11px">
+          <option value="admin" ${u.rol==='admin'?'selected':''}>Admin</option>
+          <option value="supervisor" ${u.rol==='supervisor'?'selected':''}>Supervisor</option>
+          <option value="operador" ${u.rol==='operador'?'selected':''}>Operador</option>
+        </select>`:''}</td>
       <td>${u.activo?'<span class="dot-on"></span> Activo':'<span class="dot-off"></span> Inactivo'}</td>
       <td>${regs}</td>
       <td>${!isMe?`<button class="abtn abtn-edit" onclick="toggleUser('${u.docId}',${u.activo})">${u.activo?"Desactivar":"Activar"}</button>
