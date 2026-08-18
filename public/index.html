@@ -432,7 +432,8 @@ async function calcularCierreJornada() {
     snap.forEach(d => {
       const r = d.data();
       const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      if (fechaReg === fecha && (r.maquina === 'ASSY1' || r.tipo === 'ASSY')) assy1Regs.push({id:d.id,...r});
+      const esASSY1 = r.maquina === 'ASSY1' || r.tipo === 'ASSY' || r.maqNombre === 'ASSY1' || r.maqTipo === 'ASSY';
+      if (fechaReg === fecha && esASSY1) assy1Regs.push({id:d.id,...r});
     });
     if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
 
@@ -456,8 +457,8 @@ async function calcularCierreJornada() {
     let totalPiezasConsumo = 0;
     assy1Regs.forEach(r => {
       const modelo = (r.modelo||'').trim();
-      const qty = Number(r.qty)||0;
-      const defectos = Number(r.defectos)||0;
+      const qty = Number(r.qty ?? r.prod)||0;
+      const defectos = Number(r.defectos ?? r.def)||0;
       const scrap = Number(r.scrap)||0;
       const consumo = qty + defectos + scrap;
       if (!modelo || !consumo) return;
@@ -471,8 +472,8 @@ async function calcularCierreJornada() {
     });
 
     // 6. Render preview
-    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty)||0),0);
-    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos)||0),0);
+    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty ?? r.prod)||0),0);
+    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos ?? r.def)||0),0);
     const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
 
     let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
