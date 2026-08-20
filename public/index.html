@@ -493,8 +493,9 @@ async function calcularCierreJornada() {
         const pnU = (c.pn||'').trim().toUpperCase();
         const descU = (c.desc||'').trim().toUpperCase();
         const key = pnU+'|||'+descU;
-        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0};
+        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
         descuentos[key].total += consumo;
+        descuentos[key].detalle.push({modelo, qty, defectos, scrap, consumo});
       });
     });
 
@@ -515,7 +516,7 @@ async function calcularCierreJornada() {
     let conFaltante = 0;
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
     html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
-    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
+    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach((d,i) => {
       const imsDoc = buscarIMS(d.pn, d.desc);
       const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
       const nuevoInvCrudo = invAct !== null ? invAct - d.total : -d.total;
@@ -526,7 +527,10 @@ async function calcularCierreJornada() {
       const colorNuevo = sinIMS?'var(--red)':faltante>0?'var(--red)':'var(--fg)';
       const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
       const tagNuevo = faltante>0 ? `0 <span style="font-size:10px;opacity:.8">(faltan ${faltante.toLocaleString()})</span>` : nuevoInv.toLocaleString();
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr>`;
+      const sumaCheck = (d.detalle||[]).reduce((s,x)=>s+x.consumo,0);
+      const detalleTxt = (d.detalle||[]).map(x=>`${x.modelo}: ${x.qty.toLocaleString()} prod + ${x.defectos.toLocaleString()} def + ${x.scrap.toLocaleString()} scrap = <b>${x.consumo.toLocaleString()}</b>`).join('<br>')
+        + `<br><span style="color:var(--green)">Suma = ${sumaCheck.toLocaleString()} ${sumaCheck===d.total?'✅ coincide con el descuento':'⚠️ NO coincide con el descuento'}</span>`;
+      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" title="Clic para ver el desglose del cálculo" onclick="const e=document.getElementById('cj-det-${i}');e.style.display=e.style.display==='none'?'table-row':'none'"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn} 🔍</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr><tr id="cj-det-${i}" style="display:none;background:rgba(255,255,255,.03)"><td colspan="5" style="padding:6px 10px;font-size:11px;color:var(--muted);line-height:1.6">${detalleTxt}</td></tr>`;
     });
     html += '</table></div>';
     if (conFaltante > 0) {
