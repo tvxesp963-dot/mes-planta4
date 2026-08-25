@@ -432,8 +432,7 @@ async function calcularCierreJornada() {
     snap.forEach(d => {
       const r = d.data();
       const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      const esASSY1 = r.maquina === 'ASSY1' || r.tipo === 'ASSY' || r.maqNombre === 'ASSY1' || r.maqTipo === 'ASSY';
-      if (fechaReg === fecha && esASSY1) assy1Regs.push({id:d.id,...r});
+      if (fechaReg === fecha && (r.maquina === 'ASSY1' || r.tipo === 'ASSY')) assy1Regs.push({id:d.id,...r});
     });
     if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
 
@@ -447,61 +446,33 @@ async function calcularCierreJornada() {
     const BOM = JSON.parse(bomData.bom||'[]');
     const semanaRef = bomData.semana || '';
 
-    // 4. Leer inventario IMS — se indexa por pn+descripción para no confundir
-    //    registros que comparten el mismo número de parte (ej. Lower Box (Bottom)
-    //    y Chip Board Bottom (Ranurado) pueden tener el mismo pn pero son artículos distintos)
+    // 4. Leer inventario IMS
     const imsSnap = await getDocs(collection(db,'planta4_inventario'));
-    const imsMap = {};       // key: "PN|||DESC" exacto
-    const imsPorPn = {};     // fallback: solo se usa si ese pn tiene un único registro
-    imsSnap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pnU = (data.pn||'').trim().toUpperCase();
-      const descU = (data.desc||data.descripcion||data.nombre||'').trim().toUpperCase();
-      imsMap[pnU+'|||'+descU] = {...data, _docId:d.id};
-      if (!imsPorPn[pnU]) imsPorPn[pnU] = [];
-      imsPorPn[pnU].push({...data, _docId:d.id});
-    });
-    const buscarIMS = (pn, desc) => {
-      const pnU = (pn||'').trim().toUpperCase();
-      const descU = (desc||'').trim().toUpperCase();
-      const exacto = imsMap[pnU+'|||'+descU];
-      if (exacto) return exacto;
-      const candidatos = imsPorPn[pnU] || [];
-      if (candidatos.length === 1) return candidatos[0]; // único registro con ese pn, sin ambigüedad
-      return null; // hay varios y ninguno coincide con la descripción exacta
-    };
+    const imsMap = {};
+    imsSnap.forEach(d => { const data = d.data(); if(data.pn) imsMap[(data.pn||'').toUpperCase()] = {...data, _docId:d.id}; });
 
-    // 5. Calcular descuentos — cada combinación pn+descripción es una línea independiente
+    // 5. Calcular descuentos consolidados (qty + defectos + scrap)
     const descuentos = {};
     let totalPiezasConsumo = 0;
     assy1Regs.forEach(r => {
       const modelo = (r.modelo||'').trim();
-      const qty = Number(r.qty ?? r.prod)||0;
-      const defectos = Number(r.defectos ?? r.def)||0;
+      const qty = Number(r.qty)||0;
+      const defectos = Number(r.defectos)||0;
       const scrap = Number(r.scrap)||0;
       const consumo = qty + defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER'];
-      const compsModelo = BOM.filter(b => {
-        if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
-        const desc = (b.desc||'').trim().toUpperCase();
-        return DESC_DESCUENTO.includes(desc);
-      });
+      const compsModelo = BOM.filter(b => b.pn && b.sm && b.sm.trim() === modelo);
       compsModelo.forEach(c => {
-        const pnU = (c.pn||'').trim().toUpperCase();
-        const descU = (c.desc||'').trim().toUpperCase();
-        const key = pnU+'|||'+descU;
-        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
-        descuentos[key].total += consumo;
-        descuentos[key].detalle.push({modelo, qty, defectos, scrap, consumo});
+        const pnKey = (c.pn||'').toUpperCase();
+        if (!descuentos[pnKey]) descuentos[pnKey] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0};
+        descuentos[pnKey].total += consumo;
       });
     });
 
     // 6. Render preview
-    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty ?? r.prod)||0),0);
-    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos ?? r.def)||0),0);
+    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty)||0),0);
+    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos)||0),0);
     const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
 
     let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
@@ -516,27 +487,22 @@ async function calcularCierreJornada() {
     let conFaltante = 0;
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
     html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
-    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach((d,i) => {
-      const imsDoc = buscarIMS(d.pn, d.desc);
+    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
+      const imsDoc = imsMap[(d.pn||'').toUpperCase()];
       const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
-      const nuevoInvCrudo = invAct !== null ? invAct - d.total : -d.total;
-      const nuevoInv = Math.max(0, nuevoInvCrudo);
-      const sinIMS = imsDoc === null || imsDoc === undefined;
-      const faltante = nuevoInvCrudo < 0 ? Math.abs(nuevoInvCrudo) : 0;
-      if (sinIMS || faltante>0) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':faltante>0?'var(--red)':'var(--fg)';
+      const nuevoInv = invAct !== null ? invAct - d.total : -d.total;
+      const sinIMS = imsDoc === undefined;
+      const negativo = nuevoInv < 0;
+      if (sinIMS || negativo) conFaltante++;
+      const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--fg)';
       const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
-      const tagNuevo = faltante>0 ? `0 <span style="font-size:10px;opacity:.8">(faltan ${faltante.toLocaleString()})</span>` : nuevoInv.toLocaleString();
-      const sumaCheck = (d.detalle||[]).reduce((s,x)=>s+x.consumo,0);
-      const detalleTxt = (d.detalle||[]).map(x=>`${x.modelo}: ${x.qty.toLocaleString()} prod + ${x.defectos.toLocaleString()} def + ${x.scrap.toLocaleString()} scrap = <b>${x.consumo.toLocaleString()}</b>`).join('<br>')
-        + `<br><span style="color:var(--green)">Suma = ${sumaCheck.toLocaleString()} ${sumaCheck===d.total?'✅ coincide con el descuento':'⚠️ NO coincide con el descuento'}</span>`;
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" title="Clic para ver el desglose del cálculo" onclick="const e=document.getElementById('cj-det-${i}');e.style.display=e.style.display==='none'?'table-row':'none'"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn} 🔍</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr><tr id="cj-det-${i}" style="display:none;background:rgba(255,255,255,.03)"><td colspan="5" style="padding:6px 10px;font-size:11px;color:var(--muted);line-height:1.6">${detalleTxt}</td></tr>`;
+      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
     });
     html += '</table></div>';
     if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (quedará en 0, se registrará el faltante).</div>`;
+      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (registrará faltante).</div>`;
     }
-    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, buscarIMS, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
+    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
     html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
     div.innerHTML = html;
   } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; console.error(e); }
@@ -560,24 +526,22 @@ async function confirmarCierreJornada() {
     const detalleSim = [];
 
     for (const d of cd.descuentos) {
-      const imsDoc = cd.buscarIMS ? cd.buscarIMS(d.pn, d.desc) : cd.imsMap[(d.pn||'').toUpperCase()];
+      const imsDoc = cd.imsMap[(d.pn||'').toUpperCase()];
       const refTxt = `Descuento ASSY1 ${cd.fecha} (${cd.semanaRef||'BOM'})`;
       if (!imsDoc) {
         faltantes++;
-        detalleFaltantes.push(`${d.pn} (${d.desc}): ${d.total} no descontado (no se encontró registro IMS único para esta descripción)`);
-        if (modoSim) detalleSim.push(`❌ ${d.pn} (${d.desc}) → no se encontró registro IMS único, NO se podría descontar ${d.total}`);
+        detalleFaltantes.push(`${d.pn}: ${d.total} no descontado (no existe en IMS)`);
+        if (modoSim) detalleSim.push(`❌ ${d.pn} → no existe en IMS, NO se podría descontar ${d.total}`);
         continue;
       }
       const invAnterior = Number(imsDoc.actual)||0;
       const salidasAnt = Number(imsDoc.salidas)||0;
-      const nuevoActualCrudo = invAnterior - d.total;
-      const nuevoActual = Math.max(0, nuevoActualCrudo);
-      const faltante = nuevoActualCrudo < 0 ? Math.abs(nuevoActualCrudo) : 0;
+      const nuevoActual = invAnterior - d.total;
 
       if (modoSim) {
-        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${faltante>0?` ⚠️ FALTANTE ${faltante.toLocaleString()} (queda en 0)`:''}`);
+        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ⚠️ NEGATIVO':''}`);
         actualizados++; movimientos++;
-        if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, queda en 0`); }
+        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedaría en ${nuevoActual}`); }
         continue;
       }
 
@@ -588,9 +552,9 @@ async function confirmarCierreJornada() {
         actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
         ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
       });
-      if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, quedó en 0`); }
+      if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: queda en ${nuevoActual}`); }
       await addDoc(collection(db,'planta4_movimientos'), {
-        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total, faltante:faltante,
+        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total,
         fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
         usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
       });
@@ -1342,23 +1306,6 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   window.open(url,'shipqr_window');
   if(typeof renderShipqr==='function') renderShipqr();
 };
-// Quita la marca de "ya enviado" para poder volver a mandarlo — útil cuando el registro se borró
-// del lado de ShipQR (por pruebas o limpieza) pero aquí el MES seguía marcándolo como enviado
-window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
-  const modelo=decodeURIComponent(modeloEnc);
-  const parte=decodeURIComponent(parteEnc);
-  const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(!confirm(`¿Reactivar el envío de ${modelo} · ${parte}? Esto permite volver a mandarlo a ShipQR (útil si ya se borró allá).`)) return;
-  try{
-    await deleteDoc(doc(db,'shipqr_envios_mes',key));
-    delete SHIPQR_ENVIADOS[key];
-    pintarHistorialShipqr();
-    if(typeof renderShipqr==='function') renderShipqr();
-  }catch(err){
-    console.error('Error reactivando envío a ShipQR:', err);
-    alert('Error al reactivar: '+err.message);
-  }
-};
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
@@ -1615,11 +1562,6 @@ function renderShipqr(){
           style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
         </button>
-        ${env?`<button onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          title="Reactivar envío (por si ya se borró en ShipQR)"
-          style="margin-left:6px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
-          ↻
-        </button>`:''}
       </td>`;
     tbShipqr.appendChild(tr);
   });

@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
 <meta name="theme-color" content="#0f1117">
-<title>Manufacturing MES · Production System</title>
+<title>Manufacturing MES P3 · Production System</title>
 <link rel="manifest" href="manifest.json">
 
 <script type="module">
@@ -28,34 +28,34 @@ const firebaseConfig = {
 const app  = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db   = getFirestore(app);
-const REGS_COL  = () => collection(db, "registros");
-const TGTS_COL  = () => collection(db, "targets");
+const REGS_COL  = () => collection(db, "registros_p3");
+const TGTS_COL  = () => collection(db, "targets_p3");
 
 async function loadMaquinasStatus(){
   try{
-    const snap=await getDocs(collection(db,"maquinas_status"));
+    const snap=await getDocs(collection(db,"lineas_status_p3"));
     snap.docs.forEach(d=>{
       const data=d.data();
-      const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
+      const idx=LINEAS.findIndex(m=>m.nombre===data.nombre);
       if(idx>=0){
-        MAQUINAS[idx].activa = data.activa!==false;
-        MAQUINAS[idx]._statusId = d.id;
+        LINEAS[idx].activa = data.activa!==false;
+        LINEAS[idx]._statusId = d.id;
       }
     });
   }catch(e){console.error("Error cargando status maquinas:",e);}
 }
 
 async function saveMaquinaStatus(idx, activa){
-  const m=MAQUINAS[idx];
+  const m=LINEAS[idx];
   const data={nombre:m.nombre,activa,updatedAt:serverTimestamp()};
   try{
     if(m._statusId){
-      await updateDoc(doc(db,"maquinas_status",m._statusId),data);
+      await updateDoc(doc(db,"lineas_status_p3",m._statusId),data);
     } else {
-      const ref=await addDoc(collection(db,"maquinas_status"),data);
-      MAQUINAS[idx]._statusId=ref.id;
+      const ref=await addDoc(collection(db,"lineas_status_p3"),data);
+      LINEAS[idx]._statusId=ref.id;
     }
-    MAQUINAS[idx].activa=activa;
+    LINEAS[idx].activa=activa;
     showToast(`${m.nombre} ${activa?"activada":"desactivada"}`,activa?"var(--green)":"var(--red)");
     renderAdminMaquinas();
     rHoy();
@@ -66,7 +66,7 @@ window.saveMaquinaStatus=saveMaquinaStatus;
 function renderAdminMaquinas(){
   const el=document.getElementById("admin-maquinas-grid");
   if(!el)return;
-  el.innerHTML=MAQUINAS.map((m,i)=>{
+  el.innerHTML=LINEAS.map((m,i)=>{
     const activa=m.activa!==false;
     return `<div style="background:${activa?"var(--card2)":"#1a1117"};border:1px solid ${activa?"#2ecc7133":"#e74c3c33"};border-radius:9px;padding:12px;opacity:${activa?1:0.8}">
       <div style="font-size:.9rem;font-weight:700;margin-bottom:3px">${m.nombre}</div>
@@ -94,7 +94,7 @@ async function buscarRegistrosEdit() {
   const tabla = document.getElementById('edit-reg-tabla');
   tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Buscando...</div>';
   try {
-    const snap = await getDocs(collection(db,'registros'));
+    const snap = await getDocs(collection(db,'registros_p3'));
     const regs = [];
     snap.forEach(d => {
       const r = d.data();
@@ -104,7 +104,7 @@ async function buscarRegistrosEdit() {
     if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
     regs.sort((a,b) => (b.ts?.seconds||0)-(a.ts?.seconds||0));
     // Ordenar igual que Production Summary
-    const ordenMaqEdit = ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const ordenMaqEdit = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
     const getOrdenEdit = n => { const i = ordenMaqEdit.findIndex(o=>(n||'').toUpperCase().includes(o.toUpperCase())); return i>=0?i:ordenMaqEdit.length; };
     regs.sort((a,b) => {
       const om = getOrdenEdit(a.maquina||a.maqNombre) - getOrdenEdit(b.maquina||b.maqNombre);
@@ -112,7 +112,7 @@ async function buscarRegistrosEdit() {
       return (a.modelo||'').localeCompare(b.modelo||'');
     });
     tabla.innerHTML = `<div class="tbl-parts-wrap"><table><thead><tr>
-        <th>Machine</th><th>Model</th><th>Type</th><th>Part No.</th>
+        <th>Line</th><th>Model</th><th>Type</th><th>Part No.</th>
         <th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th><th>Hora</th><th></th>
       </tr></thead><tbody>
       ${regs.map(r => {
@@ -150,15 +150,15 @@ async function buscarRegistrosEdit() {
 
 async function editarRegistro(id) {
   try {
-    const snap = await getDocs(collection(db,'registros'));
+    const snap = await getDocs(collection(db,'registros_p3'));
     let reg = null;
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
     const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
-    const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
+    const opcTipo = ['Pre-Kit','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
     const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -166,7 +166,7 @@ async function editarRegistro(id) {
       <div style="font-weight:700;margin-bottom:14px;font-size:14px">✏️ Editar Registro — ${hora}</div>
       <div style="display:grid;gap:10px">
         <div>
-          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Máquina</div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Línea</div>
           <select id="er-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
         </div>
         <div>
@@ -224,14 +224,14 @@ async function guardarRegistroEdit(id, btn) {
       }
     }
     // Buscar idx y nombre de la máquina seleccionada
-    const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
-    const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
+    const maqObj = (typeof LINEAS !== 'undefined' ? LINEAS : []).find((m,i) => m.nombre === maq);
+    const maqIdx = maqObj ? (typeof LINEAS !== 'undefined' ? LINEAS : []).indexOf(maqObj) : null;
     const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
     const pct = target > 0 ? +(qty/target*100).toFixed(2) : 0;
     const parte = document.getElementById('er-parte') ? document.getElementById('er-parte').value.trim().toUpperCase() : '';
     const def=parseInt(document.getElementById('er-def')?document.getElementById('er-def').value:0)||0; const scrap=parseInt(document.getElementById('er-scrap')?document.getElementById('er-scrap').value:0)||0; const scrapPct=qty>0?+(scrap/qty*100).toFixed(2):0; const defPct=qty>0?+(def/qty*100).toFixed(2):0; const updateData={maquina:maq,maqNombre:maq,maqTipo:tipo,tipo,modelo,parte,qty,prod:qty,def,defectos:def,scrap,scrapPct,defPct,turno,corte,target,pct};
     if (maqIdx !== null) updateData.maqIdx = maqIdx;
-    await setDoc(doc(db,'registros',id), updateData, {merge:true});
+    await setDoc(doc(db,'registros_p3',id), updateData, {merge:true});
     btn.closest('div[style*=fixed]').remove();
     showToast('✅ Registro actualizado — recargando...','var(--green)');
     buscarRegistrosEdit();
@@ -241,7 +241,7 @@ async function guardarRegistroEdit(id, btn) {
 async function eliminarRegistroEdit(id) {
   if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
   try {
-    await deleteDoc(doc(db,'registros',id));
+    await deleteDoc(doc(db,'registros_p3',id));
     showToast('🗑️ Registro eliminado','var(--red)');
     buscarRegistrosEdit();
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); }
@@ -251,10 +251,10 @@ window.eliminarRegistroEdit=eliminarRegistroEdit;
 // ── AGREGAR REGISTRO MANUAL ──
 window.abrirNuevoRegistro = function() {
   const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
-  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+  const maqList = Array.isArray(LINEAS) ? LINEAS.map(m=>m.nombre) : ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
-  const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const opcTipo = ['Pre-Kit','Bundle','Pre-Folding','Bandita'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcCorte = [
     {id:'C1',label:'Break (7:00–8:45 AM)'},
     {id:'C2',label:'Lunch (9:00–12:30 PM)'},
@@ -271,12 +271,12 @@ window.abrirNuevoRegistro = function() {
         <input id="nr-fecha" type="date" value="${fecha}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Máquina</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Línea</div>
         <select id="nr-maq" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcMaq}</select>
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Modelo</div>
-        <select id="nr-modelo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">${'<option value="">— Seleccionar modelo —</option>'+(typeof MODELOS_LIST!=='undefined'?MODELOS_LIST:[]).map(m=>`<option value="${m}">${m}</option>`).join('')}</select>
+        <input id="nr-modelo" placeholder="Escribe el modelo" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
       </div>
       <div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:4px">N° Parte</div>
@@ -329,9 +329,9 @@ window.guardarNuevoRegistro = async function(btn) {
     const def    = parseInt(document.getElementById('nr-def').value)||0;
     const scrap  = parseInt(document.getElementById('nr-scrap').value)||0;
     if (!fecha) { showToast('Selecciona una fecha','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
-    if (!modelo) { showToast('Selecciona un modelo del BOM','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
-    const maqObj = (typeof MAQUINAS!=='undefined'?MAQUINAS:[]).find(m=>m.nombre===maq);
-    const maqIdx = maqObj ? MAQUINAS.indexOf(maqObj) : null;
+    if (!modelo) { showToast('Escribe el modelo','var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; return; }
+    const maqObj = (typeof LINEAS!=='undefined'?LINEAS:[]).find(m=>m.nombre===maq);
+    const maqIdx = maqObj ? LINEAS.indexOf(maqObj) : null;
     // Target correcto según corte seleccionado
     const target = maqObj ? (maqObj.cortes?.[corte] || maqObj.target || 0) : 0;
     const pct    = target>0 ? +(qty/target*100).toFixed(2) : 0;
@@ -342,7 +342,7 @@ window.guardarNuevoRegistro = async function(btn) {
       tsLocal: new Date().toISOString(), ts: serverTimestamp()
     };
     if (maqIdx!==null) newReg.maqIdx = maqIdx;
-    await addDoc(collection(db,'registros'), newReg);
+    await addDoc(collection(db,'registros_p3'), newReg);
     btn.closest('div[style*=fixed]').remove();
     showToast('✅ Registro agregado correctamente','var(--green)');
     buscarRegistrosEdit();
@@ -358,7 +358,7 @@ async function previewCorregirModelo() {
   if (malo === bueno) { div.innerHTML='<div style="color:var(--red)">❌ Los modelos son iguales</div>'; return; }
   div.innerHTML='<div style="color:var(--muted)">⏳ Buscando...</div>';
   try {
-    const snap = await getDocs(collection(db,'registros'));
+    const snap = await getDocs(collection(db,'registros_p3'));
     const matches = [];
     snap.forEach(d => {
       const r = d.data();
@@ -394,7 +394,7 @@ async function ejecutarCorregirModelo() {
     let ok=0, errs=0;
     for (const id of ids) {
       try {
-        await setDoc(doc(db,'registros',id), {modelo: bueno}, {merge:true});
+        await setDoc(doc(db,'registros_p3',id), {modelo: bueno}, {merge:true});
         ok++;
       } catch(e) { errs++; console.error('Error en',id,e); }
     }
@@ -409,228 +409,6 @@ async function ejecutarCorregirModelo() {
 }
 window.ejecutarCorregirModelo = ejecutarCorregirModelo;
 
-// ── CIERRE DE JORNADA ──
-async function calcularCierreJornada() {
-  const fecha = document.getElementById('cj-fecha').value;
-  if (!fecha) { showToast('Selecciona la fecha','var(--red)'); return; }
-  const div = document.getElementById('cj-resultado');
-  div.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳ Calculando...</div>';
-  try {
-    // 1. Verificar si ya se cerró ese día (evitar duplicados)
-    const cierreSnap = await getDocs(collection(db,'cierres_jornada'));
-    let yaCerrado = null;
-    cierreSnap.forEach(d => { if (d.id === fecha) yaCerrado = d.data(); });
-    if (yaCerrado) {
-      const fechaCierre = yaCerrado.fechaCierre ? new Date(yaCerrado.fechaCierre).toLocaleString('es-MX') : '';
-      div.innerHTML = `<div style="padding:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-weight:600;font-size:12px">⚠️ Esta fecha ya fue cerrada el ${fechaCierre} por ${yaCerrado.usuario||'?'}.<br><br>Si necesitas reabrir, contacta al admin.</div>`;
-      return;
-    }
-
-    // 2. Leer registros ASSY1 del día
-    const snap = await getDocs(collection(db,'registros'));
-    const assy1Regs = [];
-    snap.forEach(d => {
-      const r = d.data();
-      const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      const esASSY1 = r.maquina === 'ASSY1' || r.tipo === 'ASSY' || r.maqNombre === 'ASSY1' || r.maqTipo === 'ASSY';
-      if (fechaReg === fecha && esASSY1) assy1Regs.push({id:d.id,...r});
-    });
-    if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
-
-    // 3. Leer BOM ACTIVO (no plan_produccion)
-    const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
-    if (!bomDoc.exists()) {
-      div.innerHTML = '<div style="color:var(--red);font-size:12px">❌ No hay BOM activo en bom_simulator_p4</div>';
-      return;
-    }
-    const bomData = bomDoc.data();
-    const BOM = JSON.parse(bomData.bom||'[]');
-    const semanaRef = bomData.semana || '';
-
-    // 4. Leer inventario IMS — se indexa por pn+descripción para no confundir
-    //    registros que comparten el mismo número de parte (ej. Lower Box (Bottom)
-    //    y Chip Board Bottom (Ranurado) pueden tener el mismo pn pero son artículos distintos)
-    const imsSnap = await getDocs(collection(db,'planta4_inventario'));
-    const imsMap = {};       // key: "PN|||DESC" exacto
-    const imsPorPn = {};     // fallback: solo se usa si ese pn tiene un único registro
-    imsSnap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pnU = (data.pn||'').trim().toUpperCase();
-      const descU = (data.desc||data.descripcion||data.nombre||'').trim().toUpperCase();
-      imsMap[pnU+'|||'+descU] = {...data, _docId:d.id};
-      if (!imsPorPn[pnU]) imsPorPn[pnU] = [];
-      imsPorPn[pnU].push({...data, _docId:d.id});
-    });
-    const buscarIMS = (pn, desc) => {
-      const pnU = (pn||'').trim().toUpperCase();
-      const descU = (desc||'').trim().toUpperCase();
-      const exacto = imsMap[pnU+'|||'+descU];
-      if (exacto) return exacto;
-      const candidatos = imsPorPn[pnU] || [];
-      if (candidatos.length === 1) return candidatos[0]; // único registro con ese pn, sin ambigüedad
-      return null; // hay varios y ninguno coincide con la descripción exacta
-    };
-
-    // 5. Calcular descuentos — cada combinación pn+descripción es una línea independiente
-    const descuentos = {};
-    let totalPiezasConsumo = 0;
-    assy1Regs.forEach(r => {
-      const modelo = (r.modelo||'').trim();
-      const qty = Number(r.qty ?? r.prod)||0;
-      const defectos = Number(r.defectos ?? r.def)||0;
-      const scrap = Number(r.scrap)||0;
-      const consumo = qty + defectos + scrap;
-      if (!modelo || !consumo) return;
-      totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER'];
-      const compsModelo = BOM.filter(b => {
-        if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
-        const desc = (b.desc||'').trim().toUpperCase();
-        return DESC_DESCUENTO.includes(desc);
-      });
-      compsModelo.forEach(c => {
-        const pnU = (c.pn||'').trim().toUpperCase();
-        const descU = (c.desc||'').trim().toUpperCase();
-        const key = pnU+'|||'+descU;
-        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
-        descuentos[key].total += consumo;
-        descuentos[key].detalle.push({modelo, qty, defectos, scrap, consumo});
-      });
-    });
-
-    // 6. Render preview
-    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty ?? r.prod)||0),0);
-    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos ?? r.def)||0),0);
-    const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
-
-    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
-
-    const descList = Object.values(descuentos);
-    if (!descList.length) {
-      html += '<div style="color:var(--amber);font-size:12px;padding:.5rem">⚠️ No se encontraron componentes en el BOM activo para los modelos producidos.</div>';
-      div.innerHTML = html;
-      return;
-    }
-
-    let conFaltante = 0;
-    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
-    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
-    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach((d,i) => {
-      const imsDoc = buscarIMS(d.pn, d.desc);
-      const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
-      const nuevoInvCrudo = invAct !== null ? invAct - d.total : -d.total;
-      const nuevoInv = Math.max(0, nuevoInvCrudo);
-      const sinIMS = imsDoc === null || imsDoc === undefined;
-      const faltante = nuevoInvCrudo < 0 ? Math.abs(nuevoInvCrudo) : 0;
-      if (sinIMS || faltante>0) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':faltante>0?'var(--red)':'var(--fg)';
-      const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
-      const tagNuevo = faltante>0 ? `0 <span style="font-size:10px;opacity:.8">(faltan ${faltante.toLocaleString()})</span>` : nuevoInv.toLocaleString();
-      const sumaCheck = (d.detalle||[]).reduce((s,x)=>s+x.consumo,0);
-      const detalleTxt = (d.detalle||[]).map(x=>`${x.modelo}: ${x.qty.toLocaleString()} prod + ${x.defectos.toLocaleString()} def + ${x.scrap.toLocaleString()} scrap = <b>${x.consumo.toLocaleString()}</b>`).join('<br>')
-        + `<br><span style="color:var(--green)">Suma = ${sumaCheck.toLocaleString()} ${sumaCheck===d.total?'✅ coincide con el descuento':'⚠️ NO coincide con el descuento'}</span>`;
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" title="Clic para ver el desglose del cálculo" onclick="const e=document.getElementById('cj-det-${i}');e.style.display=e.style.display==='none'?'table-row':'none'"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn} 🔍</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr><tr id="cj-det-${i}" style="display:none;background:rgba(255,255,255,.03)"><td colspan="5" style="padding:6px 10px;font-size:11px;color:var(--muted);line-height:1.6">${detalleTxt}</td></tr>`;
-    });
-    html += '</table></div>';
-    if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (quedará en 0, se registrará el faltante).</div>`;
-    }
-    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, buscarIMS, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
-    html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
-    div.innerHTML = html;
-  } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; console.error(e); }
-}
-
-async function confirmarCierreJornada() {
-  if (!window._cierreDescuentos) return;
-  const cd = window._cierreDescuentos;
-  const modoSim = document.getElementById('cj-modoSim') && document.getElementById('cj-modoSim').checked;
-  const msgConfirm = modoSim
-    ? `MODO SIMULACIÓN — NO se tocará Firebase.\n\nSe mostrará lo que pasaría si se descontaran:\n• ${cd.descuentos.length} componentes\n• Consumo: ${cd.totalConsumo.toLocaleString()} pzas\n\n¿Ejecutar simulación?`
-    : `Confirmar cierre de jornada del ${cd.fecha}?\n\n• ${cd.descuentos.length} componentes a descontar\n• Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\n• Esta acción NO se puede deshacer fácilmente.`;
-  if (!confirm(msgConfirm)) return;
-  const div = document.getElementById('cj-resultado');
-  div.innerHTML = `<div style="color:var(--muted);font-size:12px">⏳ ${modoSim?'Simulando':'Procesando'} descuentos...</div>`;
-  try {
-    const fechaISO = new Date().toISOString();
-    const userActual = (typeof currentUser!=='undefined' && currentUser && currentUser.email) ? currentUser.email : (window._userEmail || 'Sistema MES');
-    let actualizados = 0, faltantes = 0, movimientos = 0;
-    const detalleFaltantes = [];
-    const detalleSim = [];
-
-    for (const d of cd.descuentos) {
-      const imsDoc = cd.buscarIMS ? cd.buscarIMS(d.pn, d.desc) : cd.imsMap[(d.pn||'').toUpperCase()];
-      const refTxt = `Descuento ASSY1 ${cd.fecha} (${cd.semanaRef||'BOM'})`;
-      if (!imsDoc) {
-        faltantes++;
-        detalleFaltantes.push(`${d.pn} (${d.desc}): ${d.total} no descontado (no se encontró registro IMS único para esta descripción)`);
-        if (modoSim) detalleSim.push(`❌ ${d.pn} (${d.desc}) → no se encontró registro IMS único, NO se podría descontar ${d.total}`);
-        continue;
-      }
-      const invAnterior = Number(imsDoc.actual)||0;
-      const salidasAnt = Number(imsDoc.salidas)||0;
-      const nuevoActualCrudo = invAnterior - d.total;
-      const nuevoActual = Math.max(0, nuevoActualCrudo);
-      const faltante = nuevoActualCrudo < 0 ? Math.abs(nuevoActualCrudo) : 0;
-
-      if (modoSim) {
-        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${faltante>0?` ⚠️ FALTANTE ${faltante.toLocaleString()} (queda en 0)`:''}`);
-        actualizados++; movimientos++;
-        if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, queda en 0`); }
-        continue;
-      }
-
-      // ── MODO REAL ──
-      const histEntry = { tipo:'OUT', fecha:fechaISO, qty:d.total, loc:imsDoc.ubicacion||'Almacén', user:userActual, ref:refTxt };
-      const nuevoHist = (Array.isArray(imsDoc.historial)?imsDoc.historial:[]).concat([histEntry]);
-      await updateDoc(doc(db,'planta4_inventario',imsDoc._docId), {
-        actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
-        ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
-      });
-      if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, quedó en 0`); }
-      await addDoc(collection(db,'planta4_movimientos'), {
-        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total, faltante:faltante,
-        fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
-        usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
-      });
-      movimientos++; actualizados++;
-    }
-
-    if (!modoSim) {
-      await setDoc(doc(db,'cierres_jornada',cd.fecha), {
-        fecha:cd.fecha, fechaCierre:fechaISO, usuario:userActual, semanaRef:cd.semanaRef||'',
-        totalRegistros:cd.totalRegs, totalConsumo:cd.totalConsumo, totalQty:cd.totalQty,
-        totalDef:cd.totalDef, totalScr:cd.totalScr, componentesDescontados:actualizados,
-        faltantes:faltantes, movimientosCreados:movimientos
-      });
-    }
-
-    let resumen;
-    if (modoSim) {
-      resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">🧪 SIMULACIÓN COMPLETA — Firebase NO se modificó</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">• Componentes que SÍ se podrían descontar: <b style="color:var(--fg)">${actualizados}</b><br>• Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>• Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÍNEA POR LÍNEA</div>`;
-      resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:12px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
-      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">💡 Para ejecutar de verdad: desmarca <b>"Modo simulación"</b> y vuelve a calcular.</div>`;
-    } else {
-      resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">✅ Cierre aplicado — ${actualizados} componentes descontados</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>• Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
-      if (faltantes > 0) {
-        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
-      }
-    }
-    div.innerHTML = resumen;
-    if (!modoSim) { showToast(`✅ IMS actualizado — ${actualizados} partes`,'var(--green)'); window._cierreDescuentos = null; }
-    else { showToast(`🧪 Simulación completa — ${actualizados} descuentos posibles`,'#5BA3FF'); }
-  } catch(e) {
-    div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
-    console.error('confirmarCierreJornada:', e);
-    showToast('Error: '+e.message,'var(--red)');
-  }
-}
-window.calcularCierreJornada=calcularCierreJornada;
-window.confirmarCierreJornada=confirmarCierreJornada;
 window.buscarRegistrosEdit=buscarRegistrosEdit;
 window.editarRegistro=editarRegistro;
 window.guardarRegistroEdit=guardarRegistroEdit;
@@ -641,13 +419,13 @@ async function loadTargetsFromDB(){
     if(snap.empty)return;
     snap.docs.forEach(d=>{
       const data=d.data();
-      const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
+      const idx=LINEAS.findIndex(m=>m.nombre===data.nombre);
       if(idx<0)return;
       const t=Number(data.target||data.A||0);
       if(!t)return;
-      MAQUINAS[idx].target=t;
+      LINEAS[idx].target=t;
       // Recalcular cortes proporcional
-      const m=MAQUINAS[idx];
+      const m=LINEAS[idx];
       const pcts={C1:0.2,C2:0.4,C3:0.4};
       const otFixed=data.OT||m.cortes.OT;
       m.cortes={
@@ -663,7 +441,7 @@ async function loadTargetsFromDB(){
 }
 
 async function saveTargetToDB(maqIdx, targetVal){
-  const m=MAQUINAS[maqIdx];
+  const m=LINEAS[maqIdx];
   const pcts={C1:0.2,C2:0.4,C3:0.4};
   const data={
     nombre:m.nombre,
@@ -676,14 +454,14 @@ async function saveTargetToDB(maqIdx, targetVal){
   };
   try{
     if(m._dbId){
-      await updateDoc(doc(db,"targets",m._dbId),data);
+      await updateDoc(doc(db,"targets_p3",m._dbId),data);
     } else {
       const ref=await addDoc(TGTS_COL(),data);
-      MAQUINAS[maqIdx]._dbId=ref.id;
+      LINEAS[maqIdx]._dbId=ref.id;
     }
     // Actualizar en memoria
-    MAQUINAS[maqIdx].target=targetVal;
-    MAQUINAS[maqIdx].cortes={C1:data.C1,C2:data.C2,C3:data.C3,OT:data.OT};
+    LINEAS[maqIdx].target=targetVal;
+    LINEAS[maqIdx].cortes={C1:data.C1,C2:data.C2,C3:data.C3,OT:data.OT};
     showToast("Target guardado ✓","var(--green)");
     renderAdminTargets();
   }catch(e){showToast("Error al guardar target","var(--red)");console.error(e);}
@@ -693,7 +471,7 @@ window.saveTargetToDB=saveTargetToDB;
 function renderAdminTargets(){
   const el=document.getElementById("admin-targets-grid");
   if(!el)return;
-  el.innerHTML=MAQUINAS.map((m,i)=>`
+  el.innerHTML=LINEAS.map((m,i)=>`
     <div style="background:var(--card2);border:1px solid var(--border);border-radius:9px;padding:12px;">
       <div style="font-size:.85rem;font-weight:700;margin-bottom:2px">${m.nombre}</div>
       <div style="margin-bottom:10px"><span class="tbadge ${m.tipo}">${m.tipo}</span></div>
@@ -716,28 +494,23 @@ function renderAdminTargets(){
 }
 window.renderAdminTargets=renderAdminTargets;
 let MODELOS_LIST = [];
-let BOM_ACTIVO = [];
 async function loadModelos(){
-  const sel=document.getElementById("ip-modelo");
   const status=document.getElementById("ip-modelo-status");
   try{
     const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
     if(!bomDoc.exists()){
       MODELOS_LIST=[];
-      BOM_ACTIVO=[];
-      if(sel)sel.innerHTML='<option value="">⚠️ Sin BOM activo</option>';
-      if(status){status.textContent='⚠️ No hay BOM cargado en BOM Simulator. Carga el BOM antes de capturar producción.';status.style.color='var(--red)';}
+      if(status){status.textContent='⚠️ No hay BOM cargado en BOM Simulator.';status.style.color='var(--red)';}
       return;
     }
     const bomData = bomDoc.data();
     const BOM = JSON.parse(bomData.bom||'[]');
-    BOM_ACTIVO = BOM;
     MODELOS_LIST = [...new Set(BOM.map(r=>r.sm).filter(Boolean))].sort();
     buildModelosDL();
     if(status){
       if(MODELOS_LIST.length){
-        status.textContent=`✅ ${MODELOS_LIST.length} modelos cargados del BOM (${bomData.semana||''})`;
-        status.style.color='var(--green)';
+        status.textContent=`ℹ️ ${MODELOS_LIST.length} modelos en el BOM (${bomData.semana||''}) — escribe el modelo tal como aparece`;
+        status.style.color='var(--muted)';
       }else{
         status.textContent='⚠️ El BOM activo no contiene modelos.';
         status.style.color='var(--red)';
@@ -745,38 +518,15 @@ async function loadModelos(){
     }
   }catch(e){
     MODELOS_LIST=[];
-    BOM_ACTIVO=[];
-    if(sel)sel.innerHTML='<option value="">⚠️ Error cargando BOM</option>';
     if(status){status.textContent='⚠️ Error al leer el BOM activo: '+e.message;status.style.color='var(--red)';}
   }
 }
 function buildModelosDL(){
   const opts='<option value="">— Seleccionar modelo —</option>'+MODELOS_LIST.map(m=>`<option value="${m}">${m}</option>`).join("");
-  const sel=document.getElementById("ip-modelo");
-  if(sel)sel.innerHTML=opts;
   const cmBueno=document.getElementById("cm-bueno");
   if(cmBueno)cmBueno.innerHTML=opts;
 }
-function buildPartesDL(modelo){
-  const selParte=document.getElementById("ip-parte");
-  if(!selParte) return;
-  let partes;
-  if(modelo){
-    partes=[...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
-  }else{
-    partes=[...new Set(BOM_ACTIVO.filter(b=>b.pn).map(b=>b.pn.trim().toUpperCase()))].sort();
-  }
-  if(!partes.length){
-    selParte.innerHTML='<option value="">⚠️ Sin partes en el BOM para este modelo</option>';
-    return;
-  }
-  selParte.innerHTML='<option value="">— Seleccionar N° Parte —</option>'+partes.map(p=>`<option value="${p}">${p}</option>`).join("");
-}
-window.onModeloChange=function(){
-  const modelo=document.getElementById("ip-modelo").value.trim().toUpperCase();
-  buildPartesDL(modelo);
-};
-const USERS_COL = () => collection(db, "usuarios");
+const USERS_COL = () => collection(db, "usuarios_p3");
 
 const CAUSAS_PARO_DEFAULT = [
   "Equipment failure","Material shortage","Tooling change",
@@ -787,12 +537,12 @@ let CAUSAS_PARO = [...CAUSAS_PARO_DEFAULT];
 
 async function loadCausasParo(){
   try{
-    const snap=await getDocs(collection(db,"causas_paro"));
+    const snap=await getDocs(collection(db,"causas_paro_p3"));
     if(!snap.empty){
       CAUSAS_PARO=snap.docs.map(d=>d.data().causa).filter(Boolean);
     } else {
       // Primera vez — guardar causas por defecto en Firestore
-      for(const c of CAUSAS_PARO_DEFAULT) await addDoc(collection(db,"causas_paro"),{causa:c});
+      for(const c of CAUSAS_PARO_DEFAULT) await addDoc(collection(db,"causas_paro_p3"),{causa:c});
       CAUSAS_PARO=[...CAUSAS_PARO_DEFAULT];
     }
   }catch(e){ CAUSAS_PARO=[...CAUSAS_PARO_DEFAULT]; }
@@ -811,15 +561,11 @@ const CORTES = [
   {id:"OT", label:"OT",hora:"4:45–6:25 PM",  icon:"⏰"},
 ];
 // Estado activo/inactivo se carga desde Firestore
-const MAQUINAS = [
-  {nombre:"S1",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
-  {nombre:"S2",    tipo:"TOP",  target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
-  {nombre:"S3",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
-  {nombre:"S4",    tipo:"BOT",  target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
-  {nombre:"Zhongke",tipo:"AUTO",target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:2000}},
-  {nombre:"ASSY1", tipo:"ASSY", target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
-  {nombre:"VC1",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"VC2",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+const LINEAS = [
+  {nombre:"Pre-Kit",     tipo:"Pre-Kit",     target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"Bundle",      tipo:"Bundle",      target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"Pre-Folding", tipo:"Pre-Folding", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"Bandita",     tipo:"Bandita",     target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
 ];
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
@@ -930,12 +676,12 @@ window.addUser = async () => {
   }
 };
 window.toggleUser = async (docId,activo) => {
-  await updateDoc(doc(db,"usuarios",docId),{activo:!activo});
+  await updateDoc(doc(db,"usuarios_p3",docId),{activo:!activo});
   showToast("Usuario actualizado","var(--accent)"); loadUsuarios();
 };
 window.delUser = async (docId,nombre) => {
   if(!confirm(`¿Eliminar perfil de "${nombre}"?`))return;
-  await deleteDoc(doc(db,"usuarios",docId));
+  await deleteDoc(doc(db,"usuarios_p3",docId));
   showToast(`Perfil eliminado`,"var(--yellow)"); loadUsuarios();
 };
 function renderAdmin() {
@@ -969,7 +715,7 @@ function renderAdmin() {
 window.enviar = async () => {
   const btn=document.getElementById("btnnext");
   btn.innerHTML='<span class="spin"></span>Guardando...';btn.disabled=true;
-  const m=MAQUINAS[opMaq],p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");
+  const m=LINEAS[opMaq],p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");
   const reg={
     userId:CURRENT_USER.uid,
     operador:document.getElementById("ip-op").value.trim(),
@@ -996,7 +742,7 @@ window.enviar = async () => {
   } catch(e){showToast("❌ Error: "+e.message,"var(--red)");}
   btn.innerHTML='<span id="btn-enviar">'+t("btn_enviar")+'</span>';btn.disabled=false;
 };
-window.delReg = async (id) => { await deleteDoc(doc(db,"registros",id)); rRegs();rFeed();updateDashStats(); };
+window.delReg = async (id) => { await deleteDoc(doc(db,"registros_p3",id)); rRegs();rFeed();updateDashStats(); };
 
 // ── PLAN PRODUCCIÓN EN MES ──
 var mesPlanActivo = null;
@@ -1006,7 +752,7 @@ var unsubImsListener = null; // listener tiempo real
 async function loadMesPlan() {
   try {
     // 1. Cargar plan de Firestore
-    const snap = await getDocs(collection(db,'plan_produccion'));
+    const snap = await getDocs(collection(db,'plan_produccion_p3'));
     let planDoc = null;
     snap.forEach(d => { if(d.id==='plan_activo') planDoc = d.data(); });
     if (!planDoc) {
@@ -1090,9 +836,9 @@ function renderMesPlan() {
   document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
   document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
 
-  const colores = {'VC1':'#FFBA00','VC2':'#00B8A0','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
-  const iconos = {'VC1':'⚙️','VC2':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','ASSY1':'✅'};
-  const ordenLineas = ['VC1','VC2','S1/S2','Zhongke','S3','S4','ASSY1'];
+  const colores = {'Pre-Kit':'#FFBA00','Bundle':'#4da6ff','Pre-Folding':'#00B8A0','Bandita':'#e07be0'};
+  const iconos = {'Pre-Kit':'📦','Bundle':'🧩','Pre-Folding':'📐','Bandita':'🎀'};
+  const ordenLineas = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
   const lineas = mesPlanActivo.lineas || {};
   const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
 
@@ -1188,10 +934,10 @@ async function confirmarLinea(key) {
       const modelo = items[idx].sm || '';
       if (modelo) {
         const ipModelo = document.getElementById('ip-modelo');
-        if (ipModelo) { ipModelo.value = modelo; buildPartesDL(modelo); }
+        if (ipModelo) ipModelo.value = modelo;
       }
     }
-    await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
+    await setDoc(doc(db,'plan_produccion_p3','plan_activo'), mesPlanActivo);
     renderMesPlan();
     showToast('✅ ' + linea + ' — confirmado por ' + (CURRENT_USER?.nombre || 'Supervisor'), 'var(--green)');
   } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
@@ -1212,7 +958,7 @@ async function desconfirmarLinea(key) {
       delete items[idx].confirmadoPor;
       delete items[idx].confirmadoEn;
     }
-    await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
+    await setDoc(doc(db,'plan_produccion_p3','plan_activo'), mesPlanActivo);
     renderMesPlan();
     showToast('↩ ' + linea + ' — confirmación deshecha', '#FFBA00');
   } catch(e) { showToast('Error: ' + e.message, 'var(--red)'); }
@@ -1294,12 +1040,12 @@ window.loadMesPlan = loadMesPlan;
 window.confirmarLinea = confirmarLinea;
 window.desconfirmarLinea = desconfirmarLinea;
 
-window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Máquina","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
+window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Línea","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
 
 // ── Envío a SHIPQR (conectado con ShipQR Web v2.0, con registro de movimientos) ──
 async function loadShipqrEnviados(){
   try{
-    const snap=await getDocs(collection(db,'shipqr_envios_mes'));
+    const snap=await getDocs(collection(db,'shipqr_envios_mes_p3'));
     SHIPQR_ENVIADOS={};
     snap.forEach(d=>{ SHIPQR_ENVIADOS[d.id]=d.data(); });
     pintarHistorialShipqr();
@@ -1332,7 +1078,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
     fecha_envio: new Date().toISOString()
   };
   try{
-    await setDoc(doc(db,'shipqr_envios_mes',key), registro);
+    await setDoc(doc(db,'shipqr_envios_mes_p3',key), registro);
     SHIPQR_ENVIADOS[key]=registro;
     pintarHistorialShipqr();
   }catch(err){
@@ -1342,24 +1088,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   window.open(url,'shipqr_window');
   if(typeof renderShipqr==='function') renderShipqr();
 };
-// Quita la marca de "ya enviado" para poder volver a mandarlo — útil cuando el registro se borró
-// del lado de ShipQR (por pruebas o limpieza) pero aquí el MES seguía marcándolo como enviado
-window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
-  const modelo=decodeURIComponent(modeloEnc);
-  const parte=decodeURIComponent(parteEnc);
-  const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(!confirm(`¿Reactivar el envío de ${modelo} · ${parte}? Esto permite volver a mandarlo a ShipQR (útil si ya se borró allá).`)) return;
-  try{
-    await deleteDoc(doc(db,'shipqr_envios_mes',key));
-    delete SHIPQR_ENVIADOS[key];
-    pintarHistorialShipqr();
-    if(typeof renderShipqr==='function') renderShipqr();
-  }catch(err){
-    console.error('Error reactivando envío a ShipQR:', err);
-    alert('Error al reactivar: '+err.message);
-  }
-};
-window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
+window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Línea","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
   document.getElementById("ip-fecha").value=HOY;
@@ -1369,28 +1098,28 @@ function initApp(){
   loadCausasParo();
   loadShipqrEnviados();
 }
-function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
-function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
+function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";LINEAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
+function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las líneas</option>";LINEAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
 window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
-function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
-window.selM=(i)=>{opMaq=i;document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById(`mc${i}`).classList.add("sel");const m=MAQUINAS[i];const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;document.getElementById("mhdr").textContent=`${m.nombre} · ${m.tipo} — Target ${(t||m.target).toLocaleString()}`;document.getElementById("ktgt").textContent=(t||m.target).toLocaleString();document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t||m.target);updK();};
+function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=LINEAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
+window.selM=(i)=>{opMaq=i;document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById(`mc${i}`).classList.add("sel");const m=LINEAS[i];const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;document.getElementById("mhdr").textContent=`${m.nombre} · ${m.tipo} — Target ${(t||m.target).toLocaleString()}`;document.getElementById("ktgt").textContent=(t||m.target).toLocaleString();document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t||m.target);updK();};
 function gv(id){return parseFloat(document.getElementById(id)?.value)||0;}
 window.adj=(f,d)=>{const id=f==="p"?"ip-prod":f==="d"?"ip-def":"ip-scr";const el=document.getElementById(id);el.value=Math.max(0,(parseFloat(el.value)||0)+d);updK();};
-window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
+window.updK=function updK(){if(opMaq===null)return;const m=LINEAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
 function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"📤 Enviar al Dashboard":"Siguiente →";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
 window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim();
-      if(!modVal){showToast("Selecciona un modelo del BOM","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("Selecciona un N° Parte del catálogo","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+      if(!modVal){showToast("Escribe el modelo","var(--red)");document.getElementById("ip-modelo").focus();return;}
+      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N° Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a line","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${LINEAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
-function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
-window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";buildPartesDL("");document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
+function buildRes(){const m=LINEAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Línea",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
+window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-parte").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
 window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
 /* ══ DASHBOARD ══ */
 function updateDashStats(){document.getElementById("cnt").textContent=`${REGISTROS.length} registros`;document.getElementById("lupd").textContent="Act. "+new Date().toLocaleTimeString("es-MX",{hour:"2-digit",minute:"2-digit",second:"2-digit"});}
-const DTABS=["hoy","feed","maq","tend","regs","plan"];
+const DTABS=["hoy","feed","maq","tend","regs"];
 window.showDT=(id)=>{document.querySelectorAll(".dtc").forEach(t=>t.classList.remove("active"));document.querySelectorAll(".dtab").forEach(t=>t.classList.remove("active"));document.getElementById("dtab-"+id).classList.add("active");document.querySelectorAll(".dtab")[DTABS.indexOf(id)].classList.add("active");if(id==="hoy")rHoy();if(id==="maq")rMaq();if(id==="tend")rTend();if(id==="feed")rFeed();if(id==="regs")rRegs();if(id==="plan")loadMesPlan();};
 
 function dRefresh(){
@@ -1419,7 +1148,7 @@ function rHoy(){
   const fecha=document.getElementById("fhoy").value;
   const turno=document.getElementById("thoy").value;
   const data=filt(REGISTROS,fecha,turno);
-  const agg=MAQUINAS.map((m,i)=>{const r=data.filter(x=>parseInt(x.maqIdx)===i);return{...m,prod:r.reduce((s,x)=>s+x.prod,0),def:r.reduce((s,x)=>s+x.def,0),scrap:r.reduce((s,x)=>s+x.scrap,0)};});
+  const agg=LINEAS.map((m,i)=>{const r=data.filter(x=>parseInt(x.maqIdx)===i);return{...m,prod:r.reduce((s,x)=>s+x.prod,0),def:r.reduce((s,x)=>s+x.def,0),scrap:r.reduce((s,x)=>s+x.scrap,0)};});
   const tP=agg.reduce((s,m)=>s+m.prod,0),tT=agg.reduce((s,m)=>s+m.target,0),tS=agg.reduce((s,m)=>s+m.scrap,0),tD=agg.reduce((s,m)=>s+m.def,0);
   const cumpl=tT>0?(tP/tT*100):0,scrapP=tP>0?(tS/tP*100):0,defP=tP>0?(tD/tP*100):0;
   setKPI("k-p",tP.toLocaleString(),"blue");setKPI("k-c",cumpl.toFixed(1)+"%",sem(cumpl));
@@ -1433,7 +1162,7 @@ function rHoy(){
   const tbDt=document.getElementById("tb-dt");
   if(tbDt){
     const SHIFT_MIN=525;
-    const dtRows=MAQUINAS.map((m,i)=>{
+    const dtRows=LINEAS.map((m,i)=>{
       const regs=data.filter(r=>parseInt(r.maqIdx)===i&&r.minParo>0);
       const mins=regs.reduce((s,r)=>s+(r.minParo||0),0);
       const causas=[...new Set(regs.map(r=>r.causaParo).filter(Boolean))].join(", ")||"—";
@@ -1461,23 +1190,23 @@ function rHoy(){
   agg.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${m.tipo}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"✅":pct>=80?"⚠️":"🔴"}</td>`;tb.appendChild(tr);});
   const pcts=agg.map(m=>m.target>0?+(m.prod/m.target*100).toFixed(1):0);
   const cols=pcts.map(p=>p>=95?"#2ecc71":p>=80?"#f1c40f":"#e74c3c");
-  rebuildChart("chC",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[{label:"% Cumpl",data:pcts,backgroundColor:cols,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
+  rebuildChart("chC",{type:"bar",data:{labels:LINEAS.map(m=>m.nombre),datasets:[{label:"% Cumpl",data:pcts,backgroundColor:cols,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
   // Gráfica apilada por corte
   const corteColors={C1:"#4f8ef7",C2:"#2ecc71",C3:"#f1c40f",OT:"#e67e22"};
   const corteDatasets=CORTES.map(c=>({
     label:c.label,
-    data:MAQUINAS.map((m,i)=>{
+    data:LINEAS.map((m,i)=>{
       const regs=data.filter(r=>parseInt(r.maqIdx)===i&&r.corte===c.id);
       return regs.reduce((s,r)=>s+r.prod,0);
     }),
     backgroundColor:corteColors[c.id],
     borderRadius:0,
   }));
-  const targetDataset={label:"Target",data:MAQUINAS.map(m=>m.target),backgroundColor:"#2e334766",borderRadius:4,type:"bar",stack:"target",order:2};
+  const targetDataset={label:"Target",data:LINEAS.map(m=>m.target),backgroundColor:"#2e334766",borderRadius:4,type:"bar",stack:"target",order:2};
   const prodDatasets=corteDatasets.map(d=>({...d,stack:"prod",order:1}));
 
   // Plan del BOM Simulator por máquina
-  const planPorMaquina = MAQUINAS.map(m => {
+  const planPorMaquina = LINEAS.map(m => {
     if (!mesPlanActivo?.lineas) return null;
     let totalPlan = 0;
     Object.entries(mesPlanActivo.lineas).forEach(([linea, arr]) => {
@@ -1490,7 +1219,7 @@ function rHoy(){
   });
   const planDataset={label:"Prod Plan",data:planPorMaquina,type:"line",borderColor:"#FFBA00",backgroundColor:"transparent",borderWidth:2,borderDash:[5,3],pointBackgroundColor:"#FFBA00",pointRadius:4,pointHoverRadius:6,order:0,fill:false};
 
-  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets,planDataset]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
+  rebuildChart("chP",{type:"bar",data:{labels:LINEAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets,planDataset]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
   // Tabla producción por modelo y parte
   const tbParts=document.getElementById("tb-parts");
   if(tbParts){
@@ -1509,8 +1238,8 @@ function rHoy(){
         maqModelMap[key].target+=r.target||0;
         if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
       });
-      // Ordenar: VC → S1 → S2 → S3 → S4 → Zhongke → ASSY1
-      const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
+      // Ordenar: Pre-Kit → Bundle → Pre-Folding
+      const ordenMaq = ['Pre-Kit','Bundle','Pre-Folding','Bandita'];
       const getOrden = nombre => {
         const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
         return idx >= 0 ? idx : ordenMaq.length;
@@ -1569,12 +1298,12 @@ function renderShipqr(){
   const hasta=inpHasta?inpHasta.value:HOY;
   const assyRango=REGISTROS.filter(r=>{
     const fecha=r.fecha||"";
-    const esASSY=(r.maqNombre||"").toUpperCase().includes("ASSY")||(r.maqTipo||"").toUpperCase()==="ASSY";
+    const esPreKit=(r.maqNombre||"").toUpperCase().includes("PRE-KIT")||(r.maqTipo||"").toUpperCase()==="PRE-KIT";
     const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
-    return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
+    return esPreKit && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción Pre-Kit con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
     window._shipqrExportRows=[];
     return;
   }
@@ -1615,11 +1344,6 @@ function renderShipqr(){
           style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
         </button>
-        ${env?`<button onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          title="Reactivar envío (por si ya se borró en ShipQR)"
-          style="margin-left:6px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
-          ↻
-        </button>`:''}
       </td>`;
     tbShipqr.appendChild(tr);
   });
@@ -1670,7 +1394,7 @@ function rFeed(){
 
 async function enviarAlertaScrap(maquina, scrapPct){
   try{
-    const emailsSnap=await getDocs(collection(db,"emails_reporte"));
+    const emailsSnap=await getDocs(collection(db,"emails_reporte_p3"));
     const correos=emailsSnap.docs.map(d=>d.data().email).filter(Boolean);
     if(!correos.length) return;
     const d=new Date();
@@ -1681,7 +1405,7 @@ async function enviarAlertaScrap(maquina, scrapPct){
         subject:`⚠️ SCRAP ALERT - ${maquina} - ${scrapPct}%`,
         message:`SCRAP ALERT
 
-Machine: ${maquina}
+Line: ${maquina}
 Scrap %: ${scrapPct}%
 Limit: 3%
 Time: ${hora}
@@ -1713,7 +1437,7 @@ function chkAlertas(){
   const hoyData=filt(REGISTROS,HOY,"todos");
 
   // Alerta 1: Scrap > 3% por máquina
-  MAQUINAS.forEach((m,i)=>{
+  LINEAS.forEach((m,i)=>{
     const recs=hoyData.filter(r=>parseInt(r.maqIdx)===i);
     if(!recs.length) return;
     const prod=recs.reduce((s,r)=>s+r.prod,0);
@@ -1747,7 +1471,7 @@ function chkAlertas(){
     if(nowMin<deadlineMin) return;
     if(nowMin>deadlineMin+60) return; // Solo alerta 1 hora después
 
-    MAQUINAS.forEach((m,i)=>{
+    LINEAS.forEach((m,i)=>{
       const key=`missing-${i}-${c.id}-${HOY}`;
       const hasReg=hoyData.find(r=>parseInt(r.maqIdx)===i&&r.corte===c.id);
       if(!hasReg) showAlerta(key,`🔴 ${m.nombre}: No record for ${c.label}`, "#e74c3c");
@@ -1759,8 +1483,8 @@ window.setR=(tab,r,btn)=>{ranges[tab]=r;document.querySelectorAll(`#rb-${tab} .r
 function grpBy(data,range){const map=new Map();data.forEach(r=>{const dt=new Date(r.fecha+"T12:00:00");let k;if(range==="diario")k=r.fecha;else if(range==="semanal"){const t=new Date(dt);t.setDate(t.getDate()+4-(t.getDay()||7));const y=t.getFullYear();const w=Math.ceil((((t-new Date(y,0,1))/86400000)+1)/7);k=`${y}-S${String(w).padStart(2,"0")}`;}else if(range==="mensual")k=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;else if(range==="trimestral"){const q=Math.ceil((dt.getMonth()+1)/3);k=`${dt.getFullYear()}-Q${q}`;}else k=`${dt.getFullYear()}`;if(!map.has(k))map.set(k,[]);map.get(k).push(r);});return[...map.entries()].sort((a,b)=>a[0]>b[0]?1:-1).map(([label,items])=>({label,items}));}
 
 function rMaq(){
-  if(!MAQUINAS||!MAQUINAS.length)return;
-  const mi=parseInt(document.getElementById("smaq").value),m=MAQUINAS[mi];
+  if(!LINEAS||!LINEAS.length)return;
+  const mi=parseInt(document.getElementById("smaq").value),m=LINEAS[mi];
   const turno=document.getElementById("tmaq").value;
   const data=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
@@ -1780,16 +1504,16 @@ function rTend(){
   const turno=document.getElementById("ttend").value,data=filt(REGISTROS,null,turno);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
   ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`Producción total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
-  document.getElementById("tt-comp").textContent=`Comparativo por máquina (${rL})`;
+  document.getElementById("tt-comp").textContent=`Comparativo por línea (${rL})`;
   if(!data.length)return;
   const grp=grpBy(data,ranges.tend),lbl=grp.map(g=>g.label);
-  const agg=grp.map(g=>{const items=g.items;const dias=[...new Set(items.map(r=>r.fecha))].length;const tP=items.reduce((s,r)=>s+r.prod,0);const tT=MAQUINAS.reduce((s,m)=>s+m.target,0)*dias;const vS=items.filter(r=>r.prod>0);return{prod:tP,cumpl:tT>0?(tP/tT*100):0,scrap:vS.length?vS.reduce((s,r)=>s+r.scrapPct,0)/vS.length:0,def:vS.length?vS.reduce((s,r)=>s+r.defPct,0)/vS.length:0};});
+  const agg=grp.map(g=>{const items=g.items;const dias=[...new Set(items.map(r=>r.fecha))].length;const tP=items.reduce((s,r)=>s+r.prod,0);const tT=LINEAS.reduce((s,m)=>s+m.target,0)*dias;const vS=items.filter(r=>r.prod>0);return{prod:tP,cumpl:tT>0?(tP/tT*100):0,scrap:vS.length?vS.reduce((s,r)=>s+r.scrapPct,0)/vS.length:0,def:vS.length?vS.reduce((s,r)=>s+r.defPct,0)/vS.length:0};});
   makeLine("tP",lbl,agg.map(a=>a.prod),"Prod","#4f8ef7");
   makeLine("tC",lbl,agg.map(a=>+a.cumpl.toFixed(1)),"Cumpl%","#2ecc71",true);
   makeLine("tS",lbl,agg.map(a=>+a.scrap.toFixed(1)),"Scrap%","#e74c3c",true);
   makeLine("tD",lbl,agg.map(a=>+a.def.toFixed(1)),"Def%","#f1c40f",true);
   const COLS=["#4f8ef7","#2ecc71","#e67e22","#9b59b6","#e74c3c","#1abc9c","#f39c12"];
-  const ds=MAQUINAS.map((m,mi)=>{const md=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);return{label:m.nombre,data:grpBy(md,ranges.tend).map(g=>g.items.reduce((s,r)=>s+r.prod,0)),borderColor:COLS[mi],backgroundColor:COLS[mi]+"33",tension:.4,fill:false,pointRadius:3};});
+  const ds=LINEAS.map((m,mi)=>{const md=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);return{label:m.nombre,data:grpBy(md,ranges.tend).map(g=>g.items.reduce((s,r)=>s+r.prod,0)),borderColor:COLS[mi],backgroundColor:COLS[mi]+"33",tension:.4,fill:false,pointRadius:3};});
   rebuildChart("tComp",{type:"line",data:{labels:lbl,datasets:ds},options:{responsive:true,plugins:{legend:{labels:{color:"#e8eaf0",font:{size:10}}}},scales:{y:{ticks:{color:"#7f8c9a"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
 }
 
@@ -1852,7 +1576,7 @@ window.toggleTV=()=>{
 
 /* ══ EMAILS Y REPORTES ══ */
 const EJS_SVC="service_2qhb0mc", EJS_TPL="template_ai4fogx", EJS_KEY="lusY-RyqKX9PNb4Wx";
-const EMAILS_COL=()=>collection(db,"emails_reporte");
+const EMAILS_COL=()=>collection(db,"emails_reporte_p3");
 let emailsReporte=[];
 
 async function loadEmailsRep(){
@@ -1908,9 +1632,9 @@ window.delCausa=async(i)=>{
 };
 async function saveCausas(){
   try{
-    const snap=await getDocs(collection(db,"causas_paro"));
-    snap.forEach(d=>deleteDoc(doc(db,"causas_paro",d.id)));
-    for(const c of CAUSAS_PARO) await addDoc(collection(db,"causas_paro"),{causa:c});
+    const snap=await getDocs(collection(db,"causas_paro_p3"));
+    snap.forEach(d=>deleteDoc(doc(db,"causas_paro_p3",d.id)));
+    for(const c of CAUSAS_PARO) await addDoc(collection(db,"causas_paro_p3"),{causa:c});
   }catch(e){console.error(e);}
 }
 
@@ -1925,7 +1649,7 @@ window.addEmailRep=async()=>{
   loadEmailsRep();
 };
 window.delEmailRep=async(id)=>{
-  await deleteDoc(doc(db,"emails_reporte",id));
+  await deleteDoc(doc(db,"emails_reporte_p3",id));
   showToast("Correo eliminado","var(--yellow)");
   loadEmailsRep();
 };
@@ -1962,7 +1686,7 @@ function buildReporte(tipo){
   const defP=tP>0?(tD/tP*100).toFixed(1):0;
 
   let detalle="";
-  MAQUINAS.forEach((m,i)=>{
+  LINEAS.forEach((m,i)=>{
     const regs=registros.filter(r=>parseInt(r.maqIdx)===i);
     if(!regs.length)return;
     const prod=regs.reduce((s,r)=>s+r.prod,0);
@@ -1971,7 +1695,7 @@ function buildReporte(tipo){
     detalle+=`  • ${m.nombre} (${m.tipo}): ${prod.toLocaleString()} pzas — ${pct}% cumplimiento\n`;
   });
 
-  const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\n• Producción total: ${tP.toLocaleString()} pzas\n• Cumplimiento: ${cumpl}%\n• Scrap: ${scrapP}%\n• Defectos: ${defP}%\n• Total registros: ${registros.length}\n\nDETALLE POR MÁQUINA\n${detalle}\n${"=".repeat(50)}\nManufacturing MES · Production System — Eunsung Printing Mex`;
+  const cuerpo=`${titulo}\n${"=".repeat(50)}\n\nRESUMEN GENERAL\n• Producción total: ${tP.toLocaleString()} pzas\n• Cumplimiento: ${cumpl}%\n• Scrap: ${scrapP}%\n• Defectos: ${defP}%\n• Total registros: ${registros.length}\n\nDETALLE POR LÍNEA\n${detalle}\n${"=".repeat(50)}\nManufacturing MES P3 · Production System — Eunsung Printing Mex`;
   return {titulo, cuerpo};
 }
 
@@ -2042,7 +1766,7 @@ const TRANSLATIONS = {
     lbl_parte:     '🔩 N° Parte / Ensamble',
     lbl_turno:     '⏰ Turno',
     lbl_cut:       '⏱ Production Cut',
-    lbl_maquina:   '🔧 Selecciona tu Máquina',
+    lbl_maquina:   '🔧 Selecciona tu Línea',
     lbl_datos:     'Datos de Producción',
     lbl_target:    'Target',
     lbl_cumpl:     'Cumpl.',
@@ -2064,7 +1788,7 @@ const TRANSLATIONS = {
     // Dashboard tabs
     dash_tab_hoy:  '📊 Hoy',
     dash_tab_feed: '📡 Feed',
-    dash_tab_maq:  '🔧 Máquinas',
+    dash_tab_maq:  '🔧 Líneas',
     dash_tab_tend: '📈 Tendencias',
     dash_tab_regs: '🗂 Registros',
     dash_tab_plan: '📋 Plan',
@@ -2087,7 +1811,7 @@ const TRANSLATIONS = {
     dash_refresh:  '🔄 Actualizar',
     dash_live:     'EN VIVO',
     // Dashboard table headers
-    th_machine:    'MÁQUINA',
+    th_machine:    'LÍNEA',
     th_type:       'TIPO',
     th_target:     'META',
     th_prod:       'PROD',
@@ -2109,9 +1833,9 @@ const TRANSLATIONS = {
     th_registros:  'Registros',
     th_acciones:   'Acciones',
     // Dashboard chart titles
-    ch_compliance: 'CUMPLIMIENTO POR MÁQUINA',
+    ch_compliance: 'CUMPLIMIENTO POR LÍNEA',
     ch_prod_cut:   'PRODUCCIÓN POR CORTE',
-    ch_detail:     'DETALLE DE MÁQUINAS',
+    ch_detail:     'DETALLE DE LÍNEAS',
     ch_downtime:   'DETALLE DE PAROS',
     ch_summary:    'RESUMEN DE PRODUCCIÓN · MODELO Y PARTES',
     ch_prod:       'Producción',
@@ -2134,10 +1858,9 @@ const TRANSLATIONS = {
     adm_users:     '👥 Usuarios',
     adm_permisos:  '🔐 Permisos por Rol',
     adm_captura:   '📱 Captura',
-    adm_maquinas:  '🖥️ Estado de Máquinas',
-    adm_targets:   '🎯 Targets por Máquina',
+    adm_maquinas:  '🖥️ Estado de Líneas',
+    adm_targets:   '🎯 Targets por Línea',
     adm_email:     '📧 Reportes por Email',
-    adm_cierre:    '🔒 Cierre de Jornada — Descuento IMS',
     adm_corregir:  '✏️ Corregir Registros',
     adm_lote:      '🔄 Corregir modelos en lote',
     adm_buscar:    '🔍 Buscar',
@@ -2146,7 +1869,7 @@ const TRANSLATIONS = {
     adm_calcular:  '📊 Calcular descuentos',
     adm_sim:       '🧪 Modo simulación (NO toca Firebase)',
     // Table headers
-    ch_shipqr:     '📦 Material listo para SHIPQR · P4 → P3',
+    ch_shipqr:     '📦 Material listo para SHIPQR',
     lbl_desde:     'Desde',
     lbl_hasta:     'Hasta',
     lbl_aplicar:   '🔍 Aplicar',
@@ -2175,7 +1898,7 @@ const TRANSLATIONS = {
     lbl_parte:     '🔩 Part No. / Assembly',
     lbl_turno:     '⏰ Shift',
     lbl_cut:       '⏱ Production Cut',
-    lbl_maquina:   '🔧 Select your Machine',
+    lbl_maquina:   '🔧 Select your Line',
     lbl_datos:     'Production Data',
     lbl_target:    'Target',
     lbl_cumpl:     'Compl.',
@@ -2196,7 +1919,7 @@ const TRANSLATIONS = {
     btn_enviar:    '📤 Send to Dashboard',
     dash_tab_hoy:  '📊 Today',
     dash_tab_feed: '📡 Feed',
-    dash_tab_maq:  '🔧 Machines',
+    dash_tab_maq:  '🔧 Lines',
     dash_tab_tend: '📈 Trends',
     dash_tab_regs: '🗂 Records',
     dash_tab_plan: '📋 Plan',
@@ -2216,7 +1939,7 @@ const TRANSLATIONS = {
     dash_anual:    'Annual',
     dash_refresh:  '🔄 Refresh',
     dash_live:     'LIVE',
-    th_machine:    'Machine',
+    th_machine:    'Line',
     th_type:       'Type',
     th_target:     'Target',
     th_prod:       'Prod',
@@ -2237,9 +1960,9 @@ const TRANSLATIONS = {
     th_estado:     'Status',
     th_registros:  'Records',
     th_acciones:   'Actions',
-    ch_compliance: 'Compliance by machine',
+    ch_compliance: 'Compliance by line',
     ch_prod_cut:   'Production by cut',
-    ch_detail:     'Machine detail',
+    ch_detail:     'Line detail',
     ch_downtime:   'Downtime detail',
     ch_summary:    'Production summary · model & parts',
     ch_prod:       'Production',
@@ -2260,10 +1983,9 @@ const TRANSLATIONS = {
     adm_users:     '👥 Users',
     adm_permisos:  '🔐 Role Permissions',
     adm_captura:   '📱 Capture',
-    adm_maquinas:  '🖥️ Machine Status',
-    adm_targets:   '🎯 Targets per Machine',
+    adm_maquinas:  '🖥️ Line Status',
+    adm_targets:   '🎯 Targets per Line',
     adm_email:     '📧 Email Reports',
-    adm_cierre:    '🔒 Day Close — IMS Deduction',
     adm_corregir:  '✏️ Edit Records',
     adm_lote:      '🔄 Batch model correction',
     adm_buscar:    '🔍 Search',
@@ -2271,7 +1993,7 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 Save',
     adm_calcular:  '📊 Calculate deductions',
     adm_sim:       '🧪 Simulation mode (NO Firebase)',
-    ch_shipqr:     '📦 Material ready for SHIPQR · P4 → P3',
+    ch_shipqr:     '📦 Material ready for SHIPQR',
     lbl_desde:     'From',
     lbl_hasta:     'To',
     lbl_aplicar:   '🔍 Apply',
@@ -2300,7 +2022,7 @@ const TRANSLATIONS = {
     lbl_parte:     '🔩 부품 번호 / 조립',
     lbl_turno:     '⏰ 교대',
     lbl_cut:       '⏱ 생산 구간',
-    lbl_maquina:   '🔧 기계 선택',
+    lbl_maquina:   '🔧 라인 선택',
     lbl_datos:     '생산 데이터',
     lbl_target:    '목표',
     lbl_cumpl:     '달성률',
@@ -2321,7 +2043,7 @@ const TRANSLATIONS = {
     btn_enviar:    '📤 대시보드 전송',
     dash_tab_hoy:  '📊 오늘',
     dash_tab_feed: '📡 피드',
-    dash_tab_maq:  '🔧 기계',
+    dash_tab_maq:  '🔧 라인',
     dash_tab_tend: '📈 추세',
     dash_tab_regs: '🗂 기록',
     dash_tab_plan: '📋 계획',
@@ -2341,7 +2063,7 @@ const TRANSLATIONS = {
     dash_anual:    '연간',
     dash_refresh:  '🔄 새로고침',
     dash_live:     '실시간',
-    th_machine:    '기계',
+    th_machine:    '라인',
     th_type:       '유형',
     th_target:     '목표',
     th_prod:       '생산',
@@ -2362,9 +2084,9 @@ const TRANSLATIONS = {
     th_estado:     '상태',
     th_registros:  '기록',
     th_acciones:   '작업',
-    ch_compliance: '기계별 달성률',
+    ch_compliance: '라인별 달성률',
     ch_prod_cut:   '구간별 생산량',
-    ch_detail:     '기계 상세',
+    ch_detail:     '라인 상세',
     ch_downtime:   '다운타임 상세',
     ch_summary:    '생산 요약 · 모델 & 부품',
     ch_prod:       '생산량',
@@ -2385,10 +2107,9 @@ const TRANSLATIONS = {
     adm_users:     '👥 사용자',
     adm_permisos:  '🔐 역할 권한',
     adm_captura:   '📱 캡처',
-    adm_maquinas:  '🖥️ 기계 상태',
-    adm_targets:   '🎯 기계별 목표',
+    adm_maquinas:  '🖥️ 라인 상태',
+    adm_targets:   '🎯 라인별 목표',
     adm_email:     '📧 이메일 보고서',
-    adm_cierre:    '🔒 일일 마감 — IMS 차감',
     adm_corregir:  '✏️ 기록 수정',
     adm_lote:      '🔄 모델 일괄 수정',
     adm_buscar:    '🔍 검색',
@@ -2396,7 +2117,7 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 저장',
     adm_calcular:  '📊 차감 계산',
     adm_sim:       '🧪 시뮬레이션 모드 (Firebase 미적용)',
-    ch_shipqr:     '📦 SHIPQR 출하 준비 · P4 → P3',
+    ch_shipqr:     '📦 SHIPQR 출하 준비',
     lbl_desde:     '시작일',
     lbl_hasta:     '종료일',
     lbl_aplicar:   '🔍 적용',
@@ -2502,7 +2223,6 @@ function applyTranslations(){
     'adm-h-maquinas':t('adm_maquinas'),
     'adm-h-targets': t('adm_targets'),
     'adm-h-email':   t('adm_email'),
-    'adm-h-cierre':  t('adm_cierre'),
     'adm-h-corregir':t('adm_corregir'),
     'adm-h-lote':    t('adm_lote'),
     'adm-btn-buscar':t('adm_buscar'),
@@ -2637,7 +2357,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .mc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;}
 .mc.sel{border-color:var(--accent);background:#0d1f35;}.mc-done{opacity:0.5;border-color:#2ecc71!important;cursor:not-allowed!important;}.mn{font-size:.86rem;font-weight:700;}
 .tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.75rem;font-weight:600;margin-top:3px;}
-.TOP{background:#1a3a5c;color:#4f8ef7;}.BOT{background:#1a3d2b;color:#2ecc71;}.AUTO{background:#3d2b1a;color:#e67e22;}.ASSY{background:#3d1a3a;color:#9b59b6;}.VC{background:#1a3d3d;color:#1abc9c;}
+.Pre-Kit{background:#3d2f1a;color:#FFBA00;}.Bundle{background:#1a3a5c;color:#4f8ef7;}.Pre-Folding{background:#1a3d2b;color:#2ecc71;}.Bandita{background:#3a1a3d;color:#e07be0;}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
 .km{background:var(--card2);border-radius:8px;padding:7px;text-align:center;}
 .km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.75rem;color:var(--muted);margin-top:1px;}
@@ -2739,7 +2459,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 <div id="login-view">
   <div class="login-box">
     <div class="login-logo"><img src="logo.jpg" style="width:120px;border-radius:8px;"></div>
-    <div class="login-title">Manufacturing MES · Eunsung Printing Mex</div>
+    <div class="login-title">Manufacturing MES P3 · Eunsung Printing Mex</div>
     <div class="login-sub">Acceso con tu correo y contraseña</div>
     <div class="lfield"><label>Correo electrónico</label><input type="email" id="li-user" placeholder="operador@tuempresa.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
     <div class="lfield"><label>Contraseña</label><input type="password" id="li-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
@@ -2752,10 +2472,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 </div>
 <div id="app">
   <div class="topbar">
-    <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES · Production System</h1>
+    <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES P3 · Production System</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn active" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -2767,16 +2487,10 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="field"><label id="lbl-operador">👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label id="lbl-emp">🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
         <div class="field"><label id="lbl-modelo">📱 Modelo</label>
-          <select id="ip-modelo" onchange="onModeloChange()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
-            <option value="">— Cargando modelos del BOM... —</option>
-          </select>
+          <input type="text" id="ip-modelo" placeholder="Ej. SM-XXXXXXXXXXX o CRN-XXXXXX" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
           <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div>
         </div>
-        <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label>
-          <select id="ip-parte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
-            <option value="">— Selecciona primero un modelo —</option>
-          </select>
-        </div>
+        <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
       </div>
       <div class="oc"><div class="oct" id="lbl-turno">⏰ Turno</div>
         <div class="tgrid">
@@ -2793,7 +2507,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
       </div>
     </div>
-    <div class="screen" id="scr1"><div class="oc"><div class="oct" id="lbl-maquina">🔧 Selecciona tu Máquina</div><div class="mgrid" id="mgrid"></div></div></div>
+    <div class="screen" id="scr1"><div class="oc"><div class="oct" id="lbl-maquina">🔧 Selecciona tu Línea</div><div class="mgrid" id="mgrid"></div></div></div>
     <div class="screen" id="scr2">
       <div class="oc"><div class="oct" id="mhdr">Datos de Producción</div>
         <div class="krow"><div class="km"><div class="v blue" id="ktgt">–</div><div class="l" id="lbl-target">Target</div></div><div class="km"><div class="v" id="kpct">–</div><div class="l" id="lbl-cumpl">Cumpl.</div></div><div class="km"><div class="v" id="kscp">–</div><div class="l" id="lbl-scrap">Scrap%</div></div></div>
@@ -2835,7 +2549,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   <!-- DASHBOARD -->
   <div class="view" id="view-dash"><div class="dw">
     <div class="dh"><h2>🏭 Dashboard</h2><div class="hr"><div class="live"><div class="ldot"></div><span id="dash-live-lbl">EN VIVO</span></div><span class="bsm" id="lupd">–</span><span class="cb" id="cnt">0 registros</span><button class="dbtn" id="btn-tv" onclick="toggleTV()" style="background:#1a1d27;color:#f1c40f;border:1px solid #f1c40f;margin-left:6px">📺 TV</button></div></div>
-    <div class="dtabs"><div class="dtab active" id="dtab-btn-hoy" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" id="dtab-btn-feed" onclick="showDT('feed')">📡 Feed</div><div class="dtab" id="dtab-btn-maq" onclick="showDT('maq')">🔧 Máquinas</div><div class="dtab" id="dtab-btn-tend" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" id="dtab-btn-regs" onclick="showDT('regs')">🗂 Registros</div><div class="dtab" id="dtab-btn-plan" onclick="showDT('plan')" style="color:#FFBA00">📋 Plan</div></div>
+    <div class="dtabs"><div class="dtab active" id="dtab-btn-hoy" onclick="showDT('hoy')">📊 Hoy</div><div class="dtab" id="dtab-btn-feed" onclick="showDT('feed')">📡 Feed</div><div class="dtab" id="dtab-btn-maq" onclick="showDT('maq')">🔧 Líneas</div><div class="dtab" id="dtab-btn-tend" onclick="showDT('tend')">📈 Tendencias</div><div class="dtab" id="dtab-btn-regs" onclick="showDT('regs')">🗂 Registros</div></div>
 
     <div id="dtab-hoy" class="dtc active">
       <div class="ctrl">
@@ -2857,13 +2571,13 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="kpi"><div class="lbl" id="kpi-lbl-def">Defects %</div><div class="val blue" id="k-d">–</div><div class="sub">vs prod</div></div>
         <div class="kpi"><div class="lbl" id="kpi-lbl-down">Downtime</div><div class="val blue" id="k-dt">–</div><div class="sub" id="kpi-sub-down">minutes</div></div>
       </div>
-      <div class="g2"><div class="dc"><h3 id="ch-compliance">Compliance by machine</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3 id="ch-prod-cut">Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00–8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00–12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00–4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45–6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
+      <div class="g2"><div class="dc"><h3 id="ch-compliance">Compliance by line</h3><canvas id="chC" height="200"></canvas></div><div class="dc"><h3 id="ch-prod-cut">Production by cut</h3><div style="display:flex;gap:12px;flex-wrap:wrap;margin-bottom:6px;font-size:.8rem;color:var(--muted)"><span><span style="display:inline-block;width:8px;height:8px;background:#4f8ef7;border-radius:2px;margin-right:3px"></span>Break <span style="color:#5f6b7a;font-size:.75rem">7:00–8:45 am</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2ecc71;border-radius:2px;margin-right:3px"></span>Lunch <span style="color:#5f6b7a;font-size:.75rem">9:00–12:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#f1c40f;border-radius:2px;margin-right:3px"></span>Home <span style="color:#5f6b7a;font-size:.75rem">1:00–4:30 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#e67e22;border-radius:2px;margin-right:3px"></span>OT <span style="color:#5f6b7a;font-size:.75rem">4:45–6:25 pm</span></span><span><span style="display:inline-block;width:8px;height:8px;background:#2e3347;border-radius:2px;margin-right:3px"></span>Target</span><span><span style="display:inline-block;width:18px;height:2px;background:#FFBA00;margin-right:3px;vertical-align:middle"></span>Prod Plan</span></div><canvas id="chP" height="200"></canvas></div></div>
       <div class="g2">
-        <div class="dc"><h3 id="ch-detail">Machine detail</h3><table><thead><tr><th id="th-machine1">Machine</th><th id="th-type1">Type</th><th id="th-target1">Target</th><th id="th-prod1">Prod</th><th id="th-def1">Def</th><th id="th-scrap1">Scrap</th><th>%</th><th id="th-status1">Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
-        <div class="dc"><h3 id="ch-downtime">Downtime detail</h3><table><thead><tr><th id="th-machine2">Machine</th><th id="th-cause2">Cause</th><th style="text-align:right" id="th-min2">Min</th><th style="text-align:right" id="th-shift2">% shift</th><th style="text-align:right" id="th-status2">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
+        <div class="dc"><h3 id="ch-detail">Line detail</h3><table><thead><tr><th id="th-machine1">Line</th><th id="th-type1">Type</th><th id="th-target1">Target</th><th id="th-prod1">Prod</th><th id="th-def1">Def</th><th id="th-scrap1">Scrap</th><th>%</th><th id="th-status1">Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
+        <div class="dc"><h3 id="ch-downtime">Downtime detail</h3><table><thead><tr><th id="th-machine2">Line</th><th id="th-cause2">Cause</th><th style="text-align:right" id="th-min2">Min</th><th style="text-align:right" id="th-shift2">% shift</th><th style="text-align:right" id="th-status2">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
-      <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P4 → P3</h3>
+      <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Line</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR</h3>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
           <div>
             <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px" id="lbl-desde">Desde</label>
@@ -2957,7 +2671,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <option value="B">Tiempo Extra</option>
           <option value="C">Sábado TE</option>
         </select>
-        <select id="mreg" onchange="rRegs()"><option value="todos">Todas las máquinas</option></select>
+        <select id="mreg" onchange="rRegs()"><option value="todos">Todas las líneas</option></select>
         <button class="dbtn dex" onclick="exportExcel()">⬇ Excel</button>
         <button class="dbtn drf" onclick="dRefresh()">🔄</button>
       </div>
@@ -2983,12 +2697,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div class="acard"><h3><span id="adm-h-users">👥 Usuarios</span> (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
-      <h3 id="adm-h-maquinas">🖥️ Estado de Máquinas</h3>
-      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva máquinas — las inactivas se muestran en gris en el dashboard.</div>
+      <h3 id="adm-h-maquinas">🖥️ Estado de Líneas</h3>
+      <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Activa o desactiva líneas — las inactivas se muestran en gris en el dashboard.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;" id="admin-maquinas-grid"></div>
     </div>
     <div class="acard">
-      <h3 id="adm-h-targets">🎯 Targets por Máquina</h3>
+      <h3 id="adm-h-targets">🎯 Targets por Línea</h3>
       <div style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Modifica el target diario — los cortes se calculan automáticamente.</div>
       <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:8px;" id="admin-targets-grid"></div>
     </div>
@@ -3005,22 +2719,6 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <button class="abtn" style="background:#1a1a3d;color:#4f8ef7;border:1px solid #4f8ef7" onclick="enviarReporteAhora('semanal')">📤 Enviar reporte semanal ahora</button>
       </div>
     </div>
-  <div class="acard">
-    <h3 id="adm-h-cierre">🔒 Cierre de Jornada — Descuento IMS</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
-    <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
-      <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
-        <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
-      </div>
-      <button class="abtn abtn-add" onclick="calcularCierreJornada()">📊 Calcular descuentos</button>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.85rem;color:#5BA3FF;font-weight:600" title="Si está activo, NO toca Firebase. Solo simula el resultado.">
-        <input type="checkbox" id="cj-modoSim" checked style="cursor:pointer;accent-color:#5BA3FF">
-        🧪 Modo simulación (NO toca Firebase)
-      </label>
-    </div>
-    <div id="cj-resultado"></div>
-  </div>
   <div class="acard">
     <h3 id="adm-h-corregir">✏️ Corregir Registros</h3>
     <div style="display:flex;gap:8px;margin-bottom:12px;flex-wrap:wrap;align-items:flex-end">

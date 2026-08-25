@@ -432,8 +432,7 @@ async function calcularCierreJornada() {
     snap.forEach(d => {
       const r = d.data();
       const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      const esASSY1 = r.maquina === 'ASSY1' || r.tipo === 'ASSY' || r.maqNombre === 'ASSY1' || r.maqTipo === 'ASSY';
-      if (fechaReg === fecha && esASSY1) assy1Regs.push({id:d.id,...r});
+      if (fechaReg === fecha && (r.maquina === 'ASSY1' || r.tipo === 'ASSY')) assy1Regs.push({id:d.id,...r});
     });
     if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
 
@@ -447,61 +446,33 @@ async function calcularCierreJornada() {
     const BOM = JSON.parse(bomData.bom||'[]');
     const semanaRef = bomData.semana || '';
 
-    // 4. Leer inventario IMS — se indexa por pn+descripción para no confundir
-    //    registros que comparten el mismo número de parte (ej. Lower Box (Bottom)
-    //    y Chip Board Bottom (Ranurado) pueden tener el mismo pn pero son artículos distintos)
+    // 4. Leer inventario IMS
     const imsSnap = await getDocs(collection(db,'planta4_inventario'));
-    const imsMap = {};       // key: "PN|||DESC" exacto
-    const imsPorPn = {};     // fallback: solo se usa si ese pn tiene un único registro
-    imsSnap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pnU = (data.pn||'').trim().toUpperCase();
-      const descU = (data.desc||data.descripcion||data.nombre||'').trim().toUpperCase();
-      imsMap[pnU+'|||'+descU] = {...data, _docId:d.id};
-      if (!imsPorPn[pnU]) imsPorPn[pnU] = [];
-      imsPorPn[pnU].push({...data, _docId:d.id});
-    });
-    const buscarIMS = (pn, desc) => {
-      const pnU = (pn||'').trim().toUpperCase();
-      const descU = (desc||'').trim().toUpperCase();
-      const exacto = imsMap[pnU+'|||'+descU];
-      if (exacto) return exacto;
-      const candidatos = imsPorPn[pnU] || [];
-      if (candidatos.length === 1) return candidatos[0]; // único registro con ese pn, sin ambigüedad
-      return null; // hay varios y ninguno coincide con la descripción exacta
-    };
+    const imsMap = {};
+    imsSnap.forEach(d => { const data = d.data(); if(data.pn) imsMap[(data.pn||'').toUpperCase()] = {...data, _docId:d.id}; });
 
-    // 5. Calcular descuentos — cada combinación pn+descripción es una línea independiente
+    // 5. Calcular descuentos consolidados (qty + defectos + scrap)
     const descuentos = {};
     let totalPiezasConsumo = 0;
     assy1Regs.forEach(r => {
       const modelo = (r.modelo||'').trim();
-      const qty = Number(r.qty ?? r.prod)||0;
-      const defectos = Number(r.defectos ?? r.def)||0;
+      const qty = Number(r.qty)||0;
+      const defectos = Number(r.defectos)||0;
       const scrap = Number(r.scrap)||0;
       const consumo = qty + defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER'];
-      const compsModelo = BOM.filter(b => {
-        if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
-        const desc = (b.desc||'').trim().toUpperCase();
-        return DESC_DESCUENTO.includes(desc);
-      });
+      const compsModelo = BOM.filter(b => b.pn && b.sm && b.sm.trim() === modelo);
       compsModelo.forEach(c => {
-        const pnU = (c.pn||'').trim().toUpperCase();
-        const descU = (c.desc||'').trim().toUpperCase();
-        const key = pnU+'|||'+descU;
-        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
-        descuentos[key].total += consumo;
-        descuentos[key].detalle.push({modelo, qty, defectos, scrap, consumo});
+        const pnKey = (c.pn||'').toUpperCase();
+        if (!descuentos[pnKey]) descuentos[pnKey] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0};
+        descuentos[pnKey].total += consumo;
       });
     });
 
     // 6. Render preview
-    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty ?? r.prod)||0),0);
-    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos ?? r.def)||0),0);
+    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty)||0),0);
+    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos)||0),0);
     const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
 
     let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
@@ -516,27 +487,22 @@ async function calcularCierreJornada() {
     let conFaltante = 0;
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
     html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
-    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach((d,i) => {
-      const imsDoc = buscarIMS(d.pn, d.desc);
+    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach(d => {
+      const imsDoc = imsMap[(d.pn||'').toUpperCase()];
       const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
-      const nuevoInvCrudo = invAct !== null ? invAct - d.total : -d.total;
-      const nuevoInv = Math.max(0, nuevoInvCrudo);
-      const sinIMS = imsDoc === null || imsDoc === undefined;
-      const faltante = nuevoInvCrudo < 0 ? Math.abs(nuevoInvCrudo) : 0;
-      if (sinIMS || faltante>0) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':faltante>0?'var(--red)':'var(--fg)';
+      const nuevoInv = invAct !== null ? invAct - d.total : -d.total;
+      const sinIMS = imsDoc === undefined;
+      const negativo = nuevoInv < 0;
+      if (sinIMS || negativo) conFaltante++;
+      const colorNuevo = sinIMS?'var(--red)':negativo?'var(--red)':'var(--fg)';
       const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
-      const tagNuevo = faltante>0 ? `0 <span style="font-size:10px;opacity:.8">(faltan ${faltante.toLocaleString()})</span>` : nuevoInv.toLocaleString();
-      const sumaCheck = (d.detalle||[]).reduce((s,x)=>s+x.consumo,0);
-      const detalleTxt = (d.detalle||[]).map(x=>`${x.modelo}: ${x.qty.toLocaleString()} prod + ${x.defectos.toLocaleString()} def + ${x.scrap.toLocaleString()} scrap = <b>${x.consumo.toLocaleString()}</b>`).join('<br>')
-        + `<br><span style="color:var(--green)">Suma = ${sumaCheck.toLocaleString()} ${sumaCheck===d.total?'✅ coincide con el descuento':'⚠️ NO coincide con el descuento'}</span>`;
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" title="Clic para ver el desglose del cálculo" onclick="const e=document.getElementById('cj-det-${i}');e.style.display=e.style.display==='none'?'table-row':'none'"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn} 🔍</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr><tr id="cj-det-${i}" style="display:none;background:rgba(255,255,255,.03)"><td colspan="5" style="padding:6px 10px;font-size:11px;color:var(--muted);line-height:1.6">${detalleTxt}</td></tr>`;
+      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05)"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn}</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${nuevoInv.toLocaleString()}</td></tr>`;
     });
     html += '</table></div>';
     if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (quedará en 0, se registrará el faltante).</div>`;
+      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (registrará faltante).</div>`;
     }
-    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, buscarIMS, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
+    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
     html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
     div.innerHTML = html;
   } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; console.error(e); }
@@ -560,24 +526,22 @@ async function confirmarCierreJornada() {
     const detalleSim = [];
 
     for (const d of cd.descuentos) {
-      const imsDoc = cd.buscarIMS ? cd.buscarIMS(d.pn, d.desc) : cd.imsMap[(d.pn||'').toUpperCase()];
+      const imsDoc = cd.imsMap[(d.pn||'').toUpperCase()];
       const refTxt = `Descuento ASSY1 ${cd.fecha} (${cd.semanaRef||'BOM'})`;
       if (!imsDoc) {
         faltantes++;
-        detalleFaltantes.push(`${d.pn} (${d.desc}): ${d.total} no descontado (no se encontró registro IMS único para esta descripción)`);
-        if (modoSim) detalleSim.push(`❌ ${d.pn} (${d.desc}) → no se encontró registro IMS único, NO se podría descontar ${d.total}`);
+        detalleFaltantes.push(`${d.pn}: ${d.total} no descontado (no existe en IMS)`);
+        if (modoSim) detalleSim.push(`❌ ${d.pn} → no existe en IMS, NO se podría descontar ${d.total}`);
         continue;
       }
       const invAnterior = Number(imsDoc.actual)||0;
       const salidasAnt = Number(imsDoc.salidas)||0;
-      const nuevoActualCrudo = invAnterior - d.total;
-      const nuevoActual = Math.max(0, nuevoActualCrudo);
-      const faltante = nuevoActualCrudo < 0 ? Math.abs(nuevoActualCrudo) : 0;
+      const nuevoActual = invAnterior - d.total;
 
       if (modoSim) {
-        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${faltante>0?` ⚠️ FALTANTE ${faltante.toLocaleString()} (queda en 0)`:''}`);
+        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${nuevoActual<0?' ⚠️ NEGATIVO':''}`);
         actualizados++; movimientos++;
-        if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, queda en 0`); }
+        if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: quedaría en ${nuevoActual}`); }
         continue;
       }
 
@@ -588,9 +552,9 @@ async function confirmarCierreJornada() {
         actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
         ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
       });
-      if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, quedó en 0`); }
+      if (nuevoActual < 0) { faltantes++; detalleFaltantes.push(`${d.pn}: queda en ${nuevoActual}`); }
       await addDoc(collection(db,'planta4_movimientos'), {
-        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total, faltante:faltante,
+        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total,
         fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
         usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
       });
@@ -716,7 +680,6 @@ function renderAdminTargets(){
 }
 window.renderAdminTargets=renderAdminTargets;
 let MODELOS_LIST = [];
-let BOM_ACTIVO = [];
 async function loadModelos(){
   const sel=document.getElementById("ip-modelo");
   const status=document.getElementById("ip-modelo-status");
@@ -724,14 +687,12 @@ async function loadModelos(){
     const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
     if(!bomDoc.exists()){
       MODELOS_LIST=[];
-      BOM_ACTIVO=[];
       if(sel)sel.innerHTML='<option value="">⚠️ Sin BOM activo</option>';
       if(status){status.textContent='⚠️ No hay BOM cargado en BOM Simulator. Carga el BOM antes de capturar producción.';status.style.color='var(--red)';}
       return;
     }
     const bomData = bomDoc.data();
     const BOM = JSON.parse(bomData.bom||'[]');
-    BOM_ACTIVO = BOM;
     MODELOS_LIST = [...new Set(BOM.map(r=>r.sm).filter(Boolean))].sort();
     buildModelosDL();
     if(status){
@@ -745,7 +706,6 @@ async function loadModelos(){
     }
   }catch(e){
     MODELOS_LIST=[];
-    BOM_ACTIVO=[];
     if(sel)sel.innerHTML='<option value="">⚠️ Error cargando BOM</option>';
     if(status){status.textContent='⚠️ Error al leer el BOM activo: '+e.message;status.style.color='var(--red)';}
   }
@@ -757,25 +717,6 @@ function buildModelosDL(){
   const cmBueno=document.getElementById("cm-bueno");
   if(cmBueno)cmBueno.innerHTML=opts;
 }
-function buildPartesDL(modelo){
-  const selParte=document.getElementById("ip-parte");
-  if(!selParte) return;
-  let partes;
-  if(modelo){
-    partes=[...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
-  }else{
-    partes=[...new Set(BOM_ACTIVO.filter(b=>b.pn).map(b=>b.pn.trim().toUpperCase()))].sort();
-  }
-  if(!partes.length){
-    selParte.innerHTML='<option value="">⚠️ Sin partes en el BOM para este modelo</option>';
-    return;
-  }
-  selParte.innerHTML='<option value="">— Seleccionar N° Parte —</option>'+partes.map(p=>`<option value="${p}">${p}</option>`).join("");
-}
-window.onModeloChange=function(){
-  const modelo=document.getElementById("ip-modelo").value.trim().toUpperCase();
-  buildPartesDL(modelo);
-};
 const USERS_COL = () => collection(db, "usuarios");
 
 const CAUSAS_PARO_DEFAULT = [
@@ -1188,7 +1129,7 @@ async function confirmarLinea(key) {
       const modelo = items[idx].sm || '';
       if (modelo) {
         const ipModelo = document.getElementById('ip-modelo');
-        if (ipModelo) { ipModelo.value = modelo; buildPartesDL(modelo); }
+        if (ipModelo) ipModelo.value = modelo;
       }
     }
     await setDoc(doc(db,'plan_produccion','plan_activo'), mesPlanActivo);
@@ -1342,23 +1283,6 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   window.open(url,'shipqr_window');
   if(typeof renderShipqr==='function') renderShipqr();
 };
-// Quita la marca de "ya enviado" para poder volver a mandarlo — útil cuando el registro se borró
-// del lado de ShipQR (por pruebas o limpieza) pero aquí el MES seguía marcándolo como enviado
-window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
-  const modelo=decodeURIComponent(modeloEnc);
-  const parte=decodeURIComponent(parteEnc);
-  const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(!confirm(`¿Reactivar el envío de ${modelo} · ${parte}? Esto permite volver a mandarlo a ShipQR (útil si ya se borró allá).`)) return;
-  try{
-    await deleteDoc(doc(db,'shipqr_envios_mes',key));
-    delete SHIPQR_ENVIADOS[key];
-    pintarHistorialShipqr();
-    if(typeof renderShipqr==='function') renderShipqr();
-  }catch(err){
-    console.error('Error reactivando envío a ShipQR:', err);
-    alert('Error al reactivar: '+err.message);
-  }
-};
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
 function initApp(){
@@ -1382,10 +1306,10 @@ window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const
 function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"📤 Enviar al Dashboard":"Siguiente →";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
 window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim();
       if(!modVal){showToast("Selecciona un modelo del BOM","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("Selecciona un N° Parte del catálogo","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("N° Parte es obligatorio","var(--red)");document.getElementById("ip-parte").focus();return;}if(pv.length>0&&(pv.length!==11||!pv.includes("-"))){showToast("N Parte: 11 caracteres con guion","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
 function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
-window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";buildPartesDL("");document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
+window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
 window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
 /* ══ DASHBOARD ══ */
@@ -1615,11 +1539,6 @@ function renderShipqr(){
           style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
         </button>
-        ${env?`<button onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          title="Reactivar envío (por si ya se borró en ShipQR)"
-          style="margin-left:6px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
-          ↻
-        </button>`:''}
       </td>`;
     tbShipqr.appendChild(tr);
   });
@@ -2755,7 +2674,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES · Production System</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn active" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -2767,16 +2686,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="field"><label id="lbl-operador">👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label id="lbl-emp">🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
         <div class="field"><label id="lbl-modelo">📱 Modelo</label>
-          <select id="ip-modelo" onchange="onModeloChange()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
+          <select id="ip-modelo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
             <option value="">— Cargando modelos del BOM... —</option>
           </select>
           <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div>
         </div>
-        <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label>
-          <select id="ip-parte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
-            <option value="">— Selecciona primero un modelo —</option>
-          </select>
-        </div>
+        <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
       </div>
       <div class="oc"><div class="oct" id="lbl-turno">⏰ Turno</div>
         <div class="tgrid">
