@@ -824,6 +824,7 @@ const MAQUINAS = [
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
 let SHIPQR_ENVIADOS={};
+let SHIPQR_POR_KEY={}; // key(modelo||parte||fecha||turno||horaCaptura) -> [ {cantidad_enviada,...,_docId}, ... ] (soporta envíos parciales)
 let QR_MACHINE=(()=>{try{const p=new URLSearchParams(window.location.search);const m=p.get('m');return(m!==null&&!isNaN(m))?parseInt(m):null;}catch(e){return null;}})();
 let charts={}, ranges={maq:"diario",tend:"diario"};
 let opStep=0, opTurno=null, opCorte=null, opMaq=null, alertasVistas=new Set();
@@ -1301,10 +1302,23 @@ async function loadShipqrEnviados(){
   try{
     const snap=await getDocs(collection(db,'shipqr_envios_mes'));
     SHIPQR_ENVIADOS={};
-    snap.forEach(d=>{ SHIPQR_ENVIADOS[d.id]=d.data(); });
+    SHIPQR_POR_KEY={};
+    snap.forEach(d=>{
+      const data=d.data();
+      SHIPQR_ENVIADOS[d.id]=data;
+      // Registros viejos: el ID del doc ES la key y no traen cantidad_enviada (se enviaba todo de una vez).
+      const k=data.key || d.id;
+      const cantidad=(data.cantidad_enviada!=null)?Number(data.cantidad_enviada):(Number(data.prod)||0);
+      if(!SHIPQR_POR_KEY[k]) SHIPQR_POR_KEY[k]=[];
+      SHIPQR_POR_KEY[k].push({...data, cantidad_enviada:cantidad, _docId:d.id});
+    });
     pintarHistorialShipqr();
     if(typeof renderShipqr==='function') renderShipqr();
   }catch(err){ console.error('Error cargando shipqr_envios_mes:', err); }
+}
+// Suma lo ya enviado a ShipQR para una key (soporta múltiples envíos parciales)
+function sumEnviadoShipqr(key){
+  return (SHIPQR_POR_KEY[key]||[]).reduce((s,e)=>s+(Number(e.cantidad_enviada)||0),0);
 }
 function pintarHistorialShipqr(){
   const el=document.getElementById('tb-shipqr-historial');
@@ -1316,7 +1330,7 @@ function pintarHistorialShipqr(){
   }
   el.innerHTML=envios.map(e=>`
     <div style="display:flex;justify-content:space-between;background:var(--card2);border-radius:6px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px">
-      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.prod||0).toLocaleString()} pzas</span>
+      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.cantidad_enviada!=null?e.cantidad_enviada:(e.prod||0)).toLocaleString()} pzas</span>
       <span style="color:var(--muted)">${e.enviado_por} · ${new Date(e.fecha_envio).toLocaleString('es-MX')}</span>
     </div>
   `).join('');
@@ -1325,20 +1339,37 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
   const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(SHIPQR_ENVIADOS[key]){ return; }
+  const yaEnviado=sumEnviadoShipqr(key);
+  const pendiente=Math.max(0, Number(prod)-yaEnviado);
+  if(pendiente<=0){ alert('Este lote ya fue enviado por completo.'); return; }
+  const entrada=prompt(`Cantidad a enviar a ShipQR\n(pendiente: ${pendiente.toLocaleString()} de ${Number(prod).toLocaleString()} producidas)`, pendiente);
+  if(entrada===null) return; // canceló
+  let cantidad=parseInt(String(entrada).replace(/[^0-9]/g,''),10);
+  if(!cantidad || cantidad<=0){ alert('Cantidad inválida.'); return; }
+  if(cantidad>pendiente){
+    if(!confirm(`Solo quedan ${pendiente.toLocaleString()} pendientes. ¿Enviar ese máximo?`)) return;
+    cantidad=pendiente;
+  }
+  const docId=key+'||'+Date.now();
   const registro={
-    modelo, parte, prod,
+    key, modelo, parte, fecha, turno, horaCaptura,
+    prod: Number(prod),
+    cantidad_enviada: cantidad,
     enviado_por: CURRENT_USER?.nombre || 'Desconocido',
     fecha_envio: new Date().toISOString()
   };
   try{
-    await setDoc(doc(db,'shipqr_envios_mes',key), registro);
-    SHIPQR_ENVIADOS[key]=registro;
+    await setDoc(doc(db,'shipqr_envios_mes',docId), registro);
+    SHIPQR_ENVIADOS[docId]=registro;
+    if(!SHIPQR_POR_KEY[key]) SHIPQR_POR_KEY[key]=[];
+    SHIPQR_POR_KEY[key].push({...registro,_docId:docId});
     pintarHistorialShipqr();
   }catch(err){
     console.error('Error registrando envío a ShipQR:', err);
+    alert('Error al registrar el envío: '+err.message);
+    return;
   }
-  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${prod}`;
+  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}`;
   window.open(url,'shipqr_window');
   if(typeof renderShipqr==='function') renderShipqr();
 };
@@ -1348,10 +1379,15 @@ window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
   const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(!confirm(`¿Reactivar el envío de ${modelo} · ${parte}? Esto permite volver a mandarlo a ShipQR (útil si ya se borró allá).`)) return;
+  const envios=(SHIPQR_POR_KEY[key]||[]).slice().sort((a,b)=>new Date(b.fecha_envio)-new Date(a.fecha_envio));
+  if(!envios.length) return;
+  const ultimo=envios[0];
+  const cant=(ultimo.cantidad_enviada!=null?ultimo.cantidad_enviada:(ultimo.prod||0));
+  if(!confirm(`¿Deshacer el último envío de ${modelo} · ${parte} (${cant.toLocaleString()} pzas, ${new Date(ultimo.fecha_envio).toLocaleString('es-MX')})?\nEsto lo regresa a pendiente para volver a enviarlo (útil si ya se borró en ShipQR o se mandó mal).`)) return;
   try{
-    await deleteDoc(doc(db,'shipqr_envios_mes',key));
-    delete SHIPQR_ENVIADOS[key];
+    await deleteDoc(doc(db,'shipqr_envios_mes',ultimo._docId));
+    delete SHIPQR_ENVIADOS[ultimo._docId];
+    SHIPQR_POR_KEY[key]=(SHIPQR_POR_KEY[key]||[]).filter(e=>e._docId!==ultimo._docId);
     pintarHistorialShipqr();
     if(typeof renderShipqr==='function') renderShipqr();
   }catch(err){
@@ -1596,27 +1632,34 @@ function renderShipqr(){
   rows.forEach(m=>{
     totalShip+=m.prod;
     const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
-    const env=SHIPQR_ENVIADOS[key];
+    const enviado=sumEnviadoShipqr(key);
+    const pendiente=Math.max(0, m.prod-enviado);
+    const completo=pendiente<=0 && enviado>0;
+    const parcial=enviado>0 && pendiente>0;
     const tCol=turnoColor[m.turno]||'#7f8c9a';
+    let estadoHtml;
+    if(completo){
+      estadoHtml=`<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">✓ ENVIADO</span>`;
+    }else if(parcial){
+      estadoHtml=`<span style="background:rgba(230,126,34,.15);color:#e67e22;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">◐ PARCIAL · faltan ${pendiente.toLocaleString()}</span>`;
+    }else{
+      estadoHtml=`<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`;
+    }
     const tr=document.createElement("tr");
     tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
       <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
       <td style="text-align:center;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.fecha}</td>
       <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.8rem;white-space:nowrap">${m.horaCaptura}</span></td>
-      <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
-      <td style="text-align:center;padding:10px 6px">
-        ${env
-          ? `<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">✓ ENVIADO</span>`
-          : `<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`}
-      </td>
+      <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}${enviado>0?`<div style="font-weight:400;font-size:.7rem;color:var(--muted)">enviado: ${enviado.toLocaleString()}</div>`:''}</td>
+      <td style="text-align:center;padding:10px 6px">${estadoHtml}</td>
       <td style="text-align:center;padding:10px 6px">
         <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          ${env?'disabled':''}
-          style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
+          ${completo?'disabled':''}
+          style="background:${completo?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${completo?'var(--border)':'rgba(77,166,255,.4)'};color:${completo?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${completo?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
         </button>
-        ${env?`<button onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          title="Reactivar envío (por si ya se borró en ShipQR)"
+        ${enviado>0?`<button onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')"
+          title="Deshacer el último envío registrado de este lote"
           style="margin-left:6px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
           ↻
         </button>`:''}
@@ -1638,18 +1681,21 @@ function exportarShipqrExcel(){
   if(!rows.length){ alert('No hay datos para exportar. Aplica un rango de fechas con producción primero.'); return; }
   const desde=document.getElementById("shipqr-desde")?.value||"";
   const hasta=document.getElementById("shipqr-hasta")?.value||"";
-  const headers=['Modelo SM','Part Number','Fecha','Turno','Hora Captura','Producción','Estado'];
+  const headers=['Modelo SM','Part Number','Fecha','Turno','Hora Captura','Producción','Enviado','Pendiente','Estado'];
   const data=[headers];
-  let totalShip=0;
+  let totalShip=0, totalEnv=0, totalPend=0;
   rows.forEach(m=>{
     totalShip+=m.prod;
     const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
-    const estado=SHIPQR_ENVIADOS[key]?'ENVIADO':'PENDIENTE';
-    data.push([m.modelo,m.parte,m.fecha,m.turno,m.horaCaptura,m.prod,estado]);
+    const enviado=sumEnviadoShipqr(key);
+    const pendiente=Math.max(0, m.prod-enviado);
+    totalEnv+=enviado; totalPend+=pendiente;
+    const estado=pendiente<=0&&enviado>0?'ENVIADO':(enviado>0?'PARCIAL':'PENDIENTE');
+    data.push([m.modelo,m.parte,m.fecha,m.turno,m.horaCaptura,m.prod,enviado,pendiente,estado]);
   });
-  data.push(['','','','','TOTAL',totalShip,'']);
+  data.push(['','','','','TOTAL',totalShip,totalEnv,totalPend,'']);
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:16},{wch:16},{wch:12},{wch:8},{wch:12},{wch:12},{wch:12}];
+  ws['!cols']=[{wch:16},{wch:16},{wch:12},{wch:8},{wch:12},{wch:12},{wch:12},{wch:12},{wch:12}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'ShipQR P4-P3');
   const nombreArchivo=`ShipQR_P4_a_P3_${desde}_a_${hasta}.xlsx`;
