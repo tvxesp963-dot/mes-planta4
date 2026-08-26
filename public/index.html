@@ -154,6 +154,7 @@ async function editarRegistro(id) {
     let reg = null;
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
+    window._editRegActual = reg; // guardado para poder calcular la llave ShipQR al momento de guardar
     const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
     const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
@@ -223,6 +224,17 @@ async function guardarRegistroEdit(id, btn) {
         return;
       }
     }
+    // Bloquear si este registro ya tiene envíos a ShipQR y la nueva cantidad quedaría por debajo de lo ya enviado
+    // (evita dejar un envío "fantasma" mayor a la producción real, como pasó con SM-S947UZKEXAU)
+    if (window._editRegActual) {
+      const keyOriginal = keyRegistroMES(window._editRegActual);
+      const enviadoYa = typeof sumEnviadoShipqr === 'function' ? sumEnviadoShipqr(keyOriginal) : 0;
+      if (enviadoYa > 0 && qty < enviadoYa) {
+        showToast(`No se puede guardar: ya se enviaron ${enviadoYa.toLocaleString()} pzas a ShipQR de este lote. La nueva cantidad (${qty.toLocaleString()}) no puede ser menor. Deshaz el envío en ShipQR (botón ↻) si necesitas corregir esto.`,'var(--red)');
+        btn.textContent='💾 Guardar'; btn.disabled=false;
+        return;
+      }
+    }
     // Buscar idx y nombre de la máquina seleccionada
     const maqObj = (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).find((m,i) => m.nombre === maq);
     const maqIdx = maqObj ? (typeof MAQUINAS !== 'undefined' ? MAQUINAS : []).indexOf(maqObj) : null;
@@ -239,6 +251,18 @@ async function guardarRegistroEdit(id, btn) {
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; }
 }
 async function eliminarRegistroEdit(id) {
+  // Bloquear si este registro ya tiene envíos a ShipQR asociados (evita envíos "fantasma" sin producción de respaldo)
+  try {
+    const snapReg = await getDoc(doc(db,'registros', id));
+    if (snapReg.exists()) {
+      const key = keyRegistroMES(snapReg.data());
+      const enviadoYa = typeof sumEnviadoShipqr === 'function' ? sumEnviadoShipqr(key) : 0;
+      if (enviadoYa > 0) {
+        alert(`No se puede eliminar: este registro ya tiene ${enviadoYa.toLocaleString()} pzas enviadas a ShipQR. Deshaz el envío primero (botón ↻ en la pantalla ShipQR) antes de eliminar.`);
+        return;
+      }
+    }
+  } catch(e) { /* si falla la verificación, seguimos con el flujo normal por seguridad */ }
   if (!confirm('¿Eliminar este registro? Esta acción no se puede deshacer.')) return;
   try {
     await deleteDoc(doc(db,'registros',id));
@@ -1319,6 +1343,17 @@ async function loadShipqrEnviados(){
 // Suma lo ya enviado a ShipQR para una key (soporta múltiples envíos parciales)
 function sumEnviadoShipqr(key){
   return (SHIPQR_POR_KEY[key]||[]).reduce((s,e)=>s+(Number(e.cantidad_enviada)||0),0);
+}
+// Calcula la misma "llave" que usa la pantalla ShipQR (Modelo+Parte+Fecha+Turno+Hora)
+// para poder cruzar un registro de 'registros' contra sus envíos en 'shipqr_envios_mes'.
+function keyRegistroMES(r){
+  const modelo=(r.modelo||'').trim();
+  const parte=(r.parte||r.pn||r.partNo||'').toUpperCase();
+  const fecha=r.fecha||(r.ts?new Date(r.ts.seconds*1000).toISOString().slice(0,10):'');
+  const turno=r.turno||'';
+  const horaCaptura=r.ts?new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'})
+    :(r.tsLocal?new Date(r.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}):'—');
+  return modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
 }
 function pintarHistorialShipqr(){
   const el=document.getElementById('tb-shipqr-historial');
