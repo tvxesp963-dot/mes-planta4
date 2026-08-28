@@ -507,7 +507,7 @@ async function calcularCierreJornada() {
       const consumo = qty + defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER'];
+      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)'];
       const compsModelo = BOM.filter(b => {
         if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
         const desc = (b.desc||'').trim().toUpperCase();
@@ -1053,56 +1053,45 @@ async function loadMesPlan() {
   } catch(e) { console.log('loadMesPlan:', e.message); }
 }
 
-// Carga inventario actual del IMS — guarda por PN+DESC para distinguir Virgen vs Ranurado
+// Carga material disponible desde ShipQR (lotes aún no embarcados) — guarda por MODELO+PARTE
 async function sincronizarInvMES() {
   try {
-    const snap = await getDocs(collection(db, 'planta4_inventario'));
+    const snap = await getDocs(collection(db, 'shipqr_lotes'));
     mesPlanInvSnapshot = {};
     snap.forEach(d => {
       const data = d.data();
-      if (!data.pn) return;
-      const pn = data.pn.trim().toUpperCase();
-      const desc = (data.desc || '').trim().toUpperCase();
-      if (desc) mesPlanInvSnapshot[pn + '||' + desc] = data.actual || 0;
-      mesPlanInvSnapshot[pn] = (mesPlanInvSnapshot[pn] || 0) + (data.actual || 0);
+      if (data.status === 'SHIPPED') return; // ya embarcado, no cuenta como disponible
+      const modelo = (data.modelo || '').trim().toUpperCase();
+      const pn = (data.part_number || '').trim().toUpperCase();
+      if (!modelo || !pn) return;
+      const key = modelo + '||' + pn;
+      mesPlanInvSnapshot[key] = (mesPlanInvSnapshot[key] || 0) + (data.quantity || 0);
     });
   } catch(e) {}
 }
 
-// Busca inventario por PN + descripción (igual que BOM Simulator)
-function getInvMES(pn, desc) {
-  const pnUp = (pn || '').trim().toUpperCase();
-  const descUp = (desc || '').trim().toUpperCase();
-  const exactKey = pnUp + '||' + descUp;
-  if (mesPlanInvSnapshot[exactKey] !== undefined) return mesPlanInvSnapshot[exactKey];
-  const keywords = ['VIRGEN','VIRGIN','RANURADO','GROOVING','TOP','BOTTOM','BOT',
-    'BUNDLE','STRIP','PULP','SET PAD','BACK STICKER','GIFT BOX','LOWER BOX','SHEET'];
-  let bestKey = null, bestScore = 0;
-  Object.keys(mesPlanInvSnapshot).forEach(key => {
-    if (key.indexOf(pnUp + '||') === 0) {
-      const imsDesc = key.replace(pnUp + '||', '');
-      let score = 0;
-      keywords.forEach(kw => { if (descUp.includes(kw) && imsDesc.includes(kw)) score++; });
-      if (score > bestScore) { bestScore = score; bestKey = key; }
-    }
-  });
-  if (bestKey && bestScore > 0) return mesPlanInvSnapshot[bestKey];
-  return mesPlanInvSnapshot[pnUp] || 0;
+// Busca material disponible en ShipQR por MODELO + N° de parte
+function getInvMES(modelo, pn) {
+  const key = (modelo || '').trim().toUpperCase() + '||' + (pn || '').trim().toUpperCase();
+  return mesPlanInvSnapshot[key] || 0;
 }
 
 async function actualizarSnapshotIMS() {
   try {
-    const snap = await getDocs(collection(db, 'planta4_inventario'));
+    const snap = await getDocs(collection(db, 'shipqr_lotes'));
     const invActual = {};
     snap.forEach(d => {
       const data = d.data();
-      if (!data.pn) return;
-      const pn = data.pn.trim().toUpperCase();
-      invActual[pn] = (invActual[pn] || 0) + (data.actual || 0);
+      if (data.status === 'SHIPPED') return;
+      const modelo = (data.modelo || '').trim().toUpperCase();
+      const pn = (data.part_number || '').trim().toUpperCase();
+      if (!modelo || !pn) return;
+      const key = modelo + '||' + pn;
+      invActual[key] = (invActual[key] || 0) + (data.quantity || 0);
     });
-    // Actualizar snapshot solo para las partes del plan
-    Object.keys(mesPlanInvSnapshot).forEach(pn => {
-      if (invActual[pn] !== undefined) mesPlanInvSnapshot[pn] = invActual[pn];
+    // Actualizar snapshot solo para las llaves del plan
+    Object.keys(mesPlanInvSnapshot).forEach(key => {
+      if (invActual[key] !== undefined) mesPlanInvSnapshot[key] = invActual[key];
     });
     mostrarAlertaIMS([]); // ocultar banner
   } catch(e) {}
@@ -1178,11 +1167,22 @@ function renderMesPlan() {
           }
         </div>
         ${mats.length ? `<div style="padding:.4rem .75rem">
-          ${mats.map(m=>`<div style="display:flex;justify-content:space-between;padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px">
-            <span style="color:${color};font-family:monospace">${m.pn||''}</span>
-            <span style="color:var(--muted);flex:1;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</span>
-            <span style="font-weight:600;color:var(--fg)">${(m.cant||0).toLocaleString()}</span>
-          </div>`).join('')}
+          ${mats.map(m=>{
+            const disponible = getInvMES(l.sm, m.pn);
+            const requerido = m.cant || 0;
+            const alcanza = disponible >= requerido;
+            const colorDisp = alcanza ? '#00e676' : '#ff4d6a';
+            return `<div style="padding:3px 0;border-bottom:1px solid rgba(255,255,255,.04);font-size:12px">
+              <div style="display:flex;justify-content:space-between">
+                <span style="color:${color};font-family:monospace">${m.pn||''}</span>
+                <span style="color:var(--muted);flex:1;margin:0 8px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${m.desc||''}</span>
+                <span style="font-weight:600;color:var(--fg)">${requerido.toLocaleString()}</span>
+              </div>
+              <div style="text-align:right;font-size:10px;color:${colorDisp};margin-top:1px">
+                ${alcanza ? '✓' : '⚠️'} Disponible en ShipQR: ${disponible.toLocaleString()}
+              </div>
+            </div>`;
+          }).join('')}
         </div>` : ''}
       </div>`;
     });
@@ -1250,34 +1250,37 @@ function arrancarListenerIMS() {
   // Cancelar listener previo si existe
   if (unsubImsListener) { unsubImsListener(); unsubImsListener = null; }
 
-  const pnsDelPlan = Object.keys(mesPlanInvSnapshot);
-  if (!pnsDelPlan.length) return;
+  const keysDelPlan = Object.keys(mesPlanInvSnapshot);
+  if (!keysDelPlan.length) return;
 
   unsubImsListener = onSnapshot(
-    collection(db, 'planta4_inventario'),
+    collection(db, 'shipqr_lotes'),
     (snap) => {
-      // Construir inventario actual
+      // Construir material disponible actual (lotes de ShipQR aún no embarcados)
       const invActual = {};
       snap.forEach(d => {
         const data = d.data();
-        if (!data.pn) return;
-        const pn = data.pn.trim().toUpperCase();
-        invActual[pn] = (invActual[pn] || 0) + (data.actual || 0);
+        if (data.status === 'SHIPPED') return;
+        const modelo = (data.modelo || '').trim().toUpperCase();
+        const pn = (data.part_number || '').trim().toUpperCase();
+        if (!modelo || !pn) return;
+        const key = modelo + '||' + pn;
+        invActual[key] = (invActual[key] || 0) + (data.quantity || 0);
       });
 
       // Comparar contra snapshot del plan
       const cambios = [];
-      pnsDelPlan.forEach(pn => {
-        const enPlan = mesPlanInvSnapshot[pn] || 0;
-        const ahora = invActual[pn] || 0;
+      keysDelPlan.forEach(key => {
+        const enPlan = mesPlanInvSnapshot[key] || 0;
+        const ahora = invActual[key] || 0;
         if (ahora > enPlan) {
-          cambios.push({ pn, enPlan, ahora, diff: ahora - enPlan });
+          cambios.push({ pn: key.split('||')[1] || key, enPlan, ahora, diff: ahora - enPlan });
         }
       });
 
       mostrarAlertaIMS(cambios);
     },
-    (err) => { console.log('IMS listener error:', err.message); }
+    (err) => { console.log('ShipQR listener error:', err.message); }
   );
 }
 
@@ -1303,10 +1306,10 @@ function mostrarAlertaIMS(cambios) {
     <div style="display:flex;align-items:flex-start;justify-content:space-between;gap:.75rem">
       <div>
         <div style="font-weight:700;font-size:12px;color:#FFBA00;margin-bottom:.3rem">
-          ⚠️ Llegó material nuevo — el plan puede estar desactualizado
+          ⚠️ Hay más lotes disponibles en ShipQR — el plan puede estar desactualizado
         </div>
         <div style="font-size:12px;color:var(--muted);margin-bottom:.4rem">
-          Las siguientes partes tienen más inventario que cuando se publicó el plan:
+          Las siguientes partes tienen más material pendiente en ShipQR que cuando se publicó el plan:
         </div>
         <div style="font-size:12px;line-height:1.8">${lista}</div>
       </div>
