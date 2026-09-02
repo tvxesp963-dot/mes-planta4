@@ -12,7 +12,7 @@ import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/fireba
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 import { getFirestore, collection, doc, addDoc, getDoc, getDocs, deleteDoc, setDoc,
-  onSnapshot, query, orderBy, where, updateDoc, serverTimestamp }
+  onSnapshot, query, orderBy, where, updateDoc, serverTimestamp, Timestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -116,7 +116,7 @@ async function buscarRegistrosEdit() {
         <th>Shift</th><th>Qty</th><th>Defects</th><th>Scrap</th><th>%</th><th>Hora</th><th></th>
       </tr></thead><tbody>
       ${regs.map(r => {
-        const hora = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.hora||'—');
+        const hora = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.tsLocal ? new Date(r.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.hora||'—'));
         const maq = r.maquina || r.maqNombre || '—';
         const tipo = r.tipo || r.maqTipo || '—';
         const parte = r.parte || r.pn || r.partNo || '—';
@@ -155,9 +155,15 @@ async function editarRegistro(id) {
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
     window._editRegActual = reg; // guardado para poder calcular la llave ShipQR al momento de guardar
-    const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
+    const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (reg.tsLocal ? new Date(reg.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—');
+    const horaInputVal = (() => {
+      const d = reg.ts && reg.ts.seconds ? new Date(reg.ts.seconds*1000) : (reg.tsLocal ? new Date(reg.tsLocal) : null);
+      if (!d) return '';
+      return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
+    })();
+    const maqActual = reg.maquina || reg.maqNombre || '';
     const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
-    const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
+    const opcMaq = maqList.map(m=>`<option value="${m}" ${maqActual===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
     const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
@@ -193,6 +199,10 @@ async function editarRegistro(id) {
         <div>
           <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Corte</div>
           <select id="er-corte" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcCorte}</select>
+        </div>
+        <div>
+          <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Hora real (corrige si quedó mal capturada — afecta a qué envío pertenece)</div>
+          <input id="er-hora" type="time" value="${horaInputVal}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box">
         </div>
       </div>
       <div style="display:flex;gap:8px;margin-top:16px">
@@ -243,11 +253,36 @@ async function guardarRegistroEdit(id, btn) {
     const parte = document.getElementById('er-parte') ? document.getElementById('er-parte').value.trim().toUpperCase() : '';
     const def=parseInt(document.getElementById('er-def')?document.getElementById('er-def').value:0)||0; const scrap=parseInt(document.getElementById('er-scrap')?document.getElementById('er-scrap').value:0)||0; const scrapPct=qty>0?+(scrap/qty*100).toFixed(2):0; const defPct=qty>0?+(def/qty*100).toFixed(2):0; const updateData={maquina:maq,maqNombre:maq,maqTipo:tipo,tipo,modelo,parte,qty,prod:qty,def,defectos:def,scrap,scrapPct,defPct,turno,corte,target,pct};
     if (maqIdx !== null) updateData.maqIdx = maqIdx;
+    // Si se corrigió la hora, reconstruir ts/tsLocal con la fecha ORIGINAL del registro + la hora nueva
+    // (esto es lo que decide a qué ciclo de envío pertenece en la pantalla ShipQR)
+    const horaVal = document.getElementById('er-hora') ? document.getElementById('er-hora').value : '';
+    if (horaVal && window._editRegActual) {
+      const fechaBase = window._editRegActual.fecha; // 'YYYY-MM-DD', se mantiene igual — solo cambia la hora
+      const nuevaFecha = new Date(`${fechaBase}T${horaVal}:00`);
+      if (!isNaN(nuevaFecha.getTime())) {
+        updateData.ts = Timestamp.fromDate(nuevaFecha);
+        updateData.tsLocal = nuevaFecha.toISOString();
+      }
+    }
     await setDoc(doc(db,'registros',id), updateData, {merge:true});
+
+    // Si cambió la hora (o modelo/parte/turno), la "llave" con la que se rastrea el envío a ShipQR
+    // también cambia. Migramos los envíos ya registrados a la llave nueva para no perder el estado ENVIADO.
+    if (window._editRegActual) {
+      const keyOriginal = keyRegistroMES(window._editRegActual);
+      const regActualizado = { ...window._editRegActual, modelo, parte, turno, fecha: window._editRegActual.fecha, ts: updateData.ts || window._editRegActual.ts, tsLocal: updateData.tsLocal || window._editRegActual.tsLocal };
+      const keyNuevo = keyRegistroMES(regActualizado);
+      if (keyNuevo !== keyOriginal && SHIPQR_POR_KEY[keyOriginal] && SHIPQR_POR_KEY[keyOriginal].length) {
+        const horaCapturaNueva = regActualizado.ts ? new Date(regActualizado.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '';
+        for (const envio of SHIPQR_POR_KEY[keyOriginal]) {
+          await setDoc(doc(db,'shipqr_envios_mes',envio._docId), { key: keyNuevo, modelo, parte, turno, horaCaptura: horaCapturaNueva }, {merge:true});
+        }
+      }
+    }
     btn.closest('div[style*=fixed]').remove();
     showToast('✅ Registro actualizado — recargando...','var(--green)');
     buscarRegistrosEdit();
-    setTimeout(()=>{ if(typeof rRegs==='function') rRegs(); if(typeof updateDashStats==='function') updateDashStats(); }, 800);
+    setTimeout(()=>{ if(typeof rRegs==='function') rRegs(); if(typeof updateDashStats==='function') updateDashStats(); if(typeof loadShipqrEnviados==='function') loadShipqrEnviados(); }, 800);
   } catch(e) { showToast('Error: '+e.message,'var(--red)'); btn.textContent='💾 Guardar'; btn.disabled=false; }
 }
 async function eliminarRegistroEdit(id) {
@@ -1053,10 +1088,12 @@ async function loadMesPlan() {
   } catch(e) { console.log('loadMesPlan:', e.message); }
 }
 
-// Carga material disponible desde ShipQR (lotes aún no embarcados) — guarda por MODELO+PARTE
+// Carga material disponible desde ShipQR (pallets aún no embarcados) — guarda por MODELO+PARTE
+// Se suma por PALLET (no por lote completo): un lote parcialmente embarcado ya no cuenta de más,
+// porque cada pallet lleva su propio status y solo se descuenta el que diga 'SHIPPED'.
 async function sincronizarInvMES() {
   try {
-    const snap = await getDocs(collection(db, 'shipqr_lotes'));
+    const snap = await getDocs(collection(db, 'shipqr_pallets'));
     mesPlanInvSnapshot = {};
     snap.forEach(d => {
       const data = d.data();
@@ -1078,7 +1115,7 @@ function getInvMES(modelo, pn) {
 
 async function actualizarSnapshotIMS() {
   try {
-    const snap = await getDocs(collection(db, 'shipqr_lotes'));
+    const snap = await getDocs(collection(db, 'shipqr_pallets'));
     const invActual = {};
     snap.forEach(d => {
       const data = d.data();
@@ -1254,9 +1291,9 @@ function arrancarListenerIMS() {
   if (!keysDelPlan.length) return;
 
   unsubImsListener = onSnapshot(
-    collection(db, 'shipqr_lotes'),
+    collection(db, 'shipqr_pallets'),
     (snap) => {
-      // Construir material disponible actual (lotes de ShipQR aún no embarcados)
+      // Construir material disponible actual (pallets de ShipQR aún no embarcados)
       const invActual = {};
       snap.forEach(d => {
         const data = d.data();
@@ -1575,13 +1612,12 @@ function rHoy(){
     } else {
             const maqModelMap={};
       data.forEach(r=>{
-        const key=r.maqIdx+"_"+(r.modelo||"—");
+        const key=r.maqIdx+"_"+(r.modelo||"—")+"_"+(r.parte||"—")+"_"+(r.turno||"—");
         if(!maqModelMap[key]){maqModelMap[key]={maqNombre:r.maqNombre,maqTipo:r.maqTipo,modelo:r.modelo||"—",parte:r.parte||"—",turno:r.turno,prod:0,def:0,scrap:0,target:0};}
         maqModelMap[key].prod+=r.prod||0;
         maqModelMap[key].def+=r.def||0;
         maqModelMap[key].scrap+=r.scrap||0;
         maqModelMap[key].target+=r.target||0;
-        if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
       });
       // Ordenar: VC → S1 → S2 → S3 → S4 → Zhongke → ASSY1
       const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
@@ -1629,6 +1665,54 @@ function rHoy(){
 }
 
 // Renderiza la tabla SHIPQR según el rango de fechas seleccionado
+// Calcula el ciclo de envío VIGENTE según los cortes fijos: miércoles 3:30pm y sábado 11:00am.
+// Devuelve {inicio, fin} como objetos Date. "inicio" = corte anterior, "fin" = próximo corte (deadline).
+// Esto es SOLO para sugerir un rango por default — nunca bloquea que el usuario cambie las fechas a mano.
+function calcularCicloEnvioActual(ahora) {
+  ahora = ahora || new Date();
+  const cortes = [];
+  // Genera cortes de miércoles 15:30 y sábado 11:00 desde 3 semanas atrás hasta 2 semanas adelante
+  for (let i = -21; i <= 14; i++) {
+    const d = new Date(ahora);
+    d.setDate(d.getDate() + i);
+    d.setHours(0,0,0,0);
+    if (d.getDay() === 3) { const c = new Date(d); c.setHours(15,30,0,0); cortes.push(c); }
+    if (d.getDay() === 6) { const c = new Date(d); c.setHours(11,0,0,0); cortes.push(c); }
+  }
+  cortes.sort((a,b) => a - b);
+  let inicio = cortes[0], fin = cortes[cortes.length - 1];
+  for (let i = 0; i < cortes.length; i++) {
+    if (cortes[i] <= ahora) inicio = cortes[i];
+    if (cortes[i] > ahora) { fin = cortes[i]; break; }
+  }
+  return { inicio, fin };
+}
+function fechaISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+// Obtiene la fecha+hora REAL de un registro (no solo el día) para poder comparar contra el corte exacto
+function fechaHoraDeRegistro(r) {
+  if (r.ts && r.ts.seconds) return new Date(r.ts.seconds*1000);
+  if (r.tsLocal) return new Date(r.tsLocal);
+  return r.fecha ? new Date(r.fecha+'T12:00:00') : null; // sin hora capturada: asume mediodía (no debería pasar)
+}
+// Límite INICIAL de un rango: si el día elegido es miércoles o sábado, empieza justo en la hora del corte
+// (porque todo lo de ANTES de esa hora ya pertenece al envío anterior, ya cerrado).
+function limiteDesde(fechaStr) {
+  const d = new Date(fechaStr+'T00:00:00');
+  if (d.getDay()===3) d.setHours(15,30,0,0);
+  else if (d.getDay()===6) d.setHours(11,0,0,0);
+  return d;
+}
+// Límite FINAL de un rango: si el día elegido es miércoles o sábado, corta justo en la hora del corte
+// (lo de DESPUÉS de esa hora ya es del siguiente envío, no de este).
+function limiteHasta(fechaStr) {
+  const d = new Date(fechaStr+'T00:00:00');
+  if (d.getDay()===3) d.setHours(15,30,0,0);
+  else if (d.getDay()===6) d.setHours(11,0,0,0);
+  else d.setHours(23,59,59,999);
+  return d;
+}
+
 function renderShipqr(){
   const tbShipqr=document.getElementById("tb-shipqr");
   if(!tbShipqr) return;
@@ -1636,16 +1720,20 @@ function renderShipqr(){
   const HOY=new Date().toISOString().slice(0,10);
   const inpDesde=document.getElementById("shipqr-desde");
   const inpHasta=document.getElementById("shipqr-hasta");
-  // Si los inputs están vacíos, default a hoy
-  if(inpDesde && !inpDesde.value) inpDesde.value=HOY;
+  // Si los inputs están vacíos, default al CICLO DE ENVÍO VIGENTE (miércoles 3:30pm / sábado 11:00am).
+  // Esto es solo una sugerencia inicial — el usuario puede cambiar las fechas libremente cuando quiera.
+  const ciclo = calcularCicloEnvioActual();
+  if(inpDesde && !inpDesde.value) inpDesde.value=fechaISO(ciclo.inicio);
   if(inpHasta && !inpHasta.value) inpHasta.value=HOY;
-  const desde=inpDesde?inpDesde.value:HOY;
+  const desde=inpDesde?inpDesde.value:fechaISO(ciclo.inicio);
   const hasta=inpHasta?inpHasta.value:HOY;
   const assyRango=REGISTROS.filter(r=>{
-    const fecha=r.fecha||"";
     const esASSY=(r.maqNombre||"").toUpperCase().includes("ASSY")||(r.maqTipo||"").toUpperCase()==="ASSY";
     const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
-    return esASSY && esGH90 && fecha>=desde && fecha<=hasta;
+    if(!esASSY||!esGH90) return false;
+    const fh=fechaHoraDeRegistro(r);
+    if(!fh) return false;
+    return fh>=limiteDesde(desde) && fh<=limiteHasta(hasta);
   });
   if(!assyRango.length){
     tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
@@ -1665,6 +1753,25 @@ function renderShipqr(){
   });
   const rows=Object.values(modPnMap).sort((a,b)=>(a.fecha+a.modelo).localeCompare(b.fecha+b.modelo));
   window._shipqrExportRows=rows; // espejo exacto de lo mostrado en pantalla para exportar a Excel
+
+  // Aviso si falta poco para el corte (miércoles 3:30pm / sábado 11:00am) y aún hay algo sin enviar del ciclo vigente
+  const avisoEl=document.getElementById("shipqr-aviso-corte");
+  if(avisoEl){
+    const ahora=new Date();
+    const minsParaCorte=(ciclo.fin - ahora)/60000;
+    const hayPendiente=rows.some(m=>{
+      const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
+      return Math.max(0, m.prod-sumEnviadoShipqr(key))>0;
+    });
+    if(minsParaCorte>0 && minsParaCorte<=120 && hayPendiente){
+      const hrs=Math.floor(minsParaCorte/60), mins=Math.round(minsParaCorte%60);
+      avisoEl.style.display="block";
+      avisoEl.innerHTML=`⚠️ Faltan ${hrs}h ${mins}m para el corte y todavía hay producción PENDIENTE o PARCIAL sin enviar a ShipQR.`;
+    } else {
+      avisoEl.style.display="none";
+    }
+  }
+
   let totalShip=0;
   const turnoColor={A:'#4f8ef7',B:'#2ecc71',C:'#e67e22'};
   rows.forEach(m=>{
@@ -2948,6 +3055,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
       <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
       <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P4 → P3</h3>
+        <div id="shipqr-aviso-corte" style="display:none;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600"></div>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
           <div>
             <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px" id="lbl-desde">Desde</label>
