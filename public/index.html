@@ -1429,6 +1429,13 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   // (mismo PN, pero no debe contarse como avance del plan en el BOM Simulator).
   const esRemplazo=confirm('¿Esta cantidad es un REMPLAZO (reproceso, dañado, etc.)?\n\nAceptar = REMPLAZO\nCancelar = Producción normal (Plan)');
   const motivo = esRemplazo ? 'REMPLAZO' : 'PLAN';
+  // FIX: abrir la pestaña de ShipQR YA, en caliente dentro del clic del usuario,
+  // antes de cualquier await — si se abre después de un await, Chrome/Edge la
+  // bloquean silenciosamente (sin avisar) y el lote nunca se crea en ShipQR,
+  // aunque el MES ya haya guardado el registro como "enviado". Esto fue lo que
+  // causó que 2 tarimas (3,600 pzas) se perdieran: el MES las marcó ENVIADO
+  // pero la pestaña bloqueada nunca llegó a crear el lote/pallets en ShipQR.
+  const shipqrWin=window.open('','shipqr_window');
   const docId=key+'||'+Date.now();
   const registro={
     key, modelo, parte, fecha, turno, horaCaptura,
@@ -1447,10 +1454,17 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   }catch(err){
     console.error('Error registrando envío a ShipQR:', err);
     alert('Error al registrar el envío: '+err.message);
+    if(shipqrWin && !shipqrWin.closed) shipqrWin.close();
     return;
   }
   const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}`;
-  window.open(url,'shipqr_window');
+  if(shipqrWin){
+    shipqrWin.location=url;
+  } else {
+    // El navegador bloqueó incluso la apertura inmediata (bloqueo estricto/extensión).
+    // Avisar explícitamente en vez de fallar en silencio, y dar el link para abrir a mano.
+    alert('⚠️ El navegador bloqueó la ventana de ShipQR.\n\nEl envío YA quedó guardado en el MES, pero el lote todavía NO se ha creado en ShipQR.\n\nAbre este link a mano para crearlo:\n'+url);
+  }
   if(typeof renderShipqr==='function') renderShipqr();
 };
 // Quita la marca de "ya enviado" para poder volver a mandarlo — útil cuando el registro se borró
