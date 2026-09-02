@@ -228,8 +228,9 @@ async function guardarRegistroEdit(id, btn) {
     if (modelo) {
       const esSMValido = modelo.startsWith("SM") && modelo.length===14 && modelo.includes("-");
       const esCRNValido = /^CRN-\d+$/.test(modelo);
-      if (!esSMValido && !esCRNValido) {
-        showToast('Modelo inválido — SM: 14 chars con guión (SM-XXXXXXXXXXX) o CRN-XXXXXX (con guión)','var(--red)');
+      const esAssyValido = /^[A-Z]\d{3,4}\s+CRN$/.test(modelo); // ej. S942 CRN, S948 CRN, S911 CRN
+      if (!esSMValido && !esCRNValido && !esAssyValido) {
+        showToast('Modelo inválido — SM: 14 chars con guión (SM-XXXXXXXXXXX), CRN-XXXXXX (con guión) o SXXX CRN (ASSY, con espacio)','var(--red)');
         btn.textContent='💾 Guardar'; btn.disabled=false;
         return;
       }
