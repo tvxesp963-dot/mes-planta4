@@ -1405,7 +1405,7 @@ function pintarHistorialShipqr(){
   }
   el.innerHTML=envios.map(e=>`
     <div style="display:flex;justify-content:space-between;background:var(--card2);border-radius:6px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px">
-      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.cantidad_enviada!=null?e.cantidad_enviada:(e.prod||0)).toLocaleString()} pzas</span>
+      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.cantidad_enviada!=null?e.cantidad_enviada:(e.prod||0)).toLocaleString()} pzas${e.motivo==='REMPLAZO'?' · <span style="color:#e67e22;font-weight:700">⚠ REMPLAZO</span>':''}</span>
       <span style="color:var(--muted)">${e.enviado_por} · ${new Date(e.fecha_envio).toLocaleString('es-MX')}</span>
     </div>
   `).join('');
@@ -1425,11 +1425,16 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
     if(!confirm(`Solo quedan ${pendiente.toLocaleString()} pendientes. ¿Enviar ese máximo?`)) return;
     cantidad=pendiente;
   }
+  // NUEVO: preguntar si esta cantidad es producción normal (Plan) o Remplazo
+  // (mismo PN, pero no debe contarse como avance del plan en el BOM Simulator).
+  const esRemplazo=confirm('¿Esta cantidad es un REMPLAZO (reproceso, dañado, etc.)?\n\nAceptar = REMPLAZO\nCancelar = Producción normal (Plan)');
+  const motivo = esRemplazo ? 'REMPLAZO' : 'PLAN';
   const docId=key+'||'+Date.now();
   const registro={
     key, modelo, parte, fecha, turno, horaCaptura,
     prod: Number(prod),
     cantidad_enviada: cantidad,
+    motivo,
     enviado_por: CURRENT_USER?.nombre || 'Desconocido',
     fecha_envio: new Date().toISOString()
   };
@@ -1444,7 +1449,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
     alert('Error al registrar el envío: '+err.message);
     return;
   }
-  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}`;
+  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}`;
   window.open(url,'shipqr_window');
   if(typeof renderShipqr==='function') renderShipqr();
 };
