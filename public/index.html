@@ -1410,6 +1410,53 @@ function pintarHistorialShipqr(){
     </div>
   `).join('');
 }
+// Modal claro para elegir Producción normal / Remplazo antes de enviar a ShipQR.
+// "Producción normal" queda seleccionada por default; un botón permite marcarlo
+// como Remplazo en su lugar. Un solo botón "Enviar" confirma con lo seleccionado.
+// Reemplaza el confirm() del navegador (Aceptar/Cancelar genéricos, confuso).
+// Devuelve {motivo:'PLAN'|'REMPLAZO', win} o null si el usuario cancela de verdad.
+// IMPORTANTE: la ventana de ShipQR se abre en el clic del botón "Enviar" (gesto real
+// del usuario), para no perder el permiso de ventana emergente del navegador.
+function mostrarModalMotivoEnvio(){
+  return new Promise((resolve)=>{
+    let motivoActual='PLAN';
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
+    overlay.innerHTML=`
+      <div style="background:var(--card,#151a2e);border:1px solid var(--border,#2a3050);border-radius:14px;padding:22px;max-width:360px;width:100%;text-align:center;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:6px;color:var(--text,#eaeef7)">¿Qué tipo de envío es?</div>
+        <div style="font-size:12px;color:var(--muted,#7f8c9a);margin-bottom:16px">Por default es Producción normal. Solo afecta si cuenta como avance del plan.</div>
+        <div style="display:flex;gap:8px;margin-bottom:18px">
+          <button id="mm-plan" style="flex:1;padding:12px 8px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;background:rgba(46,204,113,.18);border:2px solid #2ecc71;color:#2ecc71">📦 Producción normal</button>
+          <button id="mm-remplazo" style="flex:1;padding:12px 8px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;background:transparent;border:2px solid var(--border,#2a3050);color:var(--muted,#7f8c9a)">⚠️ Remplazo</button>
+        </div>
+        <button id="mm-enviar" style="width:100%;margin-bottom:10px;padding:12px;font-size:14px;font-weight:700;background:rgba(77,166,255,.15);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:10px;cursor:pointer">🚚 Enviar</button>
+        <button id="mm-cancelar" style="width:100%;padding:10px;font-size:13px;background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:10px;cursor:pointer">Cancelar envío</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const btnPlan=overlay.querySelector('#mm-plan');
+    const btnRemplazo=overlay.querySelector('#mm-remplazo');
+    const pintarSeleccion=()=>{
+      const esPlan=motivoActual==='PLAN';
+      btnPlan.style.background=esPlan?'rgba(46,204,113,.18)':'transparent';
+      btnPlan.style.border=esPlan?'2px solid #2ecc71':'2px solid var(--border,#2a3050)';
+      btnPlan.style.color=esPlan?'#2ecc71':'var(--muted,#7f8c9a)';
+      btnRemplazo.style.background=!esPlan?'rgba(230,126,34,.18)':'transparent';
+      btnRemplazo.style.border=!esPlan?'2px solid #e67e22':'2px solid var(--border,#2a3050)';
+      btnRemplazo.style.color=!esPlan?'#e67e22':'var(--muted,#7f8c9a)';
+    };
+    btnPlan.onclick=()=>{ motivoActual='PLAN'; pintarSeleccion(); };
+    btnRemplazo.onclick=()=>{ motivoActual='REMPLAZO'; pintarSeleccion(); };
+    const cerrar=(motivo)=>{
+      let win=null;
+      if(motivo) win=window.open('','shipqr_window'); // dentro del clic real: no se bloquea
+      document.body.removeChild(overlay);
+      resolve(motivo ? {motivo,win} : null);
+    };
+    overlay.querySelector('#mm-enviar').onclick=()=>cerrar(motivoActual);
+    overlay.querySelector('#mm-cancelar').onclick=()=>cerrar(null);
+  });
+}
 window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
@@ -1425,17 +1472,16 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
     if(!confirm(`Solo quedan ${pendiente.toLocaleString()} pendientes. ¿Enviar ese máximo?`)) return;
     cantidad=pendiente;
   }
-  // NUEVO: preguntar si esta cantidad es producción normal (Plan) o Remplazo
-  // (mismo PN, pero no debe contarse como avance del plan en el BOM Simulator).
-  const esRemplazo=confirm('¿Esta cantidad es un REMPLAZO (reproceso, dañado, etc.)?\n\nAceptar = REMPLAZO\nCancelar = Producción normal (Plan)');
-  const motivo = esRemplazo ? 'REMPLAZO' : 'PLAN';
-  // FIX: abrir la pestaña de ShipQR YA, en caliente dentro del clic del usuario,
-  // antes de cualquier await — si se abre después de un await, Chrome/Edge la
-  // bloquean silenciosamente (sin avisar) y el lote nunca se crea en ShipQR,
-  // aunque el MES ya haya guardado el registro como "enviado". Esto fue lo que
-  // causó que 2 tarimas (3,600 pzas) se perdieran: el MES las marcó ENVIADO
-  // pero la pestaña bloqueada nunca llegó a crear el lote/pallets en ShipQR.
-  const shipqrWin=window.open('','shipqr_window');
+  // Preguntar si esta cantidad es producción normal (Plan) o Remplazo, con un
+  // modal propio (botones claros) en vez del confirm() confuso del navegador.
+  // La ventana de ShipQR se abre DENTRO del clic real del botón elegido —
+  // así nunca pierde el permiso de ventana emergente, aunque después haya
+  // un await (esto fue justo lo que causó que 2 tarimas / 3,600 pzas se
+  // perdieran antes: el MES las marcaba ENVIADO pero la pestaña bloqueada
+  // nunca llegaba a crear el lote en ShipQR).
+  const seleccion=await mostrarModalMotivoEnvio();
+  if(!seleccion) return; // canceló de verdad, nada se guarda
+  const {motivo, win:shipqrWin}=seleccion;
   const docId=key+'||'+Date.now();
   const registro={
     key, modelo, parte, fecha, turno, horaCaptura,
