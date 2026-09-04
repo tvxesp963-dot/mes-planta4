@@ -297,6 +297,7 @@ window.guardarPallet = async () => {
     defPct: qty>0 ? +(def/qty*100).toFixed(2) : 0,
     scrapPct: qty>0 ? +(scrap/qty*100).toFixed(2) : 0,
     notas: "Registrado desde Salida de Pallet (ASSY)",
+    origen: "pallet_assy",
     causaParo: "", minParo: 0,
     tsLocal: new Date().toISOString(),
     ts: serverTimestamp(),
