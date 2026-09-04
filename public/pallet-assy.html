@@ -69,10 +69,14 @@
     </select>
 
     <label>Modelo</label>
-    <input type="text" id="ip-modelo" placeholder="S942 CRN" autocomplete="off">
+    <select id="ip-modelo" onchange="onModeloChange()">
+      <option value="">— Seleccionar modelo —</option>
+    </select>
 
     <label>N° de Parte</label>
-    <input type="text" id="ip-parte" placeholder="GH90-73015A" autocomplete="off">
+    <select id="ip-parte">
+      <option value="">— Seleccionar N° Parte —</option>
+    </select>
 
     <label>Cantidad en el pallet</label>
     <input type="number" id="ip-qty" placeholder="500" min="1">
@@ -106,7 +110,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp }
+import { getFirestore, collection, addDoc, getDocs, doc, getDoc, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -151,7 +155,35 @@ function hoyStr(){
 
 let CURRENT_USER = null;
 let corteHoy = null;
+let BOM_ACTIVO = [];
 window._misPalletsHoy = [];
+
+async function cargarBOM(){
+  try{
+    const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
+    if(!bomDoc.exists()){ BOM_ACTIVO=[]; return; }
+    BOM_ACTIVO = JSON.parse(bomDoc.data().bom || '[]');
+    const modelos = [...new Set(BOM_ACTIVO.map(r=>r.sm).filter(Boolean))].sort();
+    const sel = document.getElementById("ip-modelo");
+    sel.innerHTML = '<option value="">— Seleccionar modelo —</option>' +
+      modelos.map(m=>`<option value="${m}">${m}</option>`).join("");
+  }catch(e){
+    BOM_ACTIVO=[];
+    showToast("⚠️ No se pudo cargar el catálogo BOM.", "var(--red)");
+  }
+}
+
+window.onModeloChange = () => {
+  const modelo = document.getElementById("ip-modelo").value.trim();
+  const partes = [...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
+  const selParte = document.getElementById("ip-parte");
+  if(!partes.length){
+    selParte.innerHTML = '<option value="">⚠️ Sin partes en el BOM para este modelo</option>';
+    return;
+  }
+  selParte.innerHTML = '<option value="">— Seleccionar N° Parte —</option>' +
+    partes.map(p=>`<option value="${p}">${p}</option>`).join("");
+};
 
 window.doLogin = async () => {
   const email = document.getElementById("lg-email").value.trim();
@@ -191,6 +223,7 @@ onAuthStateChanged(auth, async (fireUser) => {
   document.getElementById("view-login").classList.add("hide");
   document.getElementById("view-form").classList.remove("hide");
   refrescarCorte();
+  await cargarBOM();
   await cargarHistorial();
 });
 
