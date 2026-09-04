@@ -1,0 +1,290 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Salida de Pallet · ASSY</title>
+<style>
+  :root{--bg:#0f1117;--card:#171a23;--card2:#1e2230;--border:#2a2f3d;--text:#e8eaf0;--muted:#8a90a3;
+    --blue:#4f8ef7;--green:#2ecc71;--red:#e74c3c;--yellow:#f1c40f;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .wrap{width:100%;max-width:420px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+  h1{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:14px 0 6px;}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:11px;font-size:15px;}
+  input:focus,select:focus{outline:none;border-color:var(--blue);}
+  button{width:100%;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;
+    cursor:pointer;margin-top:18px;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-logout{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:8px;font-weight:400;font-size:13px;padding:8px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 18px;border-radius:8px;
+    font-size:14px;font-weight:600;color:#fff;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border);
+    border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted);margin-bottom:10px;}
+  .badge b{color:var(--text);}
+  .row2{display:flex;gap:10px;}
+  .row2>div{flex:1;}
+  .hist{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
+  .hist-item{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .hist-item:last-child{border-bottom:none;}
+  .err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+  .hide{display:none !important;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="view-login" class="card">
+    <h1>🔒 Salida de Pallet</h1>
+    <div class="sub">Inicia sesión con tu cuenta MES</div>
+    <label>Correo</label>
+    <input type="email" id="lg-email" autocomplete="username">
+    <label>Contraseña</label>
+    <input type="password" id="lg-pass" autocomplete="current-password">
+    <button class="btn-primary" id="btn-login" onclick="doLogin()">Entrar</button>
+    <div class="err" id="lg-err"></div>
+  </div>
+
+  <!-- FORMULARIO -->
+  <div id="view-form" class="card hide">
+    <h1>📦 Salida de Pallet</h1>
+    <div class="sub">Máquina ASSY1 · <span id="op-name">—</span></div>
+
+    <div class="badge">⏰ Corte detectado: <b id="corte-auto">—</b> &nbsp;|&nbsp; 🎯 Target: <b id="corte-target">—</b></div>
+
+    <label>Turno</label>
+    <select id="ip-turno">
+      <option value="A">Turno A</option>
+      <option value="B">Turno B</option>
+      <option value="C">Turno C</option>
+    </select>
+
+    <label>Modelo</label>
+    <input type="text" id="ip-modelo" placeholder="S942 CRN" autocomplete="off">
+
+    <label>N° de Parte</label>
+    <input type="text" id="ip-parte" placeholder="GH90-73015A" autocomplete="off">
+
+    <label>Cantidad en el pallet</label>
+    <input type="number" id="ip-qty" placeholder="500" min="1">
+
+    <div class="row2">
+      <div>
+        <label>Defectos (opcional)</label>
+        <input type="number" id="ip-def" value="0" min="0">
+      </div>
+      <div>
+        <label>Scrap (opcional)</label>
+        <input type="number" id="ip-scrap" value="0" min="0">
+      </div>
+    </div>
+
+    <button class="btn-primary" id="btn-guardar" onclick="guardarPallet()">✅ Registrar pallet</button>
+    <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
+    <div class="err" id="fm-err"></div>
+
+    <div class="hist" id="hist-wrap">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px">Pallets registrados hoy (este corte)</div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef",
+  measurementId:     "G-SGJTX6W9HS"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const REGS_COL  = () => collection(db, "registros");
+const USERS_COL = () => collection(db, "usuarios");
+
+// Misma máquina, mismos targets por corte que index.html (MAQUINAS[5])
+const MAQUINA = { idx:5, nombre:"ASSY1", tipo:"ASSY", target:10000,
+  cortes:{ C1:2000, C2:4000, C3:4000, OT:2000 } };
+
+// Mismas ventanas de corte que index.html (etiquetas en opcCorte)
+const RANGOS = [
+  { id:"C1", finH:8,  finM:45 },
+  { id:"C2", finH:12, finM:30 },
+  { id:"C3", finH:16, finM:30 },
+  { id:"OT", finH:18, finM:25 },
+];
+function corteActual(){
+  const n = new Date();
+  const mins = n.getHours()*60 + n.getMinutes();
+  for(const r of RANGOS){
+    if(mins <= r.finH*60+r.finM) return r.id;
+  }
+  return "OT"; // después de las 6:25pm, se sigue contando como OT
+}
+function hoyStr(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+
+let CURRENT_USER = null;
+let corteHoy = null;
+window._misPalletsHoy = [];
+
+window.doLogin = async () => {
+  const email = document.getElementById("lg-email").value.trim();
+  const pass  = document.getElementById("lg-pass").value;
+  const errEl = document.getElementById("lg-err");
+  errEl.style.display = "none";
+  if(!email || !pass){ errEl.textContent="Ingresa correo y contraseña."; errEl.style.display="block"; return; }
+  const btn = document.getElementById("btn-login");
+  btn.disabled = true; btn.textContent = "Entrando...";
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e){
+    errEl.textContent = "Correo o contraseña incorrectos.";
+    errEl.style.display = "block";
+  }
+  btn.disabled = false; btn.textContent = "Entrar";
+};
+
+window.doLogout = async () => { await signOut(auth); };
+
+onAuthStateChanged(auth, async (fireUser) => {
+  if(!fireUser){
+    CURRENT_USER = null;
+    document.getElementById("view-login").classList.remove("hide");
+    document.getElementById("view-form").classList.add("hide");
+    return;
+  }
+  const q = query(USERS_COL(), where("uid","==",fireUser.uid));
+  const snap = await getDocs(q);
+  if(snap.empty){
+    showToast("Tu usuario no está registrado en el sistema.", "var(--red)");
+    await signOut(auth);
+    return;
+  }
+  CURRENT_USER = { uid: fireUser.uid, email: fireUser.email, ...snap.docs[0].data() };
+  document.getElementById("op-name").textContent = CURRENT_USER.nombre || CURRENT_USER.email;
+  document.getElementById("view-login").classList.add("hide");
+  document.getElementById("view-form").classList.remove("hide");
+  refrescarCorte();
+  await cargarHistorial();
+});
+
+function refrescarCorte(){
+  corteHoy = corteActual();
+  document.getElementById("corte-auto").textContent = corteHoy;
+  document.getElementById("corte-target").textContent = MAQUINA.cortes[corteHoy].toLocaleString();
+}
+setInterval(refrescarCorte, 60000);
+
+async function cargarHistorial(){
+  const HOY = hoyStr();
+  const q = query(REGS_COL(), where("fecha","==",HOY), where("maqIdx","==",MAQUINA.idx));
+  const snap = await getDocs(q);
+  window._misPalletsHoy = snap.docs.map(d=>d.data()).filter(r=>r.corte===corteHoy);
+  renderHistorial();
+}
+
+function renderHistorial(){
+  const list = document.getElementById("hist-list");
+  if(!window._misPalletsHoy.length){
+    list.innerHTML = `<div style="color:var(--muted);font-size:13px">Sin pallets registrados en este corte todavía.</div>`;
+    return;
+  }
+  list.innerHTML = window._misPalletsHoy.map(r=>`
+    <div class="hist-item">
+      <span>${r.modelo||"—"} · ${r.parte||"—"}</span>
+      <span style="color:var(--muted)">${(r.prod||0).toLocaleString()} pz</span>
+    </div>`).join("");
+}
+
+function showToast(msg, color){
+  const t = document.getElementById("toast");
+  t.textContent = msg; t.style.background = color; t.style.opacity = "1";
+  setTimeout(()=>{ t.style.opacity = "0"; }, 2800);
+}
+
+window.guardarPallet = async () => {
+  const errEl = document.getElementById("fm-err");
+  errEl.style.display = "none";
+
+  const turno  = document.getElementById("ip-turno").value;
+  const modelo = document.getElementById("ip-modelo").value.trim().toUpperCase();
+  const parte  = document.getElementById("ip-parte").value.trim().toUpperCase();
+  const qty    = parseInt(document.getElementById("ip-qty").value) || 0;
+  const def    = parseInt(document.getElementById("ip-def").value) || 0;
+  const scrap  = parseInt(document.getElementById("ip-scrap").value) || 0;
+
+  if(!modelo){ errEl.textContent="Ingresa el modelo."; errEl.style.display="block"; return; }
+  if(!parte){ errEl.textContent="Ingresa el número de parte."; errEl.style.display="block"; return; }
+  if(qty<=0){ errEl.textContent="La cantidad del pallet debe ser mayor a 0."; errEl.style.display="block"; return; }
+
+  refrescarCorte(); // por si cambió el corte mientras llenaba el formulario
+  const target = MAQUINA.cortes[corteHoy] || MAQUINA.target;
+
+  const btn = document.getElementById("btn-guardar");
+  btn.disabled = true; btn.textContent = "Guardando...";
+
+  const reg = {
+    userId: CURRENT_USER.uid,
+    operador: CURRENT_USER.nombre || "",
+    empleado: CURRENT_USER.empleado || "",
+    modelo, parte,
+    fecha: hoyStr(),
+    turno,
+    corte: corteHoy,
+    maqIdx: MAQUINA.idx, maqNombre: MAQUINA.nombre, maqTipo: MAQUINA.tipo,
+    target,
+    prod: qty, def, scrap,
+    pct: target>0 ? +(qty/target*100).toFixed(2) : 0,
+    defPct: qty>0 ? +(def/qty*100).toFixed(2) : 0,
+    scrapPct: qty>0 ? +(scrap/qty*100).toFixed(2) : 0,
+    notas: "Registrado desde Salida de Pallet (ASSY)",
+    causaParo: "", minParo: 0,
+    tsLocal: new Date().toISOString(),
+    ts: serverTimestamp(),
+  };
+
+  try {
+    await addDoc(REGS_COL(), reg);
+    showToast(`✅ Pallet registrado · ${qty.toLocaleString()} pz · ${corteHoy}`, "var(--green)");
+    document.getElementById("ip-modelo").value = "";
+    document.getElementById("ip-parte").value = "";
+    document.getElementById("ip-qty").value = "";
+    document.getElementById("ip-def").value = "0";
+    document.getElementById("ip-scrap").value = "0";
+    window._misPalletsHoy.push(reg);
+    renderHistorial();
+  } catch(e){
+    errEl.textContent = "Error al guardar: " + e.message;
+    errEl.style.display = "block";
+  }
+  btn.disabled = false; btn.textContent = "✅ Registrar pallet";
+};
+</script>
+</body>
+</html>
