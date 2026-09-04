@@ -1524,7 +1524,34 @@ window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
   if(!envios.length) return;
   const ultimo=envios[0];
   const cant=(ultimo.cantidad_enviada!=null?ultimo.cantidad_enviada:(ultimo.prod||0));
-  if(!confirm(`¿Deshacer el último envío de ${modelo} · ${parte} (${cant.toLocaleString()} pzas, ${new Date(ultimo.fecha_envio).toLocaleString('es-MX')})?\nEsto lo regresa a pendiente para volver a enviarlo (útil si ya se borró en ShipQR o se mandó mal).`)) return;
+
+  // Antes de reactivar: revisar si YA existe un pallet en ShipQR (shipqr_pallets)
+  // que coincida con este envío (mismo modelo + parte + cantidad, creado el mismo
+  // día del envío). Si existe, reenviar crearía un SEGUNDO pallet y duplicaría el
+  // material contado como "Producido" — esto fue justo lo que causó el desfase de
+  // 200 pzas en SM-S741UZKAXAU / GH90-73058A. No se bloquea (puede ser un falso
+  // positivo si hay otro lote legítimo con la misma cantidad), pero se advierte
+  // explícito en vez de dejarlo pasar en silencio como antes.
+  let posibleDuplicado=false;
+  try{
+    const parteUp=parte.toUpperCase();
+    const envioTime=new Date(ultimo.fecha_envio).getTime();
+    const snapPallets=await getDocs(collection(db,'shipqr_pallets'));
+    snapPallets.forEach(docP=>{
+      const d=docP.data();
+      const pn=(d.part_number||'').trim().toUpperCase();
+      const mod=(d.modelo||'').trim();
+      const qty=Number(d.quantity)||0;
+      if(mod!==modelo||pn!==parteUp||qty!==cant) return;
+      const created=d.created_at?new Date(d.created_at.seconds*1000).getTime():null;
+      if(created && Math.abs(created-envioTime)<24*60*60*1000) posibleDuplicado=true;
+    });
+  }catch(e){ console.error('Error verificando posible duplicado en ShipQR:', e); }
+
+  const mensaje=posibleDuplicado
+    ? `⚠️ ATENCIÓN: encontré un pallet en ShipQR que coincide con este envío (${modelo} · ${parte} · ${cant.toLocaleString()} pzas, mismo día).\n\nSi ese pallet SIGUE existiendo en ShipQR y reenvías desde aquí, vas a DUPLICAR el material contado como Producido.\n\nSolo continúa si ya confirmaste que ese pallet fue borrado en ShipQR. ¿Reenviar de todos modos?`
+    : `¿Deshacer el último envío de ${modelo} · ${parte} (${cant.toLocaleString()} pzas, ${new Date(ultimo.fecha_envio).toLocaleString('es-MX')})?\nEsto lo regresa a pendiente para volver a enviarlo (útil si ya se borró en ShipQR o se mandó mal).`;
+  if(!confirm(mensaje)) return;
   try{
     await deleteDoc(doc(db,'shipqr_envios_mes',ultimo._docId));
     delete SHIPQR_ENVIADOS[ultimo._docId];
