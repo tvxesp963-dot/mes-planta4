@@ -1803,6 +1803,10 @@ function limiteDesde(fechaStr) {
 // (lo de DESPUÉS de esa hora ya es del siguiente envío, no de este).
 function limiteHasta(fechaStr) {
   const d = new Date(fechaStr+'T00:00:00');
+  const hoyStr = new Date().toISOString().slice(0,10);
+  // Si el día "Hasta" es HOY, nunca se corta a la hora del corte (11am sáb / 3:30pm mié):
+  // el día en curso debe verse completo, hasta el momento actual/fin de día.
+  if (fechaStr === hoyStr) { d.setHours(23,59,59,999); return d; }
   if (d.getDay()===3) d.setHours(15,30,0,0);
   else if (d.getDay()===6) d.setHours(11,0,0,0);
   else d.setHours(23,59,59,999);
@@ -1843,12 +1847,14 @@ function renderShipqr(){
     const fecha=r.fecha||"—";
     const turno=r.turno||"—";
     const horaCaptura = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.tsLocal ? new Date(r.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—');
+    const tsOrden = r.ts ? r.ts.seconds*1000 : (r.tsLocal ? new Date(r.tsLocal).getTime() : 0);
     const key=modelo+"||"+parte+"||"+fecha+"||"+turno+"||"+horaCaptura;
-    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0,esPallet:false};}
+    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0,esPallet:false,tsOrden};}
     if(r.origen==="pallet_assy") modPnMap[key].esPallet=true;
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
+    if(tsOrden<modPnMap[key].tsOrden) modPnMap[key].tsOrden=tsOrden;
   });
-  const rows=Object.values(modPnMap).sort((a,b)=>(a.fecha+a.modelo).localeCompare(b.fecha+b.modelo));
+  const rows=Object.values(modPnMap).sort((a,b)=>a.tsOrden-b.tsOrden);
   window._shipqrExportRows=rows; // espejo exacto de lo mostrado en pantalla para exportar a Excel
 
   // Aviso si falta poco para el corte (miércoles 3:30pm / sábado 11:00am) y aún hay algo sin enviar del ciclo vigente
