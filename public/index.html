@@ -469,6 +469,75 @@ async function ejecutarCorregirModelo() {
 }
 window.ejecutarCorregirModelo = ejecutarCorregirModelo;
 
+// ── DESCUENTO DE MATERIAL AL ENVIAR A SHIPQR (tiempo real) ──
+// Se dispara desde enviarShipqr(), en el mismo evento que ya cuenta el
+// avance del plan. Descuenta solo las piezas BUENAS enviadas. Los defectos
+// y scrap de ese registro nunca pasan por aquí (nunca se envían a ShipQR)
+// y los sigue cubriendo Cierre de Jornada (ver el cambio en su "consumo").
+const DESC_DESCUENTO_ENVIO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE',
+  'CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD',
+  'BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)'];
+
+async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario) {
+  try {
+    if (!modelo || !cantidad) return;
+
+    const bomDoc = await getDoc(doc(db, 'bom_simulator_p4', 'bom_activo'));
+    if (!bomDoc.exists()) { console.error('Sin BOM activo, no se pudo descontar material del envío'); return; }
+    const BOM = JSON.parse(bomDoc.data().bom || '[]');
+    const compsModelo = BOM.filter(b => b.pn && b.sm && b.sm.trim() === modelo &&
+      DESC_DESCUENTO_ENVIO.includes((b.desc || '').trim().toUpperCase()));
+    if (!compsModelo.length) return;
+
+    const imsSnap = await getDocs(collection(db, 'planta4_inventario'));
+    const imsMap = {}, imsPorPn = {};
+    imsSnap.forEach(d => {
+      const data = d.data();
+      if (!data.pn) return;
+      const pnU = (data.pn || '').trim().toUpperCase();
+      const descU = (data.desc || data.descripcion || data.nombre || '').trim().toUpperCase();
+      imsMap[pnU + '|||' + descU] = { ...data, _docId: d.id };
+      (imsPorPn[pnU] = imsPorPn[pnU] || []).push({ ...data, _docId: d.id });
+    });
+    const buscarIMS = (pn, desc) => {
+      const pnU = (pn || '').trim().toUpperCase(), descU = (desc || '').trim().toUpperCase();
+      return imsMap[pnU + '|||' + descU] || (imsPorPn[pnU]?.length === 1 ? imsPorPn[pnU][0] : null);
+    };
+
+    const fechaISO = new Date().toISOString();
+    for (const c of compsModelo) {
+      const imsDoc = buscarIMS(c.pn, c.desc);
+      if (!imsDoc) { console.error(`Sin registro IMS único para ${c.pn} (${c.desc}), no se descontó`); continue; }
+
+      const invAnterior = Number(imsDoc.actual) || 0;
+      const salidasAnt = Number(imsDoc.salidas) || 0;
+      const nuevoActualCrudo = invAnterior - cantidad;
+      const nuevoActual = Math.max(0, nuevoActualCrudo);
+      const faltante = nuevoActualCrudo < 0 ? Math.abs(nuevoActualCrudo) : 0;
+
+      const histEntry = { tipo: 'OUT', fecha: fechaISO, qty: cantidad, loc: imsDoc.ubicacion || 'Almacén', user: usuario, ref: `Envío a ShipQR (${refDocId})` };
+      const nuevoHist = (Array.isArray(imsDoc.historial) ? imsDoc.historial : []).concat([histEntry]);
+
+      await updateDoc(doc(db, 'planta4_inventario', imsDoc._docId), {
+        actual: nuevoActual, salidas: salidasAnt + cantidad, historial: nuevoHist,
+        ultimoMovimiento: fechaISO.slice(0, 10), ultimaModificacion: fechaISO
+      });
+
+      await addDoc(collection(db, 'planta4_movimientos'), {
+        tipo: 'OUT', pn: c.pn, desc: c.desc || '', familia: c.familia || '', cantidad, faltante,
+        fecha: fechaISO, fechaProduccion: fechaISO.slice(0, 10), ubicacion: imsDoc.ubicacion || 'Almacén',
+        usuario, referencia: `Envío a ShipQR - ${refDocId}`, origen: 'ENVIO_SHIPQR'
+      });
+
+      if (faltante > 0) console.warn(`⚠️ Faltante de ${c.pn} (${c.desc}) al enviar a ShipQR: ${faltante}`);
+    }
+  } catch (e) {
+    console.error('Error descontando material por envío a ShipQR:', e);
+    // No se relanza el error: si el descuento falla, el envío a ShipQR ya se
+    // guardó y no debe bloquearse por esto. Revisar planta4_movimientos si aparece.
+  }
+}
+
 // ── CIERRE DE JORNADA ──
 async function calcularCierreJornada() {
   const fecha = document.getElementById('cj-fecha').value;
@@ -540,7 +609,10 @@ async function calcularCierreJornada() {
       const qty = Number(r.qty ?? r.prod)||0;
       const defectos = Number(r.defectos ?? r.def)||0;
       const scrap = Number(r.scrap)||0;
-      const consumo = qty + defectos + scrap;
+      // Ya no se incluye "qty" aquí: las piezas buenas se descuentan en tiempo real
+      // al momento de enviarlas a ShipQR (ver descontarMaterialEnvioShipqr).
+      // Cierre de Jornada ahora solo cubre lo que nunca llega a ShipQR: defectos y scrap.
+      const consumo = defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
       const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)'];
@@ -1501,6 +1573,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
     if(!SHIPQR_POR_KEY[key]) SHIPQR_POR_KEY[key]=[];
     SHIPQR_POR_KEY[key].push({...registro,_docId:docId});
     pintarHistorialShipqr();
+    descontarMaterialEnvioShipqr(modelo, cantidad, docId, CURRENT_USER?.nombre || 'Desconocido'); // descuenta IMS en tiempo real, sin bloquear el envío
   }catch(err){
     console.error('Error registrando envío a ShipQR:', err);
     alert('Error al registrar el envío: '+err.message);
