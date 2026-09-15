@@ -1297,6 +1297,57 @@ function rHoy(){
 
 }
 
+// Calcula el ciclo de envío VIGENTE según los cortes fijos: miércoles 3:30pm y sábado 11:00am.
+// Devuelve {inicio, fin} como objetos Date. "inicio" = corte anterior, "fin" = próximo corte (deadline).
+// Esto es SOLO para sugerir un rango por default — nunca bloquea que el usuario cambie las fechas a mano.
+function calcularCicloEnvioActual(ahora) {
+  ahora = ahora || new Date();
+  const cortes = [];
+  // Genera cortes de miércoles 15:30 y sábado 11:00 desde 3 semanas atrás hasta 2 semanas adelante
+  for (let i = -21; i <= 14; i++) {
+    const d = new Date(ahora);
+    d.setDate(d.getDate() + i);
+    d.setHours(0,0,0,0);
+    if (d.getDay() === 3) { const c = new Date(d); c.setHours(15,30,0,0); cortes.push(c); }
+    if (d.getDay() === 6) { const c = new Date(d); c.setHours(11,0,0,0); cortes.push(c); }
+  }
+  cortes.sort((a,b) => a - b);
+  let inicio = cortes[0], fin = cortes[cortes.length - 1];
+  for (let i = 0; i < cortes.length; i++) {
+    if (cortes[i] <= ahora) inicio = cortes[i];
+    if (cortes[i] > ahora) { fin = cortes[i]; break; }
+  }
+  return { inicio, fin };
+}
+function fechaISO(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+// Obtiene la fecha+hora REAL de un registro (no solo el día) para poder comparar contra el corte exacto
+function fechaHoraDeRegistro(r) {
+  if (r.ts && r.ts.seconds) return new Date(r.ts.seconds*1000);
+  if (r.tsLocal) return new Date(r.tsLocal);
+  return r.fecha ? new Date(r.fecha+'T12:00:00') : null; // sin hora capturada: asume mediodía (no debería pasar)
+}
+// Límite INICIAL de un rango: si el día elegido es miércoles o sábado, empieza justo en la hora del corte
+// (porque todo lo de ANTES de esa hora ya pertenece al envío anterior, ya cerrado).
+function limiteDesde(fechaStr) {
+  const d = new Date(fechaStr+'T00:00:00');
+  if (d.getDay()===3) d.setHours(15,30,0,0);
+  else if (d.getDay()===6) d.setHours(11,0,0,0);
+  return d;
+}
+// Límite FINAL de un rango: si el día elegido es miércoles o sábado, corta justo en la hora del corte
+// (lo de DESPUÉS de esa hora ya es del siguiente envío, no de este). Si el día "Hasta" es HOY, nunca
+// se corta a la hora del corte: el día en curso debe verse completo, hasta el momento actual/fin de día.
+function limiteHasta(fechaStr) {
+  const d = new Date(fechaStr+'T00:00:00');
+  const hoyStr = new Date().toISOString().slice(0,10);
+  if (fechaStr === hoyStr) { d.setHours(23,59,59,999); return d; }
+  if (d.getDay()===3) d.setHours(15,30,0,0);
+  else if (d.getDay()===6) d.setHours(11,0,0,0);
+  else d.setHours(23,59,59,999);
+  return d;
+}
+
 // Renderiza la tabla SHIPQR según el rango de fechas seleccionado
 function renderShipqr(){
   const tbShipqr=document.getElementById("tb-shipqr");
@@ -1305,16 +1356,20 @@ function renderShipqr(){
   const HOY=new Date().toISOString().slice(0,10);
   const inpDesde=document.getElementById("shipqr-desde");
   const inpHasta=document.getElementById("shipqr-hasta");
-  // Si los inputs están vacíos, default a hoy
-  if(inpDesde && !inpDesde.value) inpDesde.value=HOY;
+  // Si los inputs están vacíos, default al CICLO DE ENVÍO VIGENTE (miércoles 3:30pm / sábado 11:00am).
+  // Esto es solo una sugerencia inicial — el usuario puede cambiar las fechas libremente cuando quiera.
+  const ciclo = calcularCicloEnvioActual();
+  if(inpDesde && !inpDesde.value) inpDesde.value=fechaISO(ciclo.inicio);
   if(inpHasta && !inpHasta.value) inpHasta.value=HOY;
-  const desde=inpDesde?inpDesde.value:HOY;
+  const desde=inpDesde?inpDesde.value:fechaISO(ciclo.inicio);
   const hasta=inpHasta?inpHasta.value:HOY;
   const assyRango=REGISTROS.filter(r=>{
-    const fecha=r.fecha||"";
     const esPreKit=(r.maqNombre||"").toUpperCase().includes("PRE-KIT")||(r.maqTipo||"").toUpperCase()==="PRE-KIT";
     const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
-    return esPreKit && esGH90 && fecha>=desde && fecha<=hasta;
+    if(!esPreKit||!esGH90) return false;
+    const fh=fechaHoraDeRegistro(r);
+    if(!fh) return false;
+    return fh>=limiteDesde(desde) && fh<=limiteHasta(hasta);
   });
   if(!assyRango.length){
     tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción Pre-Kit con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
