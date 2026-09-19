@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Panel Maestro · Mantenimiento</title>
+<style>
+  body{margin:0;background:#0f1117;color:#fff;font-family:system-ui,Segoe UI,Arial,sans-serif;padding:24px}
+  h1{font-size:1.3rem;margin-bottom:4px}
+  .sub{color:#9aa5b1;font-size:.9rem;margin-bottom:24px}
+  .card{background:#171a24;border:1px solid #2a2f3d;border-radius:12px;padding:16px 18px;margin-bottom:12px;display:flex;align-items:center;justify-content:space-between;gap:16px}
+  .name{font-weight:600;font-size:1rem}
+  .desc{color:#9aa5b1;font-size:.8rem;margin-top:2px}
+  .sw{position:relative;width:52px;height:28px;flex-shrink:0}
+  .sw input{opacity:0;width:0;height:0}
+  .slider{position:absolute;inset:0;background:#3a4150;border-radius:28px;cursor:pointer;transition:.2s}
+  .slider:before{content:"";position:absolute;width:22px;height:22px;left:3px;top:3px;background:#fff;border-radius:50%;transition:.2s}
+  input:checked + .slider{background:#e74c3c}
+  input:checked + .slider:before{transform:translateX(24px)}
+  .status{font-size:.75rem;padding:3px 10px;border-radius:20px;font-weight:600}
+  .status.on{background:#3d1a1a;color:#e74c3c}
+  .status.off{background:#1a3d2b;color:#2ecc71}
+  .login-box{max-width:340px;margin:80px auto;text-align:center}
+  input[type=email],input[type=password]{width:100%;box-sizing:border-box;background:#171a24;border:1px solid #2a2f3d;color:#fff;padding:10px;border-radius:8px;margin-bottom:10px}
+  button.lbtn{width:100%;background:#4f8ef7;color:#fff;border:none;padding:10px;border-radius:8px;cursor:pointer;font-weight:600}
+  #err{color:#e74c3c;font-size:.85rem;margin-top:8px;display:none}
+  .msgbox{margin-top:20px}
+  .msgbox textarea{width:100%;box-sizing:border-box;background:#171a24;border:1px solid #2a2f3d;color:#fff;padding:8px;border-radius:8px;font-size:.85rem;min-height:60px}
+</style>
+</head>
+<body>
+
+<div id="login-view" class="login-box">
+  <h1>Panel Maestro</h1>
+  <div class="sub">Inicia sesión con tu cuenta de administrador</div>
+  <input type="email" id="li-user" placeholder="tu correo">
+  <input type="password" id="li-pass" placeholder="contraseña">
+  <button class="lbtn" onclick="doLogin()">Entrar</button>
+  <div id="err"></div>
+</div>
+
+<div id="panel-view" style="display:none;max-width:640px;margin:0 auto">
+  <h1>🔧 Panel Maestro de Mantenimiento</h1>
+  <div class="sub">Activa un interruptor para bloquear ese sistema (nadie puede capturar mientras esté en rojo). Los datos nunca se tocan.</div>
+  <div class="msgbox">
+    <label style="font-size:.85rem;color:#9aa5b1">Mensaje que verán los usuarios bloqueados:</label>
+    <textarea id="msg-global">El sistema no está disponible por el momento. Vuelve a intentarlo más tarde.</textarea>
+  </div>
+  <div id="lista" style="margin-top:20px"></div>
+</div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, doc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef",
+  measurementId:     "G-SGJTX6W9HS"
+};
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+
+// Agrega o quita sistemas aquí — el "id" debe coincidir con el que
+// escucha cada app (system_status/<id>) dentro de su propio index.html
+const SISTEMAS = [
+  {id:"mes_p4",        nombre:"MES · Planta 4",        desc:"mes-production-esp.web.app"},
+  {id:"ims_p4",        nombre:"IMS · Planta 4",        desc:"ims-planta4.web.app"},
+  {id:"mes_p3",        nombre:"MES · Planta 3",        desc:"mes-production-esp-p3.web.app"},
+  {id:"mes_p1",        nombre:"MES · Planta 1",        desc:"mes-production-esp-p1.web.app"},
+  {id:"shipqr",        nombre:"ShipQR",                desc:"shipqr-esp.web.app"},
+  {id:"bom_simulator", nombre:"BOM Simulator",         desc:"bom-simulator-p4-b4e16.web.app"},
+];
+
+window.doLogin = async () => {
+  const email = document.getElementById("li-user").value.trim();
+  const pass  = document.getElementById("li-pass").value;
+  const err = document.getElementById("err");
+  err.style.display="none";
+  try { await signInWithEmailAndPassword(auth, email, pass); }
+  catch(e){ err.textContent="Correo o contraseña incorrectos"; err.style.display="block"; }
+};
+
+onAuthStateChanged(auth, (user)=>{
+  document.getElementById("login-view").style.display = user ? "none" : "block";
+  document.getElementById("panel-view").style.display = user ? "block" : "none";
+  if(user) initPanel();
+});
+
+let inited=false;
+function initPanel(){
+  if(inited) return; inited=true;
+  const lista=document.getElementById("lista");
+  SISTEMAS.forEach(s=>{
+    const card=document.createElement("div");
+    card.className="card";
+    card.innerHTML=`
+      <div>
+        <div class="name">${s.nombre}</div>
+        <div class="desc">${s.desc}</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <span class="status off" id="st-${s.id}">Activo</span>
+        <label class="sw">
+          <input type="checkbox" id="sw-${s.id}" onchange="toggleSistema('${s.id}', this.checked)">
+          <span class="slider"></span>
+        </label>
+      </div>`;
+    lista.appendChild(card);
+    onSnapshot(doc(db,"system_status",s.id),(snap)=>{
+      const d=snap.exists()?snap.data():{};
+      document.getElementById(`sw-${s.id}`).checked=!!d.mantenimiento;
+      const st=document.getElementById(`st-${s.id}`);
+      st.textContent = d.mantenimiento ? "En mantenimiento" : "Activo";
+      st.className = "status " + (d.mantenimiento ? "on" : "off");
+    });
+  });
+}
+
+window.toggleSistema = async (id, activo) => {
+  const mensaje = document.getElementById("msg-global").value.trim() || "El sistema no está disponible por el momento. Vuelve a intentarlo más tarde.";
+  await setDoc(doc(db,"system_status",id), {
+    mantenimiento: activo,
+    mensaje,
+    actualizadoPor: auth.currentUser?.email || "admin",
+    actualizado: new Date().toISOString()
+  }, {merge:true});
+};
+</script>
+</body>
+</html>

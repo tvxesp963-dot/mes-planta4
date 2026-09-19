@@ -92,6 +92,13 @@
       </div>
     </div>
 
+    <label>¿Qué tipo de envío es?</label>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <button type="button" id="tp-plan" onclick="setTipoEnvio('PLAN')" style="flex:1;padding:12px 8px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;background:rgba(46,204,113,.18);border:2px solid var(--green);color:var(--green);margin-top:0">📦 Producción normal</button>
+      <button type="button" id="tp-remplazo" onclick="setTipoEnvio('REMPLAZO')" style="flex:1;padding:12px 8px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;background:transparent;border:2px solid var(--border);color:var(--muted);margin-top:0">⚠️ Remplazo</button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:4px">Un Remplazo se jala a ShipQR igual que producción GH90, aunque la parte sea especial (ej. GH69).</div>
+
     <button class="btn-primary" id="btn-guardar" onclick="guardarPallet()">✅ Registrar pallet</button>
     <button class="btn-logout" onclick="doLogout()">Cerrar sesión</button>
     <div class="err" id="fm-err"></div>
@@ -156,7 +163,21 @@ function hoyStr(){
 let CURRENT_USER = null;
 let corteHoy = null;
 let BOM_ACTIVO = [];
+let tipoEnvio = 'PLAN';
 window._misPalletsHoy = [];
+
+window.setTipoEnvio = (tipo) => {
+  tipoEnvio = tipo;
+  const btnPlan = document.getElementById('tp-plan');
+  const btnRemplazo = document.getElementById('tp-remplazo');
+  const esPlan = tipo === 'PLAN';
+  btnPlan.style.background = esPlan ? 'rgba(46,204,113,.18)' : 'transparent';
+  btnPlan.style.border = esPlan ? '2px solid var(--green)' : '2px solid var(--border)';
+  btnPlan.style.color = esPlan ? 'var(--green)' : 'var(--muted)';
+  btnRemplazo.style.background = !esPlan ? 'rgba(230,126,34,.18)' : 'transparent';
+  btnRemplazo.style.border = !esPlan ? '2px solid #e67e22' : '2px solid var(--border)';
+  btnRemplazo.style.color = !esPlan ? '#e67e22' : 'var(--muted)';
+};
 
 async function cargarBOM(){
   try{
@@ -223,6 +244,7 @@ onAuthStateChanged(auth, async (fireUser) => {
   document.getElementById("view-login").classList.add("hide");
   document.getElementById("view-form").classList.remove("hide");
   refrescarCorte();
+  setTipoEnvio('PLAN');
   await cargarBOM();
   await cargarHistorial();
 });
@@ -250,7 +272,7 @@ function renderHistorial(){
   }
   list.innerHTML = window._misPalletsHoy.map(r=>`
     <div class="hist-item">
-      <span>${r.modelo||"—"} · ${r.parte||"—"}</span>
+      <span>${r.modelo||"—"} · ${r.parte||"—"}${r.esRemplazo?' <span style="color:#e67e22;font-weight:700">⚠ Remplazo</span>':''}</span>
       <span style="color:var(--muted)">${(r.prod||0).toLocaleString()} pz</span>
     </div>`).join("");
 }
@@ -271,6 +293,7 @@ window.guardarPallet = async () => {
   const qty    = parseInt(document.getElementById("ip-qty").value) || 0;
   const def    = parseInt(document.getElementById("ip-def").value) || 0;
   const scrap  = parseInt(document.getElementById("ip-scrap").value) || 0;
+  const esRemplazo = tipoEnvio === 'REMPLAZO';
 
   if(!modelo){ errEl.textContent="Ingresa el modelo."; errEl.style.display="block"; return; }
   if(!parte){ errEl.textContent="Ingresa el número de parte."; errEl.style.display="block"; return; }
@@ -298,6 +321,7 @@ window.guardarPallet = async () => {
     scrapPct: qty>0 ? +(scrap/qty*100).toFixed(2) : 0,
     notas: "Registrado desde Salida de Pallet (ASSY)",
     origen: "pallet_assy",
+    esRemplazo,
     causaParo: "", minParo: 0,
     tsLocal: new Date().toISOString(),
     ts: serverTimestamp(),
@@ -311,6 +335,7 @@ window.guardarPallet = async () => {
     document.getElementById("ip-qty").value = "";
     document.getElementById("ip-def").value = "0";
     document.getElementById("ip-scrap").value = "0";
+    setTipoEnvio('PLAN');
     window._misPalletsHoy.push(reg);
     renderHistorial();
   } catch(e){

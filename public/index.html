@@ -104,7 +104,7 @@ async function buscarRegistrosEdit() {
     if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
     regs.sort((a,b) => (b.ts?.seconds||0)-(a.ts?.seconds||0));
     // Ordenar igual que Production Summary
-    const ordenMaqEdit = ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const ordenMaqEdit = ['VC1','VC2','S1','S2','S3','S4','S5','Zhongke','ASSY1'];
     const getOrdenEdit = n => { const i = ordenMaqEdit.findIndex(o=>(n||'').toUpperCase().includes(o.toUpperCase())); return i>=0?i:ordenMaqEdit.length; };
     regs.sort((a,b) => {
       const om = getOrdenEdit(a.maquina||a.maqNombre) - getOrdenEdit(b.maquina||b.maqNombre);
@@ -162,7 +162,7 @@ async function editarRegistro(id) {
       return `${String(d.getHours()).padStart(2,'0')}:${String(d.getMinutes()).padStart(2,'0')}`;
     })();
     const maqActual = reg.maquina || reg.maqNombre || '';
-    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','S5','Zhongke','ASSY1'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${maqActual===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
@@ -311,7 +311,7 @@ window.eliminarRegistroEdit=eliminarRegistroEdit;
 // ── AGREGAR REGISTRO MANUAL ──
 window.abrirNuevoRegistro = function() {
   const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
-  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','Zhongke','ASSY1'];
+  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['VC1','VC2','S1','S2','S3','S4','S5','Zhongke','ASSY1'];
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcTipo = ['TOP','BOT','VC','ASSY'].map(t=>`<option value="${t}">${t}</option>`).join('');
@@ -952,7 +952,33 @@ const MAQUINAS = [
   {nombre:"ASSY1", tipo:"ASSY", target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
   {nombre:"VC1",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
   {nombre:"VC2",   tipo:"VC",   target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"S5",    tipo:"TOP/BOT", target:5000, cortes:{C1:1000,C2:2000,C3:2000,OT:930}},
 ];
+// Orden solo visual para tablas/gráficas del dashboard. No cambia maqIdx
+// (el índice real guardado en cada registro), así que es seguro editarlo.
+const ORDEN_VISUAL = ['S1','S2','S3','S4','S5','Zhongke','ASSY1','VC1','VC2'];
+function visOrderIdx(){
+  const idxs = ORDEN_VISUAL.map(n=>MAQUINAS.findIndex(m=>m.nombre===n)).filter(i=>i>=0);
+  MAQUINAS.forEach((m,i)=>{ if(!idxs.includes(i)) idxs.push(i); });
+  return idxs;
+}
+
+// ── CORTES ESPECIALES (compartido con BOM Simulator) ──
+// BOM Simulator guarda en bom_simulator_p4/cortes_especiales una lista de
+// { original: <ms del corte automático>, nuevo: <ms de la fecha/hora real> }
+// cuando alguien mueve un corte de miércoles 3:30pm / sábado 11:00am a otra
+// fecha/hora. MES debe respetar esa misma corrección en sus propios cálculos
+// de ciclo de envío (aviso de corte próximo y rango por default de ShipQR).
+let CORTES_ESPECIALES = [];
+function aplicarCorteEspecial(corte){
+  if(!corte || !CORTES_ESPECIALES.length) return corte;
+  const match = CORTES_ESPECIALES.find(c=>c.original===corte.getTime());
+  return match ? new Date(match.nuevo) : corte;
+}
+onSnapshot(doc(db,'bom_simulator_p4','cortes_especiales'), (snap)=>{
+  CORTES_ESPECIALES = snap.exists() && Array.isArray(snap.data().lista) ? snap.data().lista : [];
+  if(document.getElementById('tb-shipqr')) renderShipqr();
+}, ()=>{});
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
 let SHIPQR_ENVIADOS={};
@@ -962,6 +988,21 @@ let charts={}, ranges={maq:"diario",tend:"diario"};
 let opStep=0, opTurno=null, opCorte=null, opMaq=null, alertasVistas=new Set();
 const HOY = (()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
 
+/* ══ MODO MANTENIMIENTO (controlado desde el panel maestro) ══ */
+let SISTEMA_BLOQUEADO=false;
+onSnapshot(doc(db,"system_status","mes_p4"),(snap)=>{
+  const data=snap.exists()?snap.data():{};
+  SISTEMA_BLOQUEADO=!!data.mantenimiento;
+  const ov=document.getElementById("mant-overlay");
+  if(!ov)return;
+  if(SISTEMA_BLOQUEADO && CURRENT_USER){
+    document.getElementById("mant-msg").textContent=data.mensaje||"El sistema no está disponible por el momento. Vuelve a intentarlo más tarde.";
+    ov.style.display="flex";
+  } else {
+    ov.style.display="none";
+  }
+});
+
 /* ══ AUTH ══ */
 onAuthStateChanged(auth, async (fireUser) => {
   if (fireUser) {
@@ -969,6 +1010,7 @@ onAuthStateChanged(auth, async (fireUser) => {
     if (snap.empty) { await signOut(auth); return; }
     CURRENT_USER = { uid:fireUser.uid, email:fireUser.email, ...snap.docs[0].data(), docId:snap.docs[0].id };
     showApp();
+    if(SISTEMA_BLOQUEADO){document.getElementById("mant-overlay").style.display="flex";}
   } else { showLogin(); }
 });
 
@@ -1217,9 +1259,9 @@ function renderMesPlan() {
   document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
   document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
 
-  const colores = {'VC1':'#FFBA00','VC2':'#00B8A0','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','ASSY1':'#00e676'};
-  const iconos = {'VC1':'⚙️','VC2':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','ASSY1':'✅'};
-  const ordenLineas = ['VC1','VC2','S1/S2','Zhongke','S3','S4','ASSY1'];
+  const colores = {'VC1':'#FFBA00','VC2':'#00B8A0','S1/S2':'#4da6ff','Zhongke':'#4da6ff','S3':'#00B8A0','S4':'#9B7FE0','S5':'#8ea0ff','ASSY1':'#00e676'};
+  const iconos = {'VC1':'⚙️','VC2':'⚙️','S1/S2':'🏭','Zhongke':'🤖','S3':'🏭','S4':'🏭','S5':'🏭','ASSY1':'✅'};
+  const ordenLineas = ['VC1','VC2','S1/S2','Zhongke','S3','S4','S5','ASSY1'];
   const lineas = mesPlanActivo.lineas || {};
   const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
 
@@ -1533,7 +1575,7 @@ function mostrarModalMotivoEnvio(){
     overlay.querySelector('#mm-cancelar').onclick=()=>cerrar(null);
   });
 }
-window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
+window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemplazoForzado)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
   const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
@@ -1548,16 +1590,27 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
     if(!confirm(`Solo quedan ${pendiente.toLocaleString()} pendientes. ¿Enviar ese máximo?`)) return;
     cantidad=pendiente;
   }
-  // Preguntar si esta cantidad es producción normal (Plan) o Remplazo, con un
-  // modal propio (botones claros) en vez del confirm() confuso del navegador.
-  // La ventana de ShipQR se abre DENTRO del clic real del botón elegido —
-  // así nunca pierde el permiso de ventana emergente, aunque después haya
-  // un await (esto fue justo lo que causó que 2 tarimas / 3,600 pzas se
-  // perdieran antes: el MES las marcaba ENVIADO pero la pestaña bloqueada
-  // nunca llegaba a crear el lote en ShipQR).
-  const seleccion=await mostrarModalMotivoEnvio();
-  if(!seleccion) return; // canceló de verdad, nada se guarda
-  const {motivo, win:shipqrWin}=seleccion;
+  // Si el registro ya viene marcado como Remplazo desde su origen (ej. Salida de
+  // Pallet), el motivo ya quedó decidido allá — no se vuelve a preguntar aquí.
+  // Se abre la ventana de ShipQR de inmediato, todavía dentro del mismo clic
+  // real del botón (sin await de por medio), para no perder el permiso de
+  // ventana emergente del navegador.
+  let motivo, shipqrWin;
+  if(esRemplazoForzado){
+    motivo='REMPLAZO';
+    shipqrWin=window.open('','shipqr_window');
+  } else {
+    // Preguntar si esta cantidad es producción normal (Plan) o Remplazo, con un
+    // modal propio (botones claros) en vez del confirm() confuso del navegador.
+    // La ventana de ShipQR se abre DENTRO del clic real del botón elegido —
+    // así nunca pierde el permiso de ventana emergente, aunque después haya
+    // un await (esto fue justo lo que causó que 2 tarimas / 3,600 pzas se
+    // perdieran antes: el MES las marcaba ENVIADO pero la pestaña bloqueada
+    // nunca llegaba a crear el lote en ShipQR).
+    const seleccion=await mostrarModalMotivoEnvio();
+    if(!seleccion) return; // canceló de verdad, nada se guarda
+    motivo=seleccion.motivo; shipqrWin=seleccion.win;
+  }
   const docId=key+'||'+Date.now();
   const registro={
     key, modelo, parte, fecha, turno, horaCaptura,
@@ -1723,8 +1776,9 @@ function rHoy(){
       const statusLabel={ok:"OK",normal:"Normal",warning:"Warning",critical:"Critical"}[status];
       return{m,mins,causas,pct,statusColor,statusLabel};
     }).filter(r=>r.mins>0||true);
+    const dtRowsV=visOrderIdx().map(i=>dtRows[i]);
 
-    tbDt.innerHTML=dtRows.map(r=>`<tr>
+    tbDt.innerHTML=dtRowsV.map(r=>`<tr>
       <td style="font-weight:500">${r.m.nombre}</td>
       <td style="font-size:.85rem;color:var(--muted);max-width:120px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap">${r.causas}</td>
       <td style="text-align:right;font-weight:500;color:${r.mins>0?r.statusColor:"var(--muted)"}">${r.mins}</td>
@@ -1737,11 +1791,13 @@ function rHoy(){
       <td></td>
     </tr>`;
   }
+  const vo=visOrderIdx();
+  const aggV=vo.map(i=>agg[i]);
   const tb=document.getElementById("tb-hoy");tb.innerHTML="";
-  agg.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${m.tipo}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"✅":pct>=80?"⚠️":"🔴"}</td>`;tb.appendChild(tr);});
-  const pcts=agg.map(m=>m.target>0?+(m.prod/m.target*100).toFixed(1):0);
+  aggV.forEach(m=>{const pct=m.target>0?(m.prod/m.target*100):0;const tr=document.createElement("tr");tr.innerHTML=`<td><strong>${m.nombre}</strong></td><td><span class="tbadge ${m.tipo}">${m.tipo}</span></td><td>${m.target.toLocaleString()}</td><td>${m.prod.toLocaleString()}</td><td>${m.def.toLocaleString()}</td><td>${m.scrap.toLocaleString()}</td><td class="${sem(pct)}">${pct.toFixed(1)}%</td><td>${pct>=95?"✅":pct>=80?"⚠️":"🔴"}</td>`;tb.appendChild(tr);});
+  const pcts=aggV.map(m=>m.target>0?+(m.prod/m.target*100).toFixed(1):0);
   const cols=pcts.map(p=>p>=95?"#2ecc71":p>=80?"#f1c40f":"#e74c3c");
-  rebuildChart("chC",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[{label:"% Cumpl",data:pcts,backgroundColor:cols,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
+  rebuildChart("chC",{type:"bar",data:{labels:aggV.map(m=>m.nombre),datasets:[{label:"% Cumpl",data:pcts,backgroundColor:cols,borderRadius:6}]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.parsed.y.toFixed(1)+"%"}}},scales:{y:{min:0,max:120,ticks:{color:"#7f8c9a",callback:v=>v+"%"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
   // Gráfica apilada por corte
   const corteColors={C1:"#4f8ef7",C2:"#2ecc71",C3:"#f1c40f",OT:"#e67e22"};
   const corteDatasets=CORTES.map(c=>({
@@ -1770,14 +1826,18 @@ function rHoy(){
   });
   const planDataset={label:"Prod Plan",data:planPorMaquina,type:"line",borderColor:"#FFBA00",backgroundColor:"transparent",borderWidth:2,borderDash:[5,3],pointBackgroundColor:"#FFBA00",pointRadius:4,pointHoverRadius:6,order:0,fill:false};
 
-  rebuildChart("chP",{type:"bar",data:{labels:MAQUINAS.map(m=>m.nombre),datasets:[targetDataset,...prodDatasets,planDataset]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
+  const voP=visOrderIdx();
+  const targetDatasetV={...targetDataset,data:voP.map(i=>targetDataset.data[i])};
+  const prodDatasetsV=prodDatasets.map(d=>({...d,data:voP.map(i=>d.data[i])}));
+  const planDatasetV={...planDataset,data:voP.map(i=>planDataset.data[i])};
+  rebuildChart("chP",{type:"bar",data:{labels:voP.map(i=>MAQUINAS[i].nombre),datasets:[targetDatasetV,...prodDatasetsV,planDatasetV]},options:{responsive:true,plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>c.dataset.label+": "+(c.parsed.y||0).toLocaleString()+" pcs"}}},scales:{x:{stacked:true,ticks:{color:"#7f8c9a"},grid:{display:false}},y:{stacked:true,ticks:{color:"#7f8c9a",callback:v=>v.toLocaleString()},grid:{color:"#2e3347"}}}}});
   // Tabla producción por modelo y parte
   const tbParts=document.getElementById("tb-parts");
   if(tbParts){
     tbParts.innerHTML="";
     let totalQty=0,totalDef=0,totalScrap=0;
     if(!data.length){
-      tbParts.innerHTML='<tr><td colspan="9" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este período.</td></tr>';
+      tbParts.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este período.</td></tr>';
     } else {
             const maqModelMap={};
       data.forEach(r=>{
@@ -1789,7 +1849,7 @@ function rHoy(){
         maqModelMap[key].target+=r.target||0;
       });
       // Ordenar: VC → S1 → S2 → S3 → S4 → Zhongke → ASSY1
-      const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','Zhongke','ASSY1'];
+      const ordenMaq = ['VC1','VC2','S1','S2','S1/S2','S3','S4','S5','Zhongke','ASSY1'];
       const getOrden = nombre => {
         const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
         return idx >= 0 ? idx : ordenMaq.length;
@@ -1805,6 +1865,10 @@ function rHoy(){
         const pct=m.target>0?(m.prod/m.target*100):0;
         const cl=pct>=95?"green":pct>=80?"yellow":"red";
         const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[m.turno]||"#7f8c9a";
+        const defPct=m.prod>0?(m.def/m.prod*100):0;
+        const scrapPct=m.prod>0?(m.scrap/m.prod*100):0;
+        const defCl=defPct>=3?"red":defPct>=1?"yellow":"green";
+        const scrapCl=scrapPct>=3?"red":scrapPct>=1?"yellow":"green";
         const tr=document.createElement("tr");
         tr.innerHTML=`<td><strong>${m.maqNombre||"—"}</strong></td>
           <td class="model-code">${m.modelo}</td>
@@ -1814,16 +1878,22 @@ function rHoy(){
           <td class="blue">${m.prod.toLocaleString()}</td>
           <td>${m.def.toLocaleString()}</td>
           <td>${m.scrap.toLocaleString()}</td>
-          <td class="${cl}">${pct.toFixed(1)}%</td>`;
+          <td class="${cl}">${pct.toFixed(1)}%</td>
+          <td class="${defCl}">${defPct.toFixed(1)}%</td>
+          <td class="${scrapCl}">${scrapPct.toFixed(1)}%</td>`;
         tbParts.appendChild(tr);
         totalQty+=m.prod;totalDef+=m.def;totalScrap+=m.scrap;
       });
+      const totalDefPct=totalQty>0?(totalDef/totalQty*100):0;
+      const totalScrapPct=totalQty>0?(totalScrap/totalQty*100):0;
       const trTot=document.createElement("tr");
       trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
       trTot.innerHTML=`<td>TOTAL</td><td></td><td></td><td></td><td></td>
         <td class="blue">${totalQty.toLocaleString()}</td>
         <td>${totalDef.toLocaleString()}</td>
-        <td>${totalScrap.toLocaleString()}</td><td></td>`;
+        <td>${totalScrap.toLocaleString()}</td><td></td>
+        <td>${totalDefPct.toFixed(1)}%</td>
+        <td>${totalScrapPct.toFixed(1)}%</td>`;
       tbParts.appendChild(trTot);
     }
   }
@@ -1845,8 +1915,8 @@ function calcularCicloEnvioActual(ahora) {
     const d = new Date(ahora);
     d.setDate(d.getDate() + i);
     d.setHours(0,0,0,0);
-    if (d.getDay() === 3) { const c = new Date(d); c.setHours(15,30,0,0); cortes.push(c); }
-    if (d.getDay() === 6) { const c = new Date(d); c.setHours(11,0,0,0); cortes.push(c); }
+    if (d.getDay() === 3) { const c = new Date(d); c.setHours(15,30,0,0); cortes.push(aplicarCorteEspecial(c)); }
+    if (d.getDay() === 6) { const c = new Date(d); c.setHours(11,0,0,0); cortes.push(aplicarCorteEspecial(c)); }
   }
   cortes.sort((a,b) => a - b);
   let inicio = cortes[0], fin = cortes[cortes.length - 1];
@@ -1870,7 +1940,8 @@ function limiteDesde(fechaStr) {
   const d = new Date(fechaStr+'T00:00:00');
   if (d.getDay()===3) d.setHours(15,30,0,0);
   else if (d.getDay()===6) d.setHours(11,0,0,0);
-  return d;
+  else return d;
+  return aplicarCorteEspecial(d);
 }
 // Límite FINAL de un rango: si el día elegido es miércoles o sábado, corta justo en la hora del corte
 // (lo de DESPUÉS de esa hora ya es del siguiente envío, no de este).
@@ -1882,8 +1953,8 @@ function limiteHasta(fechaStr) {
   if (fechaStr === hoyStr) { d.setHours(23,59,59,999); return d; }
   if (d.getDay()===3) d.setHours(15,30,0,0);
   else if (d.getDay()===6) d.setHours(11,0,0,0);
-  else d.setHours(23,59,59,999);
-  return d;
+  else { d.setHours(23,59,59,999); return d; }
+  return aplicarCorteEspecial(d);
 }
 
 function renderShipqr(){
@@ -1903,13 +1974,14 @@ function renderShipqr(){
   const assyRango=REGISTROS.filter(r=>{
     const esASSY=(r.maqNombre||"").toUpperCase().includes("ASSY")||(r.maqTipo||"").toUpperCase()==="ASSY";
     const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
-    if(!esASSY||!esGH90) return false;
+    const esRemplazoExtra=!!r.esRemplazo;
+    if(!esASSY||(!esGH90 && !esRemplazoExtra)) return false;
     const fh=fechaHoraDeRegistro(r);
     if(!fh) return false;
     return fh>=limiteDesde(desde) && fh<=limiteHasta(hasta);
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción ASSY1 con PN GH90 (o marcada como Remplazo) entre ${desde} y ${hasta}.</td></tr>`;
     window._shipqrExportRows=[];
     return;
   }
@@ -1922,8 +1994,9 @@ function renderShipqr(){
     const horaCaptura = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.tsLocal ? new Date(r.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—');
     const tsOrden = r.ts ? r.ts.seconds*1000 : (r.tsLocal ? new Date(r.tsLocal).getTime() : 0);
     const key=modelo+"||"+parte+"||"+fecha+"||"+turno+"||"+horaCaptura;
-    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0,esPallet:false,tsOrden};}
+    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0,esPallet:false,esRemplazo:false,tsOrden};}
     if(r.origen==="pallet_assy") modPnMap[key].esPallet=true;
+    if(r.esRemplazo) modPnMap[key].esRemplazo=true;
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
     if(tsOrden<modPnMap[key].tsOrden) modPnMap[key].tsOrden=tsOrden;
   });
@@ -1967,14 +2040,14 @@ function renderShipqr(){
       estadoHtml=`<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`;
     }
     const tr=document.createElement("tr");
-    tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}${m.esPallet?' <span style="background:rgba(77,166,255,.15);color:#5BA3FF;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap">📦 Pallet</span>':''}</td>
+    tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}${m.esPallet?' <span style="background:rgba(77,166,255,.15);color:#5BA3FF;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap">📦 Pallet</span>':''}${m.esRemplazo?' <span style="background:rgba(230,126,34,.15);color:#e67e22;font-size:.65rem;font-weight:700;padding:2px 7px;border-radius:10px;white-space:nowrap">⚠ REMPLAZO</span>':''}</td>
       <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
       <td style="text-align:center;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.fecha}</td>
       <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.8rem;white-space:nowrap">${m.horaCaptura}</span></td>
       <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}${enviado>0?`<div style="font-weight:400;font-size:.7rem;color:var(--muted)">enviado: ${enviado.toLocaleString()}</div>`:''}</td>
       <td style="text-align:center;padding:10px 6px">${estadoHtml}</td>
       <td style="text-align:center;padding:10px 6px">
-        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}')"
+        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}',${!!m.esRemplazo})"
           ${completo?'disabled':''}
           style="background:${completo?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${completo?'var(--border)':'rgba(77,166,255,.4)'};color:${completo?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${completo?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
@@ -3005,6 +3078,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .mc.sel{border-color:var(--accent);background:#0d1f35;}.mc-done{opacity:0.5;border-color:#2ecc71!important;cursor:not-allowed!important;}.mn{font-size:.86rem;font-weight:700;}
 .tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.75rem;font-weight:600;margin-top:3px;}
 .TOP{background:#1a3a5c;color:#4f8ef7;}.BOT{background:#1a3d2b;color:#2ecc71;}.AUTO{background:#3d2b1a;color:#e67e22;}.ASSY{background:#3d1a3a;color:#9b59b6;}.VC{background:#1a3d3d;color:#1abc9c;}
+.tbadge[class~="TOP/BOT"]{background:#2a2f5c;color:#8ea0ff;}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
 .km{background:var(--card2);border-radius:8px;padding:7px;text-align:center;}
 .km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.75rem;color:var(--muted);margin-top:1px;}
@@ -3103,6 +3177,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 </style>
 </head>
 <body>
+<div id="mant-overlay" style="display:none;position:fixed;inset:0;z-index:99999;background:#0f1117;color:#fff;display:none;flex-direction:column;align-items:center;justify-content:center;text-align:center;padding:20px">
+  <div style="font-size:3rem;margin-bottom:10px">🔧</div>
+  <div style="font-size:1.4rem;font-weight:700;margin-bottom:8px">Sistema en mantenimiento</div>
+  <div id="mant-msg" style="color:#9aa5b1;max-width:420px;margin-bottom:24px">El sistema no está disponible por el momento. Vuelve a intentarlo más tarde.</div>
+  <button onclick="signOut(auth)" style="background:transparent;border:1px solid #3a4150;color:#fff;padding:10px 18px;border-radius:8px;cursor:pointer">Cerrar sesión</button>
+</div>
 <div id="login-view">
   <div class="login-box">
     <div class="login-logo"><img src="logo.jpg" style="width:120px;border-radius:8px;"></div>
@@ -3229,7 +3309,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="dc"><h3 id="ch-detail">Machine detail</h3><table><thead><tr><th id="th-machine1">Machine</th><th id="th-type1">Type</th><th id="th-target1">Target</th><th id="th-prod1">Prod</th><th id="th-def1">Def</th><th id="th-scrap1">Scrap</th><th>%</th><th id="th-status1">Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3 id="ch-downtime">Downtime detail</h3><table><thead><tr><th id="th-machine2">Machine</th><th id="th-cause2">Cause</th><th style="text-align:right" id="th-min2">Min</th><th style="text-align:right" id="th-shift2">% shift</th><th style="text-align:right" id="th-status2">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th><th>Def%</th><th>Scrap%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
       <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P4 → P3</h3>
         <div id="shipqr-aviso-corte" style="display:none;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600"></div>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
