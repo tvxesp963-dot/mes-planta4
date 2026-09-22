@@ -1069,9 +1069,11 @@ function applyRoleUI() {
 /* ══ LISTENER TIEMPO REAL ══ */
 function startListener() {
   if(unsubRegs)unsubRegs();
-  const q=query(REGS_COL(),orderBy("tsLocal","desc"));
+  const inicioMes = new Date(); inicioMes.setDate(1);
+  const inicioMesStr = inicioMes.toISOString().slice(0,10);
+  const q=query(REGS_COL(), where("fecha",">=",inicioMesStr));
   unsubRegs=onSnapshot(q,(snap)=>{
-    REGISTROS=snap.docs.map(d=>({id:d.id,...d.data()}));
+    REGISTROS=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.tsLocal||0)-(a.tsLocal||0));
     updateDashStats();
     const act=document.querySelector(".dtc.active");
     if(act){const id=act.id.replace("dtab-","");if(id==="hoy")rHoy();if(id==="feed")rFeed();if(id==="regs")rRegs();}
