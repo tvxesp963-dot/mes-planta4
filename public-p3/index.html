@@ -1553,11 +1553,46 @@ window.setR=(tab,r,btn)=>{ranges[tab]=r;document.querySelectorAll(`#rb-${tab} .r
 
 function grpBy(data,range){const map=new Map();data.forEach(r=>{const dt=new Date(r.fecha+"T12:00:00");let k;if(range==="diario")k=r.fecha;else if(range==="semanal"){const t=new Date(dt);t.setDate(t.getDate()+4-(t.getDay()||7));const y=t.getFullYear();const w=Math.ceil((((t-new Date(y,0,1))/86400000)+1)/7);k=`${y}-S${String(w).padStart(2,"0")}`;}else if(range==="mensual")k=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;else if(range==="trimestral"){const q=Math.ceil((dt.getMonth()+1)/3);k=`${dt.getFullYear()}-Q${q}`;}else k=`${dt.getFullYear()}`;if(!map.has(k))map.set(k,[]);map.get(k).push(r);});return[...map.entries()].sort((a,b)=>a[0]>b[0]?1:-1).map(([label,items])=>({label,items}));}
 
-function rMaq(){
+window.cargarHistorialCompleto=async()=>{
+  if(!confirm("Esto va a descargar TODOS los registros históricos guardados (puede ser un consumo grande de tu cuota de Firestore). ¿Continuar solo por esta vez?")) return;
+  const btn=document.getElementById("btn-cargar-todo");
+  const txtOriginal=btn.textContent;
+  btn.textContent="⏳ Cargando...";
+  btn.disabled=true;
+  try{
+    const snap=await getDocs(REGS_COL());
+    REGISTROS=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.tsLocal||0)-(a.tsLocal||0));
+    rRegs();
+    showToast(`✅ Historial completo cargado: ${REGISTROS.length} registros`,"var(--green)");
+  }catch(e){
+    showToast("❌ Error al cargar historial: "+e.message,"var(--red)");
+  }finally{
+    btn.textContent=txtOriginal;
+    btn.disabled=false;
+  }
+};
+
+function inicioMesActualStr(){const d=new Date();d.setDate(1);return d.toISOString().slice(0,10);}
+async function fetchRegistrosDesde(fechaInicioStr){
+  const snap=await getDocs(query(REGS_COL(),where("fecha",">=",fechaInicioStr)));
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+async function fetchRegistrosPorFechaExacta(fecha){
+  const snap=await getDocs(query(REGS_COL(),where("fecha","==",fecha)));
+  return snap.docs.map(d=>({id:d.id,...d.data()}));
+}
+
+async function rMaq(){
   if(!LINEAS||!LINEAS.length)return;
   const mi=parseInt(document.getElementById("smaq").value),m=LINEAS[mi];
   const turno=document.getElementById("tmaq").value;
-  const data=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
+  let fuenteMaq=REGISTROS;
+  if(ranges.maq==="trimestral"||ranges.maq==="anual"){
+    const meses=ranges.maq==="trimestral"?3:12;
+    const ini=new Date();ini.setMonth(ini.getMonth()-meses);
+    fuenteMaq=await fetchRegistrosDesde(ini.toISOString().slice(0,10));
+  }
+  const data=filt(fuenteMaq,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
   document.getElementById("mt-p").textContent=m.nombre+" · Producción ("+rL+")";
   document.getElementById("mt-c").textContent=m.nombre+" · Cumpl% ("+rL+")";
@@ -1571,8 +1606,15 @@ function rMaq(){
   makeLine("mD",lbl,grp.map(g=>{const v=g.items.filter(r=>r.prod>0);return v.length?parseFloat((v.reduce((s,r)=>s+r.defPct,0)/v.length).toFixed(1)):0}),"Def%","#f1c40f",true);
 }
 
-function rTend(){
-  const turno=document.getElementById("ttend").value,data=filt(REGISTROS,null,turno);
+async function rTend(){
+  const turno=document.getElementById("ttend").value;
+  let fuenteTend=REGISTROS;
+  if(ranges.tend==="trimestral"||ranges.tend==="anual"){
+    const meses=ranges.tend==="trimestral"?3:12;
+    const ini=new Date();ini.setMonth(ini.getMonth()-meses);
+    fuenteTend=await fetchRegistrosDesde(ini.toISOString().slice(0,10));
+  }
+  const data=filt(fuenteTend,null,turno);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
   ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`Producción total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
   document.getElementById("tt-comp").textContent=`Comparativo por línea (${rL})`;
@@ -1584,15 +1626,19 @@ function rTend(){
   makeLine("tS",lbl,agg.map(a=>+a.scrap.toFixed(1)),"Scrap%","#e74c3c",true);
   makeLine("tD",lbl,agg.map(a=>+a.def.toFixed(1)),"Def%","#f1c40f",true);
   const COLS=["#4f8ef7","#2ecc71","#e67e22","#9b59b6","#e74c3c","#1abc9c","#f39c12"];
-  const ds=LINEAS.map((m,mi)=>{const md=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);return{label:m.nombre,data:grpBy(md,ranges.tend).map(g=>g.items.reduce((s,r)=>s+r.prod,0)),borderColor:COLS[mi],backgroundColor:COLS[mi]+"33",tension:.4,fill:false,pointRadius:3};});
+  const ds=LINEAS.map((m,mi)=>{const md=filt(fuenteTend,null,turno).filter(r=>parseInt(r.maqIdx)===mi);return{label:m.nombre,data:grpBy(md,ranges.tend).map(g=>g.items.reduce((s,r)=>s+r.prod,0)),borderColor:COLS[mi],backgroundColor:COLS[mi]+"33",tension:.4,fill:false,pointRadius:3};});
   rebuildChart("tComp",{type:"line",data:{labels:lbl,datasets:ds},options:{responsive:true,plugins:{legend:{labels:{color:"#e8eaf0",font:{size:10}}}},scales:{y:{ticks:{color:"#7f8c9a"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
 }
 
-function rRegs(){
+async function rRegs(){
   const fecha=document.getElementById("freg").value;
   const turno=document.getElementById("treg").value;
   const maqF=document.getElementById("mreg").value;
-  let data=filt(REGISTROS,fecha||null,turno);
+  let fuenteReg=REGISTROS;
+  if(fecha && fecha<inicioMesActualStr()){
+    fuenteReg=await fetchRegistrosPorFechaExacta(fecha);
+  }
+  let data=filt(fuenteReg,fecha||null,turno);
   if(maqF!=="todos")data=data.filter(r=>parseInt(r.maqIdx)===parseInt(maqF));
   const tb=document.getElementById("tb-reg");tb.innerHTML="";
   if(!data.length){tb.innerHTML=`<tr><td colspan="11" class="empty">Sin registros.</td></tr>`;return;}
@@ -2745,6 +2791,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <select id="mreg" onchange="rRegs()"><option value="todos">Todas las líneas</option></select>
         <button class="dbtn dex" onclick="exportExcel()">⬇ Excel</button>
         <button class="dbtn drf" onclick="dRefresh()">🔄</button>
+        <button class="dbtn" id="btn-cargar-todo" onclick="cargarHistorialCompleto()" style="border:1px solid var(--amber);color:var(--amber);background:rgba(255,186,0,.08)">📥 Cargar todo el historial</button>
       </div>
       <div class="dc"><table><thead><tr><th>Fecha</th><th>T</th><th>Operador</th><th>Parte</th><th>Maq</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Notas</th><th></th></tr></thead><tbody id="tb-reg"></tbody></table></div>
     </div>
