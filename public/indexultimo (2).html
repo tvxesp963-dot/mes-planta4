@@ -1020,87 +1020,18 @@ window.doLogin = async () => {
   const err   = document.getElementById("lerr");
   err.style.display = "none";
   try { await signInWithEmailAndPassword(auth, email, pass); }
-  catch(e) { err.textContent=lt("badLogin"); err.style.display="block"; }
+  catch(e) { err.textContent="Usuario o contraseña incorrectos"; err.style.display="block"; }
 };
-// ── RECUPERAR CONTRASEÑA (autoservicio, ES/EN/KO) ──
-// Abre una ventana donde el usuario escribe su correo y Firebase le envía
-// un enlace para crear una contraseña nueva. No requiere intervención del admin.
-const LOGIN_TXT = {
-  es:{ sub:'Acceso con tu correo y contraseña', correo:'Correo electrónico', pass:'Contraseña', entrar:'Iniciar sesión', olvido:'¿Olvidaste tu contraseña? Da clic aquí para restablecerla', badLogin:'Usuario o contraseña incorrectos',
-       rTitulo:'🔑 Restablecer contraseña', rInstr:'Escribe tu correo. Te enviaremos un enlace para crear una contraseña nueva.', rEnviar:'📧 Enviar enlace', rCancelar:'Cancelar', rEnviando:'Enviando...',
-       rOk:'✅ Listo. Si el correo está registrado, recibirás un enlace en unos minutos. Revisa también la carpeta de SPAM. Abre el enlace, escribe tu nueva contraseña y vuelve a iniciar sesión aquí.',
-       rCerrar:'Cerrar', rVacio:'Escribe tu correo', rInvalido:'El correo no es válido', rMuchos:'Demasiados intentos. Espera unos minutos e intenta de nuevo.', rRed:'Sin conexión. Revisa tu internet e intenta de nuevo.', rError:'No se pudo enviar. Intenta de nuevo.' },
-  en:{ sub:'Sign in with your email and password', correo:'Email', pass:'Password', entrar:'Sign in', olvido:'Forgot your password? Click here to reset it', badLogin:'Wrong email or password',
-       rTitulo:'🔑 Reset password', rInstr:'Enter your email. We will send you a link to create a new password.', rEnviar:'📧 Send link', rCancelar:'Cancel', rEnviando:'Sending...',
-       rOk:'✅ Done. If the email is registered, you will receive a link in a few minutes. Also check your SPAM folder. Open the link, type your new password and sign in here again.',
-       rCerrar:'Close', rVacio:'Enter your email', rInvalido:'Invalid email', rMuchos:'Too many attempts. Wait a few minutes and try again.', rRed:'No connection. Check your internet and try again.', rError:'Could not send. Please try again.' },
-  ko:{ sub:'이메일과 비밀번호로 로그인', correo:'이메일', pass:'비밀번호', entrar:'로그인', olvido:'비밀번호를 잊으셨나요? 여기를 클릭하여 재설정하세요', badLogin:'이메일 또는 비밀번호가 올바르지 않습니다',
-       rTitulo:'🔑 비밀번호 재설정', rInstr:'이메일을 입력하세요. 새 비밀번호를 만들 수 있는 링크를 보내드립니다.', rEnviar:'📧 링크 보내기', rCancelar:'취소', rEnviando:'전송 중...',
-       rOk:'✅ 완료. 등록된 이메일이면 몇 분 안에 링크가 도착합니다. 스팸 폴더도 확인하세요. 링크를 열어 새 비밀번호를 입력한 후 여기서 다시 로그인하세요.',
-       rCerrar:'닫기', rVacio:'이메일을 입력하세요', rInvalido:'유효하지 않은 이메일입니다', rMuchos:'시도 횟수가 너무 많습니다. 몇 분 후 다시 시도하세요.', rRed:'인터넷 연결을 확인한 후 다시 시도하세요.', rError:'전송하지 못했습니다. 다시 시도하세요.' }
-};
-function lt(k){ const l=(typeof LANG!=='undefined'&&LOGIN_TXT[LANG])?LANG:'es'; return LOGIN_TXT[l][k]||LOGIN_TXT.es[k]; }
-function applyLoginLang(){
-  const set=(id,txt)=>{const el=document.getElementById(id); if(el) el.textContent=txt;};
-  set('login-sub-txt',lt('sub')); set('login-lbl-correo',lt('correo')); set('login-lbl-pass',lt('pass'));
-  set('login-btn-entrar',lt('entrar')); set('login-olvido',lt('olvido'));
-  ['es','en','ko'].forEach(l=>{const b=document.getElementById('login-lang-'+l); if(b) b.classList.toggle('active', (typeof LANG!=='undefined'?LANG:'es')===l);});
-}
-window.applyLoginLang = applyLoginLang;
-window.doReset = () => {
-  if (document.getElementById('reset-modal')) return;
-  const emailLogin = document.getElementById("li-user").value.trim();
-  const modal = document.createElement('div');
-  modal.id = 'reset-modal';
-  modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px';
-  modal.innerHTML = `<div style="background:var(--card);border:1px solid var(--border);border-radius:14px;padding:22px;width:100%;max-width:360px">
-      <div style="font-size:15px;font-weight:700;margin-bottom:8px;color:var(--text)">${lt('rTitulo')}</div>
-      <div id="rs-cuerpo">
-        <div style="font-size:13px;color:var(--muted);margin-bottom:12px;line-height:1.5">${lt('rInstr')}</div>
-        <input type="email" id="rs-email" value="${emailLogin.replace(/"/g,'&quot;')}" placeholder="correo@empresa.com" autocomplete="email"
-          style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:10px;padding:11px 13px;font-size:14px;outline:none;box-sizing:border-box">
-        <div id="rs-msg" style="display:none;font-size:12px;color:var(--red);margin-top:8px"></div>
-        <div style="display:flex;gap:8px;margin-top:14px">
-          <button id="rs-cancelar" style="flex:1;padding:11px;border-radius:10px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:13px">${lt('rCancelar')}</button>
-          <button id="rs-enviar" style="flex:1;padding:11px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;font-size:13px">${lt('rEnviar')}</button>
-        </div>
-      </div>
-    </div>`;
-  document.body.appendChild(modal);
-  const cerrar = () => modal.remove();
-  const inp = modal.querySelector('#rs-email');
-  const msg = modal.querySelector('#rs-msg');
-  const btn = modal.querySelector('#rs-enviar');
-  modal.querySelector('#rs-cancelar').onclick = cerrar;
-  modal.addEventListener('click', e => { if (e.target === modal) cerrar(); });
-  const enviar = async () => {
-    const email = inp.value.trim().toLowerCase();
-    msg.style.display = 'none';
-    if (!email) { msg.textContent = lt('rVacio'); msg.style.display = 'block'; inp.focus(); return; }
-    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) { msg.textContent = lt('rInvalido'); msg.style.display = 'block'; inp.focus(); return; }
-    btn.disabled = true; btn.textContent = lt('rEnviando');
-    try {
-      auth.languageCode = (typeof LANG !== 'undefined' && ['es','en','ko'].includes(LANG)) ? LANG : 'es'; // correo en el idioma elegido
-      await sendPasswordResetEmail(auth, email);
-      mostrarOk();
-    } catch (e) {
-      const c = e && e.code || '';
-      if (c === 'auth/user-not-found') { mostrarOk(); return; } // mismo mensaje: no revela qué correos existen
-      msg.textContent = c === 'auth/invalid-email' ? lt('rInvalido')
-        : c === 'auth/too-many-requests' ? lt('rMuchos')
-        : c === 'auth/network-request-failed' ? lt('rRed') : lt('rError');
-      msg.style.display = 'block';
-      btn.disabled = false; btn.textContent = lt('rEnviar');
-    }
-  };
-  const mostrarOk = () => {
-    modal.querySelector('#rs-cuerpo').innerHTML = `<div style="font-size:13px;color:var(--green);line-height:1.6;margin-bottom:14px">${lt('rOk')}</div>
-      <button id="rs-cerrar" style="width:100%;padding:11px;border-radius:10px;border:none;background:var(--accent);color:#fff;font-weight:700;cursor:pointer;font-size:13px">${lt('rCerrar')}</button>`;
-    modal.querySelector('#rs-cerrar').onclick = cerrar;
-  };
-  btn.onclick = enviar;
-  inp.addEventListener('keydown', e => { if (e.key === 'Enter') enviar(); });
-  setTimeout(() => inp.focus(), 50);
+window.doReset = async () => {
+  const email = document.getElementById("li-user").value.trim();
+  const err   = document.getElementById("lerr");
+  if(!email){err.textContent="Ingresa tu correo primero";err.style.display="block";return;}
+  try {
+    await sendPasswordResetEmail(auth, email);
+    err.style.background="var(--green)";err.style.color="#fff";
+    err.textContent="✅ Email enviado. Revisa tu bandeja de entrada.";err.style.display="block";
+    setTimeout(()=>{err.style.display="none";err.style.background="";err.style.color="";},5000);
+  } catch(e){err.textContent="Correo no encontrado";err.style.display="block";}
 };
 window.logout = async () => { if(unsubRegs)unsubRegs(); await signOut(auth); };
 
@@ -1138,11 +1069,9 @@ function applyRoleUI() {
 /* ══ LISTENER TIEMPO REAL ══ */
 function startListener() {
   if(unsubRegs)unsubRegs();
-  const inicioMes = new Date(); inicioMes.setDate(1);
-  const inicioMesStr = inicioMes.toISOString().slice(0,10);
-  const q=query(REGS_COL(), where("fecha",">=",inicioMesStr));
+  const q=query(REGS_COL(),orderBy("tsLocal","desc"));
   unsubRegs=onSnapshot(q,(snap)=>{
-    REGISTROS=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.tsLocal||0)-(a.tsLocal||0));
+    REGISTROS=snap.docs.map(d=>({id:d.id,...d.data()}));
     updateDashStats();
     const act=document.querySelector(".dtc.active");
     if(act){const id=act.id.replace("dtab-","");if(id==="hoy")rHoy();if(id==="feed")rFeed();if(id==="regs")rRegs();}
@@ -2269,46 +2198,11 @@ window.setR=(tab,r,btn)=>{ranges[tab]=r;document.querySelectorAll(`#rb-${tab} .r
 
 function grpBy(data,range){const map=new Map();data.forEach(r=>{const dt=new Date(r.fecha+"T12:00:00");let k;if(range==="diario")k=r.fecha;else if(range==="semanal"){const t=new Date(dt);t.setDate(t.getDate()+4-(t.getDay()||7));const y=t.getFullYear();const w=Math.ceil((((t-new Date(y,0,1))/86400000)+1)/7);k=`${y}-S${String(w).padStart(2,"0")}`;}else if(range==="mensual")k=`${dt.getFullYear()}-${String(dt.getMonth()+1).padStart(2,"0")}`;else if(range==="trimestral"){const q=Math.ceil((dt.getMonth()+1)/3);k=`${dt.getFullYear()}-Q${q}`;}else k=`${dt.getFullYear()}`;if(!map.has(k))map.set(k,[]);map.get(k).push(r);});return[...map.entries()].sort((a,b)=>a[0]>b[0]?1:-1).map(([label,items])=>({label,items}));}
 
-window.cargarHistorialCompleto=async()=>{
-  if(!confirm("Esto va a descargar TODOS los registros históricos guardados (puede ser un consumo grande de tu cuota de Firestore). ¿Continuar solo por esta vez?")) return;
-  const btn=document.getElementById("btn-cargar-todo");
-  const txtOriginal=btn.textContent;
-  btn.textContent="⏳ Cargando...";
-  btn.disabled=true;
-  try{
-    const snap=await getDocs(REGS_COL());
-    REGISTROS=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>(b.tsLocal||0)-(a.tsLocal||0));
-    rRegs();
-    showToast(`✅ Historial completo cargado: ${REGISTROS.length} registros`,"var(--green)");
-  }catch(e){
-    showToast("❌ Error al cargar historial: "+e.message,"var(--red)");
-  }finally{
-    btn.textContent=txtOriginal;
-    btn.disabled=false;
-  }
-};
-
-function inicioMesActualStr(){const d=new Date();d.setDate(1);return d.toISOString().slice(0,10);}
-async function fetchRegistrosDesde(fechaInicioStr){
-  const snap=await getDocs(query(REGS_COL(),where("fecha",">=",fechaInicioStr)));
-  return snap.docs.map(d=>({id:d.id,...d.data()}));
-}
-async function fetchRegistrosPorFechaExacta(fecha){
-  const snap=await getDocs(query(REGS_COL(),where("fecha","==",fecha)));
-  return snap.docs.map(d=>({id:d.id,...d.data()}));
-}
-
-async function rMaq(){
+function rMaq(){
   if(!MAQUINAS||!MAQUINAS.length)return;
   const mi=parseInt(document.getElementById("smaq").value),m=MAQUINAS[mi];
   const turno=document.getElementById("tmaq").value;
-  let fuenteMaq=REGISTROS;
-  if(ranges.maq==="trimestral"||ranges.maq==="anual"){
-    const meses=ranges.maq==="trimestral"?3:12;
-    const ini=new Date();ini.setMonth(ini.getMonth()-meses);
-    fuenteMaq=await fetchRegistrosDesde(ini.toISOString().slice(0,10));
-  }
-  const data=filt(fuenteMaq,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
+  const data=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.maq];
   document.getElementById("mt-p").textContent=m.nombre+" · Producción ("+rL+")";
   document.getElementById("mt-c").textContent=m.nombre+" · Cumpl% ("+rL+")";
@@ -2322,15 +2216,8 @@ async function rMaq(){
   makeLine("mD",lbl,grp.map(g=>{const v=g.items.filter(r=>r.prod>0);return v.length?parseFloat((v.reduce((s,r)=>s+r.defPct,0)/v.length).toFixed(1)):0}),"Def%","#f1c40f",true);
 }
 
-async function rTend(){
-  const turno=document.getElementById("ttend").value;
-  let fuenteTend=REGISTROS;
-  if(ranges.tend==="trimestral"||ranges.tend==="anual"){
-    const meses=ranges.tend==="trimestral"?3:12;
-    const ini=new Date();ini.setMonth(ini.getMonth()-meses);
-    fuenteTend=await fetchRegistrosDesde(ini.toISOString().slice(0,10));
-  }
-  const data=filt(fuenteTend,null,turno);
+function rTend(){
+  const turno=document.getElementById("ttend").value,data=filt(REGISTROS,null,turno);
   const rL={diario:"Diario",semanal:"Semanal",mensual:"Mensual",trimestral:"Trimestral",anual:"Anual"}[ranges.tend];
   ["p","c","s","d"].forEach((k,j)=>document.getElementById(`tt-${k}`).textContent=[`Producción total (${rL})`,`Cumplimiento% (${rL})`,`Scrap% (${rL})`,`Defectos% (${rL})`][j]);
   document.getElementById("tt-comp").textContent=`Comparativo por máquina (${rL})`;
@@ -2342,19 +2229,15 @@ async function rTend(){
   makeLine("tS",lbl,agg.map(a=>+a.scrap.toFixed(1)),"Scrap%","#e74c3c",true);
   makeLine("tD",lbl,agg.map(a=>+a.def.toFixed(1)),"Def%","#f1c40f",true);
   const COLS=["#4f8ef7","#2ecc71","#e67e22","#9b59b6","#e74c3c","#1abc9c","#f39c12"];
-  const ds=MAQUINAS.map((m,mi)=>{const md=filt(fuenteTend,null,turno).filter(r=>parseInt(r.maqIdx)===mi);return{label:m.nombre,data:grpBy(md,ranges.tend).map(g=>g.items.reduce((s,r)=>s+r.prod,0)),borderColor:COLS[mi],backgroundColor:COLS[mi]+"33",tension:.4,fill:false,pointRadius:3};});
+  const ds=MAQUINAS.map((m,mi)=>{const md=filt(REGISTROS,null,turno).filter(r=>parseInt(r.maqIdx)===mi);return{label:m.nombre,data:grpBy(md,ranges.tend).map(g=>g.items.reduce((s,r)=>s+r.prod,0)),borderColor:COLS[mi],backgroundColor:COLS[mi]+"33",tension:.4,fill:false,pointRadius:3};});
   rebuildChart("tComp",{type:"line",data:{labels:lbl,datasets:ds},options:{responsive:true,plugins:{legend:{labels:{color:"#e8eaf0",font:{size:10}}}},scales:{y:{ticks:{color:"#7f8c9a"},grid:{color:"#2e3347"}},x:{ticks:{color:"#7f8c9a"},grid:{display:false}}}}});
 }
 
-async function rRegs(){
+function rRegs(){
   const fecha=document.getElementById("freg").value;
   const turno=document.getElementById("treg").value;
   const maqF=document.getElementById("mreg").value;
-  let fuenteReg=REGISTROS;
-  if(fecha && fecha<inicioMesActualStr()){
-    fuenteReg=await fetchRegistrosPorFechaExacta(fecha);
-  }
-  let data=filt(fuenteReg,fecha||null,turno);
+  let data=filt(REGISTROS,fecha||null,turno);
   if(maqF!=="todos")data=data.filter(r=>parseInt(r.maqIdx)===parseInt(maqF));
   const tb=document.getElementById("tb-reg");tb.innerHTML="";
   if(!data.length){tb.innerHTML=`<tr><td colspan="11" class="empty">Sin registros.</td></tr>`;return;}
@@ -3115,7 +2998,6 @@ function applyTranslations(){
   document.querySelectorAll('.rb-anual').forEach(el=>el.textContent=t('dash_anual'));
   // Downtime no-dt option
   document.querySelectorAll('.opt-no-dt').forEach(el=>el.textContent=t('lbl_no_dt'));
-  if(typeof applyLoginLang==='function') applyLoginLang();
 }
 
 // Apply saved language on load (works even if DOMContentLoaded already fired, e.g. inside type="module")
@@ -3305,13 +3187,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   <div class="login-box">
     <div class="login-logo"><img src="logo.jpg" style="width:120px;border-radius:8px;"></div>
     <div class="login-title">Manufacturing MES · Eunsung Printing Mex</div>
-    <div style="display:flex;justify-content:center;gap:6px;margin-bottom:10px"><button class="lang-btn" id="login-lang-es" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn" id="login-lang-en" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="login-lang-ko" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div>
-    <div class="login-sub" id="login-sub-txt">Acceso con tu correo y contraseña</div>
-    <div class="lfield"><label id="login-lbl-correo">Correo electrónico</label><input type="email" id="li-user" placeholder="operador@tuempresa.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <div class="lfield"><label id="login-lbl-pass">Contraseña</label><input type="password" id="li-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
-    <button class="lbtn" id="login-btn-entrar" onclick="doLogin()">Iniciar sesión</button>
+    <div class="login-sub">Acceso con tu correo y contraseña</div>
+    <div class="lfield"><label>Correo electrónico</label><input type="email" id="li-user" placeholder="operador@tuempresa.com" autocomplete="email" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <div class="lfield"><label>Contraseña</label><input type="password" id="li-pass" placeholder="••••••" onkeydown="if(event.key==='Enter')doLogin()"></div>
+    <button class="lbtn" onclick="doLogin()">Iniciar sesión</button>
     <div style="text-align:center;margin-top:10px">
-      <span id="login-olvido" onclick="doReset()" style="font-size:.85rem;color:var(--accent);cursor:pointer;text-decoration:underline;">¿Olvidaste tu contraseña? Da clic aquí para restablecerla</span>
+      <span onclick="doReset()" style="font-size:.75rem;color:var(--accent);cursor:pointer;text-decoration:underline;">¿Olvidaste tu contraseña?</span>
     </div>
     <div class="lerr" id="lerr"></div>
   </div>
@@ -3527,7 +3408,6 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <select id="mreg" onchange="rRegs()"><option value="todos">Todas las máquinas</option></select>
         <button class="dbtn dex" onclick="exportExcel()">⬇ Excel</button>
         <button class="dbtn drf" onclick="dRefresh()">🔄</button>
-        <button class="dbtn" id="btn-cargar-todo" onclick="cargarHistorialCompleto()" style="border:1px solid var(--amber);color:var(--amber);background:rgba(255,186,0,.08)">📥 Cargar todo el historial</button>
       </div>
       <div class="dc"><table><thead><tr><th>Fecha</th><th>T</th><th>Operador</th><th>Parte</th><th>Maq</th><th>Prod</th><th>Def</th><th>Scrap</th><th>%</th><th>Notas</th><th></th></tr></thead><tbody id="tb-reg"></tbody></table></div>
     </div>
