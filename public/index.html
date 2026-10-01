@@ -2,7 +2,7 @@
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, viewport-fit=cover">
 <meta name="theme-color" content="#0f1117">
 <title>Manufacturing MES · Production System</title>
 <link rel="manifest" href="manifest.json">
@@ -3323,6 +3323,23 @@ body.tv-mode .ctrl{display:none;}
 body.tv-mode .dw{max-width:100%;padding:8px 16px;}
 @media(max-width:700px){.kgrid{grid-template-columns:repeat(2,1fr);}.g2{grid-template-columns:1fr;}.agrid{grid-template-columns:repeat(2,1fr);}.form-row{grid-template-columns:1fr 1fr;}}
 @media(max-width:480px){.form-row{grid-template-columns:1fr;}}
+
+/* ══ AJUSTES MÓVIL (iPhone / Android) — solo agrega, no cambia el escritorio ══ */
+html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
+.topbar{padding-top:calc(10px + env(safe-area-inset-top));padding-left:max(15px,env(safe-area-inset-left));padding-right:max(15px,env(safe-area-inset-right));}
+.modebar{overflow-x:auto;-webkit-overflow-scrolling:touch;scrollbar-width:none;}
+.modebar::-webkit-scrollbar{display:none;}
+.mbtn{white-space:nowrap;flex:1 0 auto;}
+.op{padding-bottom:calc(86px + env(safe-area-inset-bottom));}
+@media(max-width:700px){
+  /* Pestañas: cuadrícula que se acomoda sola (4 por fila en iPhone), todas visibles sin deslizar */
+  .modebar{display:grid;grid-template-columns:repeat(auto-fit,minmax(84px,1fr));overflow:visible;}
+  .mbtn{white-space:normal;flex:none;padding:9px 4px;font-size:.72rem;line-height:1.25;display:flex;align-items:center;justify-content:center;}
+  .topbar h1{font-size:.8rem;}
+  input,select,textarea{font-size:16px;}   /* evita el zoom automático de iPhone al tocar un campo */
+  .dc{overflow-x:auto;-webkit-overflow-scrolling:touch;}
+  .dw{padding-left:max(11px,env(safe-area-inset-left));padding-right:max(11px,env(safe-area-inset-right));}
+}
 </style>
 </head>
 <body>
