@@ -1906,6 +1906,7 @@ function rHoy(){
   const tbParts=document.getElementById("tb-parts");
   if(tbParts){
     tbParts.innerHTML="";
+    window._resumenExportRows=[]; window._resumenExportTotals=null; // espejo de la tabla para exportar a Excel
     let totalQty=0,totalDef=0,totalScrap=0;
     if(!data.length){
       tbParts.innerHTML='<tr><td colspan="11" style="text-align:center;color:var(--muted);padding:12px">Sin registros para este período.</td></tr>';
@@ -1940,6 +1941,7 @@ function rHoy(){
         const scrapPct=m.prod>0?(m.scrap/m.prod*100):0;
         const defCl=defPct>=3?"red":defPct>=1?"yellow":"green";
         const scrapCl=scrapPct>=3?"red":scrapPct>=1?"yellow":"green";
+        window._resumenExportRows.push({maq:m.maqNombre||"—",modelo:m.modelo,tipo:m.maqTipo||"—",parte:m.parte,turno:m.turno||"—",prod:m.prod,def:m.def,scrap:m.scrap,pct:pct,defPct:defPct,scrapPct:scrapPct});
         const tr=document.createElement("tr");
         tr.innerHTML=`<td><strong>${m.maqNombre||"—"}</strong></td>
           <td class="model-code">${m.modelo}</td>
@@ -1957,6 +1959,7 @@ function rHoy(){
       });
       const totalDefPct=totalQty>0?(totalDef/totalQty*100):0;
       const totalScrapPct=totalQty>0?(totalScrap/totalQty*100):0;
+      window._resumenExportTotals={prod:totalQty,def:totalDef,scrap:totalScrap,defPct:totalDefPct,scrapPct:totalScrapPct};
       const trTot=document.createElement("tr");
       trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
       trTot.innerHTML=`<td>TOTAL</td><td></td><td></td><td></td><td></td>
@@ -2167,6 +2170,34 @@ function exportarShipqrExcel(){
   XLSX.writeFile(wb,nombreArchivo);
 }
 window.exportarShipqrExcel=exportarShipqrExcel;
+
+// Exporta a Excel exactamente lo que se ve en "Resumen de producción · modelo y partes"
+// (respeta la fecha y el turno seleccionados arriba en el dashboard). Textos ES/EN/KO.
+function exportarResumenProduccionExcel(){
+  const rows=window._resumenExportRows||[];
+  const tot=window._resumenExportTotals;
+  const L={
+    es:{h:['Máquina','Modelo','Tipo','N° Parte','Turno','Cant.','Defectos','Scrap','% Cumpl.','Def%','Scrap%'],total:'TOTAL',hoja:'Resumen',arch:'Resumen_Produccion',vacio:'No hay datos para exportar en este período'},
+    en:{h:['Machine','Model','Type','Part No.','Shift','Qty','Defects','Scrap','% Compl.','Def%','Scrap%'],total:'TOTAL',hoja:'Summary',arch:'Production_Summary',vacio:'No data to export for this period'},
+    ko:{h:['기계','모델','유형','부품번호','교대','수량','불량','스크랩','달성률 %','결함률 %','불량률 %'],total:'합계',hoja:'요약',arch:'Production_Summary',vacio:'이 기간에 내보낼 데이터가 없습니다'}
+  }[(typeof LANG!=='undefined'&&['es','en','ko'].includes(LANG))?LANG:'es'];
+  if(!rows.length||!tot){ showToast('⚠️ '+L.vacio,'var(--red)'); return; }
+  const data=[L.h];
+  rows.forEach(r=>data.push([r.maq,r.modelo,r.tipo,r.parte,r.turno,r.prod,r.def,r.scrap,r.pct/100,r.defPct/100,r.scrapPct/100]));
+  data.push([L.total,'','','','',tot.prod,tot.def,tot.scrap,'',tot.defPct/100,tot.scrapPct/100]);
+  const ws=XLSX.utils.aoa_to_sheet(data);
+  ws['!cols']=[{wch:10},{wch:18},{wch:9},{wch:16},{wch:8},{wch:10},{wch:10},{wch:10},{wch:11},{wch:9},{wch:9}];
+  for(let r=1;r<data.length;r++){
+    [5,6,7].forEach(c=>{const a=XLSX.utils.encode_cell({r,c}); if(ws[a]&&typeof ws[a].v==='number') ws[a].z='#,##0';});
+    [8,9,10].forEach(c=>{const a=XLSX.utils.encode_cell({r,c}); if(ws[a]&&typeof ws[a].v==='number') ws[a].z='0.0%';});
+  }
+  const fecha=document.getElementById('fhoy')?.value||'';
+  const turno=document.getElementById('thoy')?.value||'todos';
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,L.hoja);
+  XLSX.writeFile(wb,`${L.arch}_${fecha}_${turno==='todos'?'ALL':'T'+turno}.xlsx`);
+}
+window.exportarResumenProduccionExcel=exportarResumenProduccionExcel;
 
 function rFeed(){
   const fecha=document.getElementById("ffeed").value,turno=document.getElementById("tfeed").value;
@@ -3428,7 +3459,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="dc"><h3 id="ch-detail">Machine detail</h3><table><thead><tr><th id="th-machine1">Machine</th><th id="th-type1">Type</th><th id="th-target1">Target</th><th id="th-prod1">Prod</th><th id="th-def1">Def</th><th id="th-scrap1">Scrap</th><th>%</th><th id="th-status1">Status</th></tr></thead><tbody id="tb-hoy"></tbody></table></div>
         <div class="dc"><h3 id="ch-downtime">Downtime detail</h3><table><thead><tr><th id="th-machine2">Machine</th><th id="th-cause2">Cause</th><th style="text-align:right" id="th-min2">Min</th><th style="text-align:right" id="th-shift2">% shift</th><th style="text-align:right" id="th-status2">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
-      <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th><th>Def%</th><th>Scrap%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
+      <div class="dc"><div style="display:flex;justify-content:space-between;align-items:center;gap:8px;flex-wrap:wrap;margin-bottom:7px"><h3 id="ch-summary" style="margin-bottom:0">Production summary · model &amp; parts</h3><button id="btn-excel-resumen" onclick="exportarResumenProduccionExcel()" style="padding:5px 12px;font-size:12px;font-weight:600;background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.4);border-radius:6px;cursor:pointer">📊 Excel</button></div><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th><th>Def%</th><th>Scrap%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
       <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P4 → P3</h3>
         <div id="shipqr-aviso-corte" style="display:none;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:10px 12px;margin-bottom:10px;font-size:13px;font-weight:600"></div>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
