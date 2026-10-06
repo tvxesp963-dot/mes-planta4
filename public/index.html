@@ -2617,6 +2617,7 @@ const TRANSLATIONS = {
     menu_dash:     '🖥️ Dashboard',
     menu_admin:    '⚙️ Admin',
     menu_breaks:   '⏸ Breaks',
+    menu_palletmedio: '🏷️ Pallet Medio',
     btn_logout:    '⏏ Salir',
     // Operator form
     lbl_info:      '📅 Información del Registro',
@@ -2751,6 +2752,7 @@ const TRANSLATIONS = {
     menu_dash:     '🖥️ Dashboard',
     menu_admin:    '⚙️ Admin',
     menu_breaks:   '⏸ Breaks',
+    menu_palletmedio: '🏷️ Mid-process Pallet',
     btn_logout:    '⏏ Logout',
     lbl_info:      '📅 Record Information',
     lbl_fecha:     'Date',
@@ -2876,6 +2878,7 @@ const TRANSLATIONS = {
     menu_dash:     '🖥️ 대시보드',
     menu_admin:    '⚙️ 관리자',
     menu_breaks:   '⏸ 휴식',
+    menu_palletmedio: '🏷️ 중간 공정 팔레트',
     btn_logout:    '⏏ 로그아웃',
     lbl_info:      '📅 기록 정보',
     lbl_fecha:     '날짜',
@@ -3017,6 +3020,7 @@ function applyTranslations(){
     'mb-dash':      t('menu_dash'),
     'mb-admin':     t('menu_admin'),
     'mb-breaks':    t('menu_breaks'),
+    'mb-palletmedio': t('menu_palletmedio'),
     'logout-lbl':   t('btn_logout'),
     // Operator form
     'lbl-info':     t('lbl_info'),
@@ -3369,7 +3373,7 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES · Production System</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn active" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a><a class="mbtn" id="mb-pallet" href="pallet-assy.html" target="_blank" style="text-decoration:none;display:none">📦 Pallet ASSY</a></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a><a class="mbtn" id="mb-pallet" href="pallet-assy.html" target="_blank" style="text-decoration:none;display:none">📦 Pallet ASSY</a><a class="mbtn" id="mb-palletmedio" href="pallet-medio.html" target="_blank" style="text-decoration:none">🏷️ Pallet Medio</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
