@@ -332,7 +332,7 @@ window.onParte = () => {
   const pal = PALLETS.filter(p=>p.maquina===maq && p.modelo===sm && p.parte===pn && p.status!=='VOID').reduce((s,p)=>s+(Number(p.qty)||0),0);
   const sin = Math.max(0, cap-pal);
   $('sinPal').textContent = (sm&&pn) ? T[LANG].sinPal(fmt(cap),fmt(pal),fmt(sin)) : '';
-  if (sin>0) $('qty').value = sin;
+  $('qty').value = (sm&&pn&&sin>0) ? sin : '';
   $('selDest').value = DEST_DEFAULT[maq] || 'IMS P4';
 };
 
