@@ -1,0 +1,552 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pallets de línea · Medio proceso</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--card2:#22263a;--accent:#4f8ef7;--green:#2ecc71;--yellow:#f1c40f;--red:#e74c3c;--text:#e8eaf0;--muted:#9aa5b5;--border:#2e3347;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:1100px;margin:0 auto;padding:14px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.top h1{font-size:1.25rem}
+.top small{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
+.flags{display:flex;gap:4px}
+.flags button{min-height:42px;min-width:42px;border-radius:8px;border:1px solid var(--border);background:var(--card);color:var(--muted);font-weight:700}
+.flags button{display:flex;align-items:center;justify-content:center;padding:0 8px;opacity:.6}
+.flags button img{width:34px;height:24px;object-fit:cover;border-radius:4px;display:block}
+.flags button.on{border:2px solid var(--accent);color:var(--text);opacity:1}
+.link{color:var(--accent);text-decoration:none;font-size:.85rem}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:12px}
+.chip{min-height:44px;padding:0 16px;border-radius:22px;border:1px solid var(--border);background:var(--card);color:#c5cfdd;font-weight:600;font-size:.95rem}
+.chip.on{border:2px solid var(--accent);color:#fff;background:var(--card2)}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:12px;margin-bottom:12px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px}
+.card h2{font-size:1rem;margin-bottom:10px}
+.lbl{display:block;font-size:.8rem;color:var(--muted);margin:8px 0 4px}
+select,input[type=number],input[type=date]{width:100%;min-height:46px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:0 10px;font-size:1rem}
+input.qty{font-size:1.5rem;font-weight:800;text-align:right}
+.btn{min-height:54px;width:100%;border-radius:10px;border:0;background:var(--green);color:#04140c;font-size:1.05rem;font-weight:800;margin-top:12px}
+.btn.sec{background:transparent;border:1px solid var(--accent);color:var(--accent);min-height:44px;width:auto;padding:0 14px;margin:0;font-size:.85rem;font-weight:700}
+.btn.warn{border-color:var(--red);color:var(--red)}
+.btn:disabled{opacity:.5}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:12px}
+.stat{flex:1 1 160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.stat .l{font-size:.75rem;color:var(--muted);font-weight:600}
+.stat .v{font-size:1.7rem;font-weight:800}
+.q{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:var(--card2);border-radius:10px;padding:9px;margin-bottom:8px}
+.q.run{border-color:var(--accent)}
+.q.next{border:2px solid var(--green);background:#10261c}
+.q .n{min-width:30px;height:30px;border-radius:15px;background:var(--border);display:flex;align-items:center;justify-content:center;font-weight:800}
+.q.run .n{background:var(--accent);color:#06121f}.q.next .n{background:var(--green);color:#04140c}
+.q .t{flex:1;min-width:0}.q .t b{display:block;font-size:.95rem}.q .t span{font-size:.78rem;color:var(--muted)}
+.tag{font-size:.75rem;font-weight:800;padding:3px 9px;border-radius:12px;white-space:nowrap}
+.tag.ok{background:var(--yellow);color:#241c00}.tag.run{background:var(--green);color:#04140c}.tag.no{background:#3a2a0f;color:#ffb84d;border:1px solid #6b4a14}
+.tag.pend{background:#3a2a0f;color:#ffb84d;border:1px solid #6b4a14}.tag.rec{background:#10261c;color:#6fdc9a;border:1px solid #2fa36a}.tag.void{background:#2a2a2a;color:#999;border:1px solid #444}
+.note{font-size:.78rem;color:var(--muted);margin-top:6px}
+.tw{overflow-x:auto}
+table{width:100%;min-width:900px;border-collapse:collapse;font-size:.85rem}
+th{background:var(--card2);color:var(--muted);text-align:left;padding:9px 10px;font-weight:600}
+td{padding:8px 10px;border-top:1px solid var(--border)}
+td.r,th.r{text-align:right}
+.pn{color:var(--accent);font-weight:700}
+.hide{display:none!important}
+.gate{max-width:420px;margin:80px auto;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;z-index:50}
+.modal .box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:460px;width:100%}
+.modal .acts{display:flex;gap:8px;margin-top:12px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);padding:10px 16px;border-radius:10px;z-index:80;font-weight:600}
+.pick{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:460px;width:100%}
+.pick h1{font-size:1.1rem;margin-bottom:4px}.pick .sub{font-size:.8rem;color:var(--muted);margin-bottom:10px}
+.opt{display:flex;align-items:center;gap:10px;border:1px solid var(--border);background:var(--card2);border-radius:10px;padding:10px;margin-bottom:8px;cursor:pointer}
+.opt.sel{border:2px solid var(--green);background:#10261c}.opt.wait{opacity:.6}
+.opt .n{min-width:30px;height:30px;border-radius:15px;background:var(--border);display:flex;align-items:center;justify-content:center;font-weight:800}
+.opt.sel .n{background:var(--green);color:#04140c}.opt .m{font-weight:700;font-size:.95rem}.opt .d{font-size:.78rem;color:var(--muted)}
+.linea{border-radius:10px;padding:9px 12px;font-size:.85rem;margin-bottom:8px}
+.linea.ok{background:#10261c;border:1px solid #2fa36a;color:#6fdc9a}.linea.warn{background:#3a2a0f;border:1px solid #6b4a14;color:#ffb84d}
+.linea b{display:block;font-size:1rem;color:#fff}.linea small{display:block;color:var(--muted);font-size:.75rem}
+.btn.line2{background:transparent;border:1px solid var(--accent);color:var(--accent);min-height:44px;margin-top:8px;font-size:.9rem}
+.btn.line2.red{border-color:var(--red);color:var(--red)}
+/* Hoja impresa (4in x 6in) */
+#sheet{width:4in;height:6in;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:.22in;display:flex;flex-direction:column;margin:0 auto}
+#sheet .pl{font-size:10px;color:#444;text-align:center}
+#sheet .hd{display:flex;align-items:center;justify-content:space-between;padding:6px 4px 8px;border-bottom:2px solid #111}
+#sheet .esp{font-size:20px;font-weight:800;font-style:italic;color:#1a3a6b}
+#sheet .dst{font-size:28px;font-weight:800;letter-spacing:1px}
+#sheet .mq{font-size:12px;font-weight:700;border:1.5px solid #111;padding:2px 8px;border-radius:4px}
+#sheet .row{display:grid;grid-template-columns:1.05in 1fr;border-bottom:1px solid #999}
+#sheet .row>div:first-child{padding:8px 6px;font-size:14px;font-weight:800;border-right:1px solid #999}
+#sheet .row>div:last-child{padding:8px 6px;text-align:center;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;word-break:break-word}
+#sheet .qrw{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+#sheet .qrw img{width:1.7in;height:1.7in}
+#sheet .idt{font-family:'Courier New',monospace;font-size:12px;font-weight:700}
+@media print{
+  @page{size:4in 6in;margin:0}
+  body *{visibility:hidden}
+  #sheet,#sheet *{visibility:visible}
+  #sheet{position:fixed;left:0;top:0;margin:0}
+}
+</style>
+</head>
+<body>
+<div id="gate" class="gate hide"><h1 id="g-t"></h1><p class="note" id="g-s" style="margin:10px 0 16px"></p><a class="link" href="index.html" id="g-l"></a></div>
+
+<div id="app" class="wrap hide">
+  <div class="top">
+    <div><h1 id="t-title"></h1><small id="t-sub"></small></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <a class="link" href="index.html" id="t-back"></a>
+      <div class="flags">
+        <button id="f-es" onclick="setLang('es')" title="Español" aria-label="Español"><img src="https://flagcdn.com/w80/mx.png" alt="ES"></button>
+        <button id="f-en" onclick="setLang('en')" title="English" aria-label="English"><img src="https://flagcdn.com/w80/us.png" alt="EN"></button>
+        <button id="f-ko" onclick="setLang('ko')" title="한국어" aria-label="한국어"><img src="https://flagcdn.com/w80/kr.png" alt="KO"></button>
+      </div>
+    </div>
+  </div>
+
+  <div class="chips" id="maqChips"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="l" id="s-n"></div><div class="v" id="v-n" style="color:var(--accent)">0</div></div>
+    <div class="stat"><div class="l" id="s-pz"></div><div class="v" id="v-pz" style="color:var(--green)">0</div></div>
+    <div class="stat"><div class="l" id="s-pe"></div><div class="v" id="v-pe" style="color:#ffb84d">0</div></div>
+  </div>
+
+  <div class="grid">
+    <div class="card">
+      <h2 id="c-close"></h2>
+      <label class="lbl" for="selModelo" id="l-model"></label><select id="selModelo" onchange="onModelo()"></select>
+      <label class="lbl" for="selParte" id="l-part"></label><select id="selParte" onchange="onParte()"></select>
+      <div class="note" id="sinPal"></div>
+      <label class="lbl" for="qty" id="l-qty"></label><input class="qty" id="qty" type="number" min="1" inputmode="numeric">
+      <label class="lbl" for="selDest" id="l-dest"></label>
+      <select id="selDest"><option value="IMS P4">IMS P4</option><option value="IMS P3">IMS P3</option></select>
+      <button class="btn" id="btnClose" onclick="cerrarPallet()"></button>
+    </div>
+    <div class="card">
+      <h2 id="c-queue"></h2>
+      <div id="lineaBox"></div>
+      <button class="btn line2" id="btnLinea" onclick="abrirPicker()"></button>
+      <div id="queue"></div>
+      <div class="note" id="queueNote"></div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+      <h2 id="c-list" style="margin:0"></h2>
+      <div style="display:flex;align-items:center;gap:8px"><label for="fecha" class="note" id="l-date"></label><input type="date" id="fecha" style="width:auto" onchange="onFecha()"></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="note" id="legend"></div>
+  </div>
+</div>
+
+<div id="modal" class="modal hide"><div class="box">
+  <div id="sheet"></div>
+  <div class="acts">
+    <button class="btn" style="margin:0" id="m-print" onclick="window.print()"></button>
+    <button class="btn sec" id="m-close" onclick="cerrarModal()"></button>
+  </div>
+</div></div>
+<div class="modal hide" id="pick-ov"><div class="pick">
+  <h1>▶ <span id="pk-t"></span></h1><div class="sub" id="pk-s"></div>
+  <div id="pk-list"></div>
+  <button class="btn" id="pk-ok" onclick="confirmarPicker()"></button>
+  <button class="btn line2 red" id="pk-end" onclick="terminarCorrida()"></button>
+  <button class="btn line2" id="pk-cancel" onclick="cerrarPicker()"></button>
+</div></div>
+<div id="toast" class="toast hide"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain: "mes-production-esp.firebaseapp.com",
+  projectId: "mes-production-esp",
+  storageBucket: "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId: "1:165168379582:web:9707579b363156208cd0ef"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+/* ───────── Idiomas ES / EN / KO ───────── */
+const T = {
+  es:{startRun:'▶ Elegir qué corre',changeRun:'▶ Cambiar qué corre',pkT:'Elegir qué va a correr',pkS:'Se muestra parpadeando en la pantalla del piso. Si no eliges, parpadea el que el plan necesita primero (envío más próximo y prioridad).',pkConfirm:m=>'Confirmar: '+m,pkChoose:'Elige un modelo',pkEnd:'⏹ Terminar corrida (ninguno)',pkCancel:'Cancelar',pkSug:'Sugerido',lineRun:'Corriendo en la pantalla del piso: ',lineBy:(n,h)=>'Confirmado por '+n+' · '+h,lineNone:'Sin confirmar: ',lineNoneMsg:'en el piso parpadea el que el plan necesita primero',lineEnded:'Corrida terminada: no parpadea ninguno',onlyMgr:'Solo el gerente o supervisor puede cambiar qué corre',lineOk:m=>'Ahora corre: '+m,lineEnd:'Corrida terminada',lineErr:'No se pudo guardar',pkMiss:'Sin material',title:'Pallets de línea · Medio proceso',sub:'Cierra el pallet, imprime la hoja con QR y recíbelo en IMS',back:'← Volver al MES',
+    sNum:'Pallets del día',sPz:'Piezas',sPend:'Pendientes de recibir en IMS',cClose:'Cerrar pallet',lModel:'Modelo',lPart:'N° Parte',lQty:'Cantidad del pallet',lDest:'Destino',
+    btnClose:'Cerrar pallet e imprimir hoja',cQueue:'Tu cola en ',cList:'Pallets del día',lDate:'Fecha',legend:'Pendiente = hoja impresa, aún sin escanear en IMS. Recibido = ya dio entrada por QR en IMS.',
+    thPallet:'Pallet',thMaq:'Máquina',thModel:'Modelo',thPart:'# Parte',thDesc:'Descripción',thQty:'Cant.',thHora:'Hora',thEstado:'Estado IMS',thHoja:'Hoja',
+    pend:'Pendiente',rec:'Recibido',void:'Anulado',reprint:'Reimprimir',anular:'Anular',selModel:'— Selecciona modelo —',selPart:'— Selecciona N° parte —',
+    sinPal:(c,p,s)=>`Producido en cortes: ${c} · En pallets: ${p} · Sin paletizar: ${s}`,
+    run:'Corriendo',next:'SIGUIENTE EN TU COLA',listo:'Listo',nomat:'Sin material',pendQ:'Pendiente',dias:'días',
+    noPlan:'Aún no hay plan de medio proceso publicado en el BOM Simulator.',planAge:(m)=>`Plan publicado hace ${m} min`,planOld:(m)=>`⚠ El plan lleva ${m} min sin actualizarse`,
+    noQueue:'No hay cola para esta máquina en el plan publicado.',gateT:'Inicia sesión',gateS:'Entra primero al MES con tu usuario y vuelve a abrir esta pantalla.',gateL:'Ir al MES',
+    printB:'Imprimir',closeB:'Cerrar',closed:'Pallet cerrado',err:'Error',qtyBad:'Captura una cantidad válida',pickAll:'Selecciona modelo y N° de parte',
+    confirmVoid:'¿Anular este pallet? Solo se puede si aún no se recibe en IMS.',voided:'Pallet anulado',noParts:'Sin partes de esta máquina en el BOM'},
+  en:{startRun:'▶ Choose what runs',changeRun:'▶ Change what runs',pkT:'Choose what will run',pkS:'It blinks on the floor screen. If you do not choose, the one the plan needs first blinks (nearest ship date and priority).',pkConfirm:m=>'Confirm: '+m,pkChoose:'Choose a model',pkEnd:'⏹ End run (none)',pkCancel:'Cancel',pkSug:'Suggested',lineRun:'Running on the floor screen: ',lineBy:(n,h)=>'Confirmed by '+n+' · '+h,lineNone:'Not confirmed: ',lineNoneMsg:'the floor blinks the one the plan needs first',lineEnded:'Run ended: nothing blinks',onlyMgr:'Only the manager or supervisor can change what runs',lineOk:m=>'Now running: '+m,lineEnd:'Run ended',lineErr:'Could not save',pkMiss:'No material',title:'Line Pallets · In-process',sub:'Close the pallet, print the QR sheet and receive it in IMS',back:'← Back to MES',
+    sNum:'Pallets today',sPz:'Pieces',sPend:'Pending receipt in IMS',cClose:'Close pallet',lModel:'Model',lPart:'Part No.',lQty:'Pallet quantity',lDest:'Destination',
+    btnClose:'Close pallet and print sheet',cQueue:'Your queue on ',cList:'Pallets of the day',lDate:'Date',legend:'Pending = sheet printed, not yet scanned in IMS. Received = already entered via QR in IMS.',
+    thPallet:'Pallet',thMaq:'Machine',thModel:'Model',thPart:'Part #',thDesc:'Description',thQty:'Qty',thHora:'Time',thEstado:'IMS status',thHoja:'Sheet',
+    pend:'Pending',rec:'Received',void:'Voided',reprint:'Reprint',anular:'Void',selModel:'— Select model —',selPart:'— Select part no. —',
+    sinPal:(c,p,s)=>`Produced in cuts: ${c} · In pallets: ${p} · Not palletized: ${s}`,
+    run:'Running',next:'NEXT IN YOUR QUEUE',listo:'Ready',nomat:'No material',pendQ:'Pending',dias:'days',
+    noPlan:'No in-process plan has been published from BOM Simulator yet.',planAge:(m)=>`Plan published ${m} min ago`,planOld:(m)=>`⚠ Plan not updated for ${m} min`,
+    noQueue:'No queue for this machine in the published plan.',gateT:'Sign in',gateS:'Sign in to the MES first, then open this screen again.',gateL:'Go to MES',
+    printB:'Print',closeB:'Close',closed:'Pallet closed',err:'Error',qtyBad:'Enter a valid quantity',pickAll:'Select model and part no.',
+    confirmVoid:'Void this pallet? Only possible if not yet received in IMS.',voided:'Pallet voided',noParts:'No parts for this machine in the BOM'},
+  ko:{startRun:'▶ 가동 항목 선택',changeRun:'▶ 가동 항목 변경',pkT:'가동할 항목 선택',pkS:'현장 화면에서 점멸합니다. 선택하지 않으면 계획상 가장 먼저 필요한 항목(가까운 출하일, 우선순위)이 점멸합니다.',pkConfirm:m=>'확인: '+m,pkChoose:'모델을 선택하세요',pkEnd:'⏹ 가동 종료 (없음)',pkCancel:'취소',pkSug:'추천',lineRun:'현장 화면 가동 중: ',lineBy:(n,h)=>n+' 확인 · '+h,lineNone:'미확정: ',lineNoneMsg:'현장에서 계획상 가장 먼저 필요한 항목이 점멸합니다',lineEnded:'가동 종료: 점멸 없음',onlyMgr:'관리자 또는 감독자만 변경할 수 있습니다',lineOk:m=>'가동 중: '+m,lineEnd:'가동 종료',lineErr:'저장 실패',pkMiss:'자재 부족',title:'라인 팔레트 · 반제품',sub:'팔레트를 마감하고 QR 시트를 출력한 뒤 IMS에서 입고하세요',back:'← MES로 돌아가기',
+    sNum:'오늘 팔레트',sPz:'수량',sPend:'IMS 입고 대기',cClose:'팔레트 마감',lModel:'모델',lPart:'품번',lQty:'팔레트 수량',lDest:'목적지',
+    btnClose:'팔레트 마감 및 시트 출력',cQueue:'작업 순서 · ',cList:'오늘의 팔레트',lDate:'날짜',legend:'대기 = 시트 출력됨, IMS 미스캔. 입고 = IMS에서 QR로 입고 완료.',
+    thPallet:'팔레트',thMaq:'설비',thModel:'모델',thPart:'품번',thDesc:'품명',thQty:'수량',thHora:'시간',thEstado:'IMS 상태',thHoja:'시트',
+    pend:'대기',rec:'입고',void:'취소됨',reprint:'재출력',anular:'취소',selModel:'— 모델 선택 —',selPart:'— 품번 선택 —',
+    sinPal:(c,p,s)=>`컷 생산: ${c} · 팔레트: ${p} · 미적재: ${s}`,
+    run:'작업 중',next:'다음 작업',listo:'준비됨',nomat:'자재 부족',pendQ:'잔량',dias:'일',
+    noPlan:'BOM Simulator에서 게시된 반제품 계획이 아직 없습니다.',planAge:(m)=>`계획 게시 ${m}분 전`,planOld:(m)=>`⚠ 계획이 ${m}분째 갱신되지 않음`,
+    noQueue:'게시된 계획에 이 설비의 작업 순서가 없습니다.',gateT:'로그인',gateS:'먼저 MES에 로그인한 후 이 화면을 다시 여세요.',gateL:'MES로 이동',
+    printB:'출력',closeB:'닫기',closed:'팔레트 마감됨',err:'오류',qtyBad:'올바른 수량을 입력하세요',pickAll:'모델과 품번을 선택하세요',
+    confirmVoid:'이 팔레트를 취소하시겠습니까? IMS에서 아직 입고되지 않은 경우에만 가능합니다.',voided:'팔레트 취소됨',noParts:'BOM에 이 설비의 품목이 없습니다'}
+};
+let LANG = (()=>{const l=localStorage.getItem('mes-lang');return T[l]?l:'es';})();
+const t = k => T[LANG][k];
+const fmt = n => (Number(n)||0).toLocaleString('en-US');
+
+/* ───────── Máquinas de medio proceso ───────── */
+const MAQS = ['S1','S2','S3','S4','S5','Zhongke','VC1','VC2'];
+const PLANTAS = { S1:['S1/S2','S3/S4'], S2:['S1/S2','S3/S4'], Zhongke:['S1/S2'], S3:['S1/S2','S3/S4'], S4:['S1/S2','S3/S4'], S5:['S1/S2','S3/S4'], VC1:['VC/Zhongke'], VC2:['VC/Zhongke'] };
+const DEST_DEFAULT = { VC1:'IMS P4', VC2:'IMS P4' };
+
+let USER = null, BOM = [], PLAN = null, PALLETS = [], REGS = [];
+let maq = localStorage.getItem('pm-maq') || 'S1';
+if (!MAQS.includes(maq)) maq = 'S1';
+let unsubPallets = null;
+
+const $ = id => document.getElementById(id);
+function hoyISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function toast(msg){ const e=$('toast'); e.textContent=msg; e.classList.remove('hide'); setTimeout(()=>e.classList.add('hide'),2600); }
+const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+/* ───────── Textos ───────── */
+function pintarTextos(){
+  document.documentElement.lang = LANG;
+  ['es','en','ko'].forEach(l=>$('f-'+l).classList.toggle('on',l===LANG));
+  $('t-title').textContent=t('title'); $('t-sub').textContent=t('sub'); $('t-back').textContent=t('back');
+  $('s-n').textContent=t('sNum'); $('s-pz').textContent=t('sPz'); $('s-pe').textContent=t('sPend');
+  $('c-close').textContent=t('cClose'); $('l-model').textContent=t('lModel'); $('l-part').textContent=t('lPart'); $('l-qty').textContent=t('lQty'); $('l-dest').textContent=t('lDest');
+  $('btnClose').textContent=t('btnClose'); $('c-list').textContent=t('cList'); $('l-date').textContent=t('lDate'); $('legend').textContent=t('legend');
+  $('m-print').textContent=t('printB'); $('m-close').textContent=t('closeB');
+  $('thead').innerHTML=['thPallet','thMaq','thModel','thPart','thDesc','thQty','thHora','thEstado','thHoja'].map((k,i)=>`<th class="${i===5?'r':''}">${t(k)}</th>`).join('');
+  $('g-t').textContent=t('gateT'); $('g-s').textContent=t('gateS'); $('g-l').textContent=t('gateL');
+}
+window.setLang = l => { LANG=l; localStorage.setItem('mes-lang',l); pintarTextos(); pintarTodo(); };
+
+/* ───────── BOM: partes por máquina ───────── */
+function filasDeMaquina(m){
+  const pl = PLANTAS[m] || [];
+  const porPlanta = BOM.filter(r => r.pn && r.sm && pl.includes(r.planta));
+  if (porPlanta.length) return porPlanta;
+  // Respaldo por descripción si el BOM no trae la planta
+  return BOM.filter(r => {
+    if (!r.pn || !r.sm) return false;
+    const d = (r.desc||'').toUpperCase();
+    if (m.startsWith('VC')) return d.includes('RANURADO') && d.includes('CHIP BOARD');
+    const top = d.includes('GIFT BOX') && !d.includes('SHEET'), bot = d.includes('LOWER BOX') && !d.includes('SHEET');
+    return (pl.includes('S1/S2') && top) || (pl.includes('S3/S4') && bot);
+  });
+}
+function colaDe(m){ return (PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m] : []; }
+
+function modelosDe(m){
+  const set = new Set(filasDeMaquina(m).map(r=>r.sm.trim()));
+  colaDe(m).forEach(c=>(c.modelos||[c.sm]).forEach(x=>{ if (x) set.add(String(x).trim()); }));
+  const orden = colaDe(m).flatMap(c=>c.modelos||[c.sm]);
+  return [...set].sort((a,b)=>{ const ia=orden.indexOf(a), ib=orden.indexOf(b); if(ia>=0&&ib>=0) return ia-ib; if(ia>=0) return -1; if(ib>=0) return 1; return a.localeCompare(b); });
+}
+function partesDe(m, sm){
+  const vistos = new Set(), out = [];
+  const norm = x => String(x||'').trim().toUpperCase();
+  const add = (pn, desc, fam) => {
+    pn = norm(pn); if (!pn) return;
+    const k = pn+'||'+norm(desc);
+    if (vistos.has(k)) return; vistos.add(k);
+    out.push({pn, desc:String(desc||'').trim(), familia:String(fam||pn.split('-')[0]||'').trim()});
+  };
+  const igual = r => norm(r.sm)===norm(sm);
+  // 1) Partes del BOM para este modelo en esta máquina
+  filasDeMaquina(m).filter(igual).forEach(r=>add(r.pn, r.desc, r.familia));
+  // 2) La parte que el plan manda correr para este modelo siempre debe aparecer
+  colaDe(m).filter(c=>(c.modelos||[c.sm]).map(norm).includes(norm(sm))).forEach(c=>{
+    if (!c.pn || out.some(p=>p.pn===norm(c.pn))) return;
+    const fila = BOM.find(r=>r.pn && norm(r.pn)===norm(c.pn));
+    add(c.pn, fila ? fila.desc : (c.desc||''), fila ? fila.familia : '');
+  });
+  // 3) Respaldo: si aún no hay nada, buscar el modelo en todo el BOM
+  if (!out.length) BOM.filter(r=>r.pn && r.sm && igual(r)).forEach(r=>add(r.pn, r.desc, r.familia));
+  return out;
+}
+
+/* ───────── Pantalla ───────── */
+function pintarChips(){
+  $('maqChips').innerHTML = MAQS.map(m=>`<button class="chip ${m===maq?'on':''}" onclick="selMaq('${m}')">${m}</button>`).join('');
+}
+window.selMaq = m => { maq=m; localStorage.setItem('pm-maq',m); pintarChips(); cargarRegs().then(()=>{ llenarModelos(); pintarCola(); pintarLista(); }); };
+
+function llenarModelos(sel){
+  // No reconstruir las listas mientras el usuario las tiene abiertas o está eligiendo
+  if (sel && (document.activeElement===$('selModelo') || document.activeElement===$('selParte'))) return;
+  const ms = modelosDe(maq);
+  const run = enCurso();
+  const pref = sel || (run && ms.includes(run.sm) ? run.sm : ((colaDe(maq).flatMap(c=>c.modelos||[c.sm])).find(x=>ms.includes(x))||'')) || '';
+  $('selModelo').innerHTML = `<option value="">${t('selModel')}</option>` + ms.map(m=>`<option value="${esc(m)}" ${m===pref?'selected':''}>${esc(m)}</option>`).join('');
+  llenarPartes(run && run.sm===pref ? run.pn : null, !!sel);
+}
+function llenarPartes(prefPn, conservar){
+  const sm = $('selModelo').value;
+  const ps = sm ? partesDe(maq, sm) : [];
+  if (sm && !ps.length) toast(t('noParts'));
+  const cola = colaDe(maq).find(c=>(c.modelos||[c.sm]).includes(sm));
+  const actual = conservar ? $('selParte').value : '';
+  const pref = (actual && ps.find(p=>p.pn===actual) ? actual : '') || prefPn || (cola && ps.find(p=>p.pn===cola.pn) ? cola.pn : (ps.length===1 ? ps[0].pn : ''));
+  $('selParte').innerHTML = `<option value="">${t('selPart')}</option>` + ps.map(p=>`<option value="${esc(p.pn)}" ${p.pn===pref?'selected':''}>${esc(p.pn)} · ${esc(p.desc)}</option>`).join('');
+  onParte();
+}
+window.onModelo = () => llenarPartes(null);
+window.onParte = () => {
+  const sm = $('selModelo').value, pn = $('selParte').value;
+  const cap = REGS.filter(r=>(r.maqNombre||r.maquina)===maq && (r.modelo||'').toUpperCase()===sm.toUpperCase() && (r.parte||'').trim().toUpperCase()===pn).reduce((s,r)=>s+(Number(r.prod!=null?r.prod:r.qty)||0),0);
+  const pal = PALLETS.filter(p=>p.maquina===maq && p.modelo===sm && p.parte===pn && p.status!=='VOID').reduce((s,p)=>s+(Number(p.qty)||0),0);
+  const sin = Math.max(0, cap-pal);
+  $('sinPal').textContent = (sm&&pn) ? T[LANG].sinPal(fmt(cap),fmt(pal),fmt(sin)) : '';
+  if (sin>0) $('qty').value = sin;
+  $('selDest').value = DEST_DEFAULT[maq] || 'IMS P4';
+};
+
+/* ───────── Qué corre en la máquina (lo confirma el gerente; si no, parpadea el primero de la fila) ───────── */
+let LINEA = {};   // maq -> {pn, sm, por, ts}
+const HORAS_CONF = 12;
+function confDe(m){ const c=LINEA[m]; return (c && c.ts && (Date.now()-c.ts)<=HORAS_CONF*36e5) ? c : null; }
+// Recomendado por el plan: 1) envío más próximo, 2) prioridad del Excel, 3) material completo, 4) mayor pendiente
+function capItem(c){
+  const ms=c.materiales||[]; if(!ms.length) return c.listo?(c.pendiente||0):0;
+  const cb=ms.filter(x=>/^CB_/.test(x.k)), otros=ms.filter(x=>!/^CB_/.test(x.k));
+  const caps=otros.map(x=>x.disp||0); if(cb.length) caps.push(cb.reduce((s,x)=>s+(x.disp||0),0));
+  return Math.min(...caps);
+}
+function recomendadoDe(m){
+  const l=colaDe(m).filter(x=>x.listo);
+  l.sort((a,b)=>{
+    const fa=a.fecha||'9999', fb=b.fecha||'9999'; if(fa!==fb) return fa<fb?-1:1;
+    const pa=a.prioridad||999, pb=b.prioridad||999; if(pa!==pb) return pa-pb;
+    const ca=capItem(a)>=(a.pendiente||0)?1:0, cb=capItem(b)>=(b.pendiente||0)?1:0; if(ca!==cb) return cb-ca;
+    return (b.pendiente||0)-(a.pendiente||0);
+  });
+  return l[0]||null;
+}
+function corriendoDe(m){
+  const cola=colaDe(m), c=confDe(m);
+  if (c && !c.pn) return null;                                   // corrida terminada
+  if (c && c.pn){ const it=cola.find(x=>x.pn===c.pn); if (it) return {it, conf:true}; }
+  const it=recomendadoDe(m); return it ? {it, conf:false} : null;
+}
+function enCurso(){
+  const r=corriendoDe(maq);
+  if (r) return {sm:(r.it.modelos||[r.it.sm])[0], pn:r.it.pn};
+  const hoy = PALLETS.filter(p=>p.maquina===maq && p.status!=='VOID').sort((a,b)=>(b.palletNo||0)-(a.palletNo||0));
+  return hoy.length ? {sm:hoy[0].modelo, pn:hoy[0].parte} : null;
+}
+const esGerente = () => USER && ['admin','supervisor'].includes(USER.rol);
+function pintarLinea(){
+  const box=$('lineaBox'), btn=$('btnLinea'); if(!box) return;
+  const c=confDe(maq), r=corriendoDe(maq);
+  const hora = ts => new Date(ts).toLocaleTimeString(T[LANG].dias?undefined:undefined,{hour:'numeric',minute:'2-digit'});
+  if (c && !c.pn) box.innerHTML = `<div class="linea warn">${t('lineEnded')}</div>`;
+  else if (c && c.pn && r && r.conf) box.innerHTML = `<div class="linea ok">${t('lineRun')}<b>${esc((r.it.modelos||[r.it.sm])[0])} · ${esc(r.it.pn)}</b><small>${t('lineBy')(esc(c.por||'—'),hora(c.ts))}</small></div>`;
+  else box.innerHTML = `<div class="linea warn">${t('lineNone')}<b>${r?esc((r.it.modelos||[r.it.sm])[0])+' · '+esc(r.it.pn):'—'}</b><small>${t('lineNoneMsg')}</small></div>`;
+  btn.textContent = (c && c.pn) ? t('changeRun') : t('startRun');
+  btn.style.display = '';
+  btn.style.opacity = esGerente() ? '1' : '.5';
+}
+let pickSel = null;
+window.abrirPicker = () => {
+  if (!esGerente()) { toast(t('onlyMgr')); return; }
+  const c=confDe(maq), r=corriendoDe(maq);
+  pickSel = (c && c.pn) ? c.pn : (r ? r.it.pn : null);
+  $('pk-t').textContent=t('pkT'); $('pk-s').textContent=t('pkS'); $('pk-end').textContent=t('pkEnd'); $('pk-cancel').textContent=t('pkCancel');
+  $('pick-ov').classList.remove('hide'); renderPicker();
+};
+window.cerrarPicker = () => $('pick-ov').classList.add('hide');
+function renderPicker(){
+  const cola=colaDe(maq);
+  $('pk-list').innerHTML = cola.length ? cola.map((c,i)=>{
+    const mods=(c.modelos||[c.sm]);
+    return `<div class="opt ${c.listo?'':'wait'} ${pickSel===c.pn?'sel':''}" onclick="elegirItem('${esc(c.pn)}')"><div class="n">${c.listo?(c.orden||i+1):'⏳'}</div><div><div class="m">${esc(mods.slice(0,2).join(', '))}${mods.length>2?' +'+(mods.length-2):''}${(recomendadoDe(maq)&&recomendadoDe(maq).pn===c.pn)?` <span class="tag ok">${t('pkSug')}</span>`:''}</div><div class="d">${esc(c.pn)} · ${t('pendQ')} ${fmt(c.pendiente)}${c.listo?'':' · '+t('pkMiss')}</div></div></div>`;
+  }).join('') : `<div class="note">${PLAN?t('noQueue'):t('noPlan')}</div>`;
+  const it=cola.find(c=>c.pn===pickSel);
+  $('pk-ok').textContent = it ? t('pkConfirm')((it.modelos||[it.sm])[0]) : t('pkChoose');
+  $('pk-ok').disabled = !it;
+}
+window.elegirItem = pn => { pickSel = pn; renderPicker(); };
+async function guardarLinea(it){
+  const data = it ? {pn:it.pn, sm:(it.modelos||[it.sm])[0], modelos:it.modelos||[it.sm]} : {pn:'', sm:'', modelos:[]};
+  Object.assign(data,{ por:(USER && (USER.nombre||USER.email))||'', userId:USER?USER.uid:'', ts:Date.now() });
+  try { await setDoc(doc(db,'bom_simulator_p4','linea_medio'), {maq:{[maq]:data}}, {merge:true}); return true; }
+  catch(e){ console.warn('linea_medio:',e); toast(t('lineErr')); return false; }
+}
+window.confirmarPicker = async () => {
+  const it=colaDe(maq).find(c=>c.pn===pickSel); if(!it) return;
+  if (await guardarLinea(it)) { cerrarPicker(); toast(t('lineOk')((it.modelos||[it.sm])[0])); }
+};
+window.terminarCorrida = async () => { if (await guardarLinea(null)) { cerrarPicker(); toast(t('lineEnd')); } };
+
+function pintarCola(){
+  $('c-queue').textContent = t('cQueue')+maq;
+  pintarLinea();
+  const cola = colaDe(maq);
+  const rr = corriendoDe(maq);
+  let nextIdx = -1;
+  const esRun = c => rr && c.pn===rr.it.pn;
+  cola.forEach((c,i)=>{ if(nextIdx<0 && c.listo && !esRun(c)) nextIdx=i; });
+  $('queue').innerHTML = cola.length ? cola.map((c,i)=>{
+    const isRun = esRun(c);
+    const cls = isRun?'run':(i===nextIdx?'next':'');
+    const tag = isRun ? `<span class="tag run">${t('run')}</span>` : (c.listo ? `<span class="tag ok">${t('listo')}</span>` : `<span class="tag no">${t('nomat')}</span>`);
+    return `<div class="q ${cls}"><div class="n">${c.orden||i+1}</div><div class="t">${i===nextIdx?`<span style="color:var(--green);font-weight:800;font-size:.7rem">${t('next')}</span>`:''}<b>${esc((c.modelos||[c.sm]).slice(0,2).join(', '))}${(c.modelos||[]).length>2?' +'+((c.modelos.length)-2):''} · ${esc(c.pn)}</b><span>${t('pendQ')} ${fmt(c.pendiente)}${c.dias?` · ~${c.dias} ${t('dias')}`:''}</span></div>${tag}</div>`;
+  }).join('') : `<div class="note">${PLAN?t('noQueue'):t('noPlan')}</div>`;
+  const pubMs = PLAN ? (PLAN.publicadoMs || Date.parse(PLAN.publicadoEn)) : 0;
+  if (PLAN && pubMs) {
+    const min = Math.max(0, Math.round((Date.now()-pubMs)/60000));
+    $('queueNote').textContent = min>30 ? t('planOld')(min) : t('planAge')(min);
+    $('queueNote').style.color = min>30 ? 'var(--yellow)' : '';
+  } else $('queueNote').textContent = '';
+}
+
+function pintarLista(){
+  const vivos = PALLETS.filter(p=>p.status!=='VOID');
+  $('v-n').textContent = fmt(vivos.length);
+  $('v-pz').textContent = fmt(vivos.reduce((s,p)=>s+(Number(p.qty)||0),0));
+  $('v-pe').textContent = fmt(vivos.filter(p=>p.status==='PENDING').length);
+  const filas = [...PALLETS].sort((a,b)=>(b.horaMs||0)-(a.horaMs||0));
+  $('tbody').innerHTML = filas.map(p=>{
+    const est = p.status==='RECEIVED' ? `<span class="tag rec">${t('rec')}${p.recibidoEn?' '+esc(p.recibidoEn):''}</span>` : p.status==='VOID' ? `<span class="tag void">${t('void')}</span>` : `<span class="tag pend">${t('pend')}</span>`;
+    const acc = p.status==='VOID' ? '' : `<button class="btn sec" onclick="reimprimir('${esc(p.id)}')">${t('reprint')}</button>` + (p.status==='PENDING' ? ` <button class="btn sec warn" onclick="anular('${esc(p.id)}')">${t('anular')}</button>` : '');
+    return `<tr style="${p.maquina===maq?'':'opacity:.85'}"><td><b>${esc(p.id)}</b></td><td>${esc(p.maquina)}</td><td>${esc(p.modelo)}</td><td class="pn">${esc(p.parte)}</td><td>${esc(p.desc)}</td><td class="r"><b>${fmt(p.qty)}</b></td><td>${esc(p.horaTxt||'')}</td><td>${est}</td><td>${acc}</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="note" style="padding:14px">—</td></tr>`;
+}
+function pintarTodo(){ pintarChips(); llenarModelos($('selModelo').value||null); pintarCola(); pintarLista(); }
+
+/* ───────── Datos en vivo ───────── */
+function escucharPallets(){
+  if (unsubPallets) unsubPallets();
+  const f = $('fecha').value || hoyISO();
+  unsubPallets = onSnapshot(query(collection(db,'pallets_medio'), where('fecha','==',f)), snap=>{
+    PALLETS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+    pintarLista(); pintarCola(); if ($('selParte').value) onParteSinPisarQty();
+  }, e=>{ console.error(e); toast(t('err')+': '+e.message); });
+}
+function onParteSinPisarQty(){ const q=$('qty').value; window.onParte(); if(q) $('qty').value=q; }
+window.onFecha = () => { escucharPallets(); cargarRegs().then(()=>{ pintarCola(); }); };
+async function cargarRegs(){
+  try { const f=$('fecha').value||hoyISO(); const s=await getDocs(query(collection(db,'registros'), where('fecha','==',f))); REGS=s.docs.map(d=>d.data()); }
+  catch(e){ REGS=[]; console.warn('registros:',e.message); }
+}
+
+/* ───────── Cerrar pallet ───────── */
+function qrTexto(p){ return [p.parte, p.desc, p.familia, p.qty, p.id].map(x=>String(x??'').replace(/\|/g,'/')).join('|'); }
+
+window.cerrarPallet = async () => {
+  const sm = $('selModelo').value, pn = $('selParte').value, qty = parseInt($('qty').value)||0;
+  if (!sm || !pn) { toast(t('pickAll')); return; }
+  if (qty<=0) { toast(t('qtyBad')); return; }
+  const parte = partesDe(maq, sm).find(p=>p.pn===pn);
+  const btn = $('btnClose'); btn.disabled = true;
+  try {
+    const f = hoyISO(), ymd = f.replace(/-/g,'');
+    let n = Math.max(0, ...PALLETS.filter(p=>p.maquina===maq && p.fecha===f).map(p=>p.palletNo||0)) + 1;
+    let id = `${ymd}-${maq}-${n}`;
+    while ((await getDoc(doc(db,'pallets_medio',id))).exists()) { n++; id = `${ymd}-${maq}-${n}`; }
+    const ahora = new Date();
+    const p = { id, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:parte?parte.desc:'', familia:parte?parte.familia:'', qty,
+      destino:$('selDest').value, status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
+      horaMs:ahora.getTime(), horaTxt:ahora.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), creadoEn:serverTimestamp() };
+    p.qr = qrTexto(p);
+    await setDoc(doc(db,'pallets_medio',id), p);
+    toast(t('closed')+': '+id);
+    $('qty').value = '';
+    mostrarHoja(p);
+  } catch(e){ console.error(e); toast(t('err')+': '+e.message); }
+  btn.disabled = false;
+};
+
+window.anular = async id => {
+  const p = PALLETS.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
+  if (!confirm(t('confirmVoid'))) return;
+  try { await updateDoc(doc(db,'pallets_medio',id), {status:'VOID', anuladoPor:(USER&&USER.nombre)||'', anuladoEn:serverTimestamp()}); toast(t('voided')); }
+  catch(e){ toast(t('err')+': '+e.message); }
+};
+window.reimprimir = id => { const p = PALLETS.find(x=>x.id===id); if (p) mostrarHoja(p); };
+
+/* ───────── Hoja con QR ───────── */
+function qrDataUrl(texto){
+  const tmp = document.createElement('div'); tmp.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(tmp);
+  new QRCode(tmp, {text:texto, width:300, height:300, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H});
+  const c = tmp.querySelector('canvas'), im = tmp.querySelector('img');
+  const url = c ? c.toDataURL('image/png') : (im ? im.src : '');
+  document.body.removeChild(tmp);
+  return url;
+}
+function mostrarHoja(p){
+  const [y,m,d] = p.fecha.split('-');
+  $('sheet').innerHTML = `
+    <div class="pl">Pallet ${esc(p.palletNo)}</div>
+    <div class="hd"><span class="esp">ESP</span><span class="dst">${esc(p.destino||'IMS P4')}</span><span class="mq">${esc(p.maquina)}</span></div>
+    <div class="row"><div># PART</div><div style="font-size:19px">${esc(p.parte)}</div></div>
+    <div class="row"><div>DESC:</div><div style="font-size:12px">${esc(p.desc)}<br>${esc(p.modelo)}</div></div>
+    <div class="row"><div>MACHINE:</div><div style="font-size:15px">${esc(p.maquina)}</div></div>
+    <div class="row"><div>QTY:</div><div style="font-size:22px">${fmt(p.qty)}</div></div>
+    <div class="row" style="border-bottom:1px solid #111"><div>DATE:</div><div style="font-size:15px">${d}.${m}.${y.slice(2)} · ${esc(p.horaTxt||'')}</div></div>
+    <div class="qrw"><img alt="QR" src="${qrDataUrl(p.qr || qrTexto(p))}"><span class="idt">${esc(p.id)}</span></div>`;
+  $('modal').classList.remove('hide');
+}
+window.cerrarModal = () => $('modal').classList.add('hide');
+
+/* ───────── Arranque ───────── */
+async function iniciar(fireUser){
+  try {
+    const us = await getDocs(query(collection(db,'usuarios'), where('uid','==',fireUser.uid)));
+    USER = us.empty ? {uid:fireUser.uid, nombre:fireUser.email} : {uid:fireUser.uid, ...us.docs[0].data()};
+  } catch(e){ USER = {uid:fireUser.uid, nombre:fireUser.email}; }
+  try {
+    const bd = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
+    BOM = bd.exists() ? JSON.parse(bd.data().bom||'[]') : [];
+  } catch(e){ BOM = []; }
+  onSnapshot(doc(db,'bom_simulator_p4','linea_medio'), q=>{ LINEA = (q.exists() && q.data().maq) ? q.data().maq : {}; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
+  onSnapshot(doc(db,'bom_simulator_p4','plan_piso_medio'), s=>{ PLAN = s.exists()?s.data():null; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
+  $('fecha').value = hoyISO();
+  await cargarRegs();
+  escucharPallets();
+  pintarTextos(); pintarTodo();
+  $('gate').classList.add('hide'); $('app').classList.remove('hide');
+  const qm = new URLSearchParams(location.search).get('m');
+  if (qm && MAQS.includes(qm)) window.selMaq(qm);
+}
+pintarTextos();
+onAuthStateChanged(auth, u => {
+  if (u) iniciar(u);
+  else { $('app').classList.add('hide'); $('gate').classList.remove('hide'); }
+});
+setInterval(()=>{ if(PLAN) pintarCola(); }, 60000);
+</script>
+</body>
+</html>
