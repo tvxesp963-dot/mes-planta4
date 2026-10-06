@@ -141,6 +141,7 @@ td.r,th.r{text-align:right}
   <div class="card">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
       <h2 id="c-list" style="margin:0"></h2>
+      <label class="note" style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="verTodas" onchange="onVerTodas()" style="width:auto;min-height:0"><span id="l-todas"></span></label>
       <div style="display:flex;align-items:center;gap:8px"><label for="fecha" class="note" id="l-date"></label><input type="date" id="fecha" style="width:auto" onchange="onFecha()"></div>
     </div>
     <div class="tw"><table>
@@ -190,7 +191,7 @@ const T = {
   es:{startRun:'▶ Elegir qué corre',changeRun:'▶ Cambiar qué corre',pkT:'Elegir qué va a correr',pkS:'Se muestra parpadeando en la pantalla del piso. Si no eliges, parpadea el que el plan necesita primero (envío más próximo y prioridad).',pkConfirm:m=>'Confirmar: '+m,pkChoose:'Elige un modelo',pkEnd:'⏹ Terminar corrida (ninguno)',pkCancel:'Cancelar',pkSug:'Sugerido',lineRun:'Corriendo en la pantalla del piso: ',lineBy:(n,h)=>'Confirmado por '+n+' · '+h,lineNone:'Sin confirmar: ',lineNoneMsg:'en el piso parpadea el que el plan necesita primero',lineEnded:'Corrida terminada: no parpadea ninguno',onlyMgr:'Solo el gerente o supervisor puede cambiar qué corre',lineOk:m=>'Ahora corre: '+m,lineEnd:'Corrida terminada',lineErr:'No se pudo guardar',pkMiss:'Sin material',title:'Pallets de línea · Medio proceso',sub:'Cierra el pallet, imprime la hoja con QR y recíbelo en IMS',back:'← Volver al MES',
     sNum:'Pallets del día',sPz:'Piezas',sPend:'Pendientes de recibir en IMS',cClose:'Cerrar pallet',lModel:'Modelo',lPart:'N° Parte',lQty:'Cantidad del pallet',lDest:'Destino',
     btnClose:'Cerrar pallet e imprimir hoja',cQueue:'Tu cola en ',cList:'Pallets del día',lDate:'Fecha',legend:'Pendiente = hoja impresa, aún sin escanear en IMS. Recibido = ya dio entrada por QR en IMS.',
-    thPallet:'Pallet',thMaq:'Máquina',thModel:'Modelo',thPart:'# Parte',thDesc:'Descripción',thQty:'Cant.',thHora:'Hora',thEstado:'Estado IMS',thHoja:'Hoja',
+    verTodas:'Ver todas las líneas',thPallet:'Pallet',thMaq:'Máquina',thModel:'Modelo',thPart:'# Parte',thDesc:'Descripción',thQty:'Cant.',thHora:'Hora',thEstado:'Estado IMS',thHoja:'Hoja',
     pend:'Pendiente',rec:'Recibido',void:'Anulado',reprint:'Reimprimir',anular:'Anular',selModel:'— Selecciona modelo —',selPart:'— Selecciona N° parte —',
     sinPal:(c,p,s)=>`Producido en cortes: ${c} · En pallets: ${p} · Sin paletizar: ${s}`,
     run:'Corriendo',next:'SIGUIENTE EN TU COLA',listo:'Listo',nomat:'Sin material',pendQ:'Pendiente',dias:'días',
@@ -201,7 +202,7 @@ const T = {
   en:{startRun:'▶ Choose what runs',changeRun:'▶ Change what runs',pkT:'Choose what will run',pkS:'It blinks on the floor screen. If you do not choose, the one the plan needs first blinks (nearest ship date and priority).',pkConfirm:m=>'Confirm: '+m,pkChoose:'Choose a model',pkEnd:'⏹ End run (none)',pkCancel:'Cancel',pkSug:'Suggested',lineRun:'Running on the floor screen: ',lineBy:(n,h)=>'Confirmed by '+n+' · '+h,lineNone:'Not confirmed: ',lineNoneMsg:'the floor blinks the one the plan needs first',lineEnded:'Run ended: nothing blinks',onlyMgr:'Only the manager or supervisor can change what runs',lineOk:m=>'Now running: '+m,lineEnd:'Run ended',lineErr:'Could not save',pkMiss:'No material',title:'Line Pallets · In-process',sub:'Close the pallet, print the QR sheet and receive it in IMS',back:'← Back to MES',
     sNum:'Pallets today',sPz:'Pieces',sPend:'Pending receipt in IMS',cClose:'Close pallet',lModel:'Model',lPart:'Part No.',lQty:'Pallet quantity',lDest:'Destination',
     btnClose:'Close pallet and print sheet',cQueue:'Your queue on ',cList:'Pallets of the day',lDate:'Date',legend:'Pending = sheet printed, not yet scanned in IMS. Received = already entered via QR in IMS.',
-    thPallet:'Pallet',thMaq:'Machine',thModel:'Model',thPart:'Part #',thDesc:'Description',thQty:'Qty',thHora:'Time',thEstado:'IMS status',thHoja:'Sheet',
+    verTodas:'Show all lines',thPallet:'Pallet',thMaq:'Machine',thModel:'Model',thPart:'Part #',thDesc:'Description',thQty:'Qty',thHora:'Time',thEstado:'IMS status',thHoja:'Sheet',
     pend:'Pending',rec:'Received',void:'Voided',reprint:'Reprint',anular:'Void',selModel:'— Select model —',selPart:'— Select part no. —',
     sinPal:(c,p,s)=>`Produced in cuts: ${c} · In pallets: ${p} · Not palletized: ${s}`,
     run:'Running',next:'NEXT IN YOUR QUEUE',listo:'Ready',nomat:'No material',pendQ:'Pending',dias:'days',
@@ -212,7 +213,7 @@ const T = {
   ko:{startRun:'▶ 가동 항목 선택',changeRun:'▶ 가동 항목 변경',pkT:'가동할 항목 선택',pkS:'현장 화면에서 점멸합니다. 선택하지 않으면 계획상 가장 먼저 필요한 항목(가까운 출하일, 우선순위)이 점멸합니다.',pkConfirm:m=>'확인: '+m,pkChoose:'모델을 선택하세요',pkEnd:'⏹ 가동 종료 (없음)',pkCancel:'취소',pkSug:'추천',lineRun:'현장 화면 가동 중: ',lineBy:(n,h)=>n+' 확인 · '+h,lineNone:'미확정: ',lineNoneMsg:'현장에서 계획상 가장 먼저 필요한 항목이 점멸합니다',lineEnded:'가동 종료: 점멸 없음',onlyMgr:'관리자 또는 감독자만 변경할 수 있습니다',lineOk:m=>'가동 중: '+m,lineEnd:'가동 종료',lineErr:'저장 실패',pkMiss:'자재 부족',title:'라인 팔레트 · 반제품',sub:'팔레트를 마감하고 QR 시트를 출력한 뒤 IMS에서 입고하세요',back:'← MES로 돌아가기',
     sNum:'오늘 팔레트',sPz:'수량',sPend:'IMS 입고 대기',cClose:'팔레트 마감',lModel:'모델',lPart:'품번',lQty:'팔레트 수량',lDest:'목적지',
     btnClose:'팔레트 마감 및 시트 출력',cQueue:'작업 순서 · ',cList:'오늘의 팔레트',lDate:'날짜',legend:'대기 = 시트 출력됨, IMS 미스캔. 입고 = IMS에서 QR로 입고 완료.',
-    thPallet:'팔레트',thMaq:'설비',thModel:'모델',thPart:'품번',thDesc:'품명',thQty:'수량',thHora:'시간',thEstado:'IMS 상태',thHoja:'시트',
+    verTodas:'전체 라인 보기',thPallet:'팔레트',thMaq:'설비',thModel:'모델',thPart:'품번',thDesc:'품명',thQty:'수량',thHora:'시간',thEstado:'IMS 상태',thHoja:'시트',
     pend:'대기',rec:'입고',void:'취소됨',reprint:'재출력',anular:'취소',selModel:'— 모델 선택 —',selPart:'— 품번 선택 —',
     sinPal:(c,p,s)=>`컷 생산: ${c} · 팔레트: ${p} · 미적재: ${s}`,
     run:'작업 중',next:'다음 작업',listo:'준비됨',nomat:'자재 부족',pendQ:'잔량',dias:'일',
@@ -248,7 +249,7 @@ function pintarTextos(){
   $('s-n').textContent=t('sNum'); $('s-pz').textContent=t('sPz'); $('s-pe').textContent=t('sPend');
   $('c-close').textContent=t('cClose'); $('l-model').textContent=t('lModel'); $('l-part').textContent=t('lPart'); $('l-qty').textContent=t('lQty'); $('l-dest').textContent=t('lDest');
   $('btnClose').textContent=t('btnClose'); $('c-list').textContent=t('cList'); $('l-date').textContent=t('lDate'); $('legend').textContent=t('legend');
-  $('m-print').textContent=t('printB'); $('m-close').textContent=t('closeB');
+  $('l-todas').textContent=t('verTodas'); $('m-print').textContent=t('printB'); $('m-close').textContent=t('closeB');
   $('thead').innerHTML=['thPallet','thMaq','thModel','thPart','thDesc','thQty','thHora','thEstado','thHoja'].map((k,i)=>`<th class="${i===5?'r':''}">${t(k)}</th>`).join('');
   $('g-t').textContent=t('gateT'); $('g-s').textContent=t('gateS'); $('g-l').textContent=t('gateL');
 }
@@ -435,17 +436,21 @@ function pintarCola(){
 }
 
 function pintarLista(){
-  const vivos = PALLETS.filter(p=>p.status!=='VOID');
+  const todas = $('verTodas') && $('verTodas').checked;
+  const ambito = todas ? PALLETS : PALLETS.filter(p=>p.maquina===maq);
+  $('s-n').textContent = t('sNum')+' · '+(todas?'*':maq); $('s-pz').textContent = t('sPz')+' · '+(todas?'*':maq); $('s-pe').textContent = t('sPend')+' · '+(todas?'*':maq);
+  const vivos = ambito.filter(p=>p.status!=='VOID');
   $('v-n').textContent = fmt(vivos.length);
   $('v-pz').textContent = fmt(vivos.reduce((s,p)=>s+(Number(p.qty)||0),0));
   $('v-pe').textContent = fmt(vivos.filter(p=>p.status==='PENDING').length);
-  const filas = [...PALLETS].sort((a,b)=>(b.horaMs||0)-(a.horaMs||0));
+  const filas = [...ambito].sort((a,b)=>(b.horaMs||0)-(a.horaMs||0));
   $('tbody').innerHTML = filas.map(p=>{
     const est = p.status==='RECEIVED' ? `<span class="tag rec">${t('rec')}${p.recibidoEn?' '+esc(p.recibidoEn):''}</span>` : p.status==='VOID' ? `<span class="tag void">${t('void')}</span>` : `<span class="tag pend">${t('pend')}</span>`;
     const acc = p.status==='VOID' ? '' : `<button class="btn sec" onclick="reimprimir('${esc(p.id)}')">${t('reprint')}</button>` + (p.status==='PENDING' ? ` <button class="btn sec warn" onclick="anular('${esc(p.id)}')">${t('anular')}</button>` : '');
     return `<tr style="${p.maquina===maq?'':'opacity:.85'}"><td><b>${esc(p.id)}</b></td><td>${esc(p.maquina)}</td><td>${esc(p.modelo)}</td><td class="pn">${esc(p.parte)}</td><td>${esc(p.desc)}</td><td class="r"><b>${fmt(p.qty)}</b></td><td>${esc(p.horaTxt||'')}</td><td>${est}</td><td>${acc}</td></tr>`;
   }).join('') || `<tr><td colspan="9" class="note" style="padding:14px">—</td></tr>`;
 }
+window.onVerTodas = () => pintarLista();
 function pintarTodo(){ pintarChips(); llenarModelos($('selModelo').value||null); pintarCola(); pintarLista(); }
 
 /* ───────── Datos en vivo ───────── */
