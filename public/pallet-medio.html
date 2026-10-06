@@ -500,7 +500,7 @@ window.reimprimir = id => { const p = PALLETS.find(x=>x.id===id); if (p) mostrar
 function qrDataUrl(texto){
   const tmp = document.createElement('div'); tmp.style.cssText='position:fixed;left:-9999px;top:0';
   document.body.appendChild(tmp);
-  new QRCode(tmp, {text:texto, width:300, height:300, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.H});
+  new QRCode(tmp, {text:texto, width:300, height:300, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M});
   const c = tmp.querySelector('canvas'), im = tmp.querySelector('img');
   const url = c ? c.toDataURL('image/png') : (im ? im.src : '');
   document.body.removeChild(tmp);
