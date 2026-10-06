@@ -85,9 +85,12 @@ td.r,th.r{text-align:right}
 #sheet .idt{font-family:'Courier New',monospace;font-size:12px;font-weight:700}
 @media print{
   @page{size:4in 6in;margin:0}
-  body *{visibility:hidden}
-  #sheet,#sheet *{visibility:visible}
-  #sheet{position:fixed;left:0;top:0;margin:0}
+  html,body{background:#fff!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important}
+  body>*:not(#modal){display:none!important}
+  #modal{display:block!important;position:static!important;background:none!important;padding:0!important;overflow:visible!important;inset:auto!important}
+  #modal .box{border:0!important;padding:0!important;max-width:none!important;width:auto!important;background:none!important}
+  #modal .acts{display:none!important}
+  #sheet{position:static!important;margin:0!important;page-break-after:avoid;break-after:avoid;page-break-inside:avoid;break-inside:avoid;overflow:hidden}
 }
 </style>
 </head>
