@@ -54,6 +54,16 @@ td{padding:8px 10px;border-top:1px solid var(--border)}
 td.r,th.r{text-align:right}
 .pn{color:var(--accent);font-weight:700}
 .hide{display:none!important}
+details.card{margin-bottom:12px}
+details.card>summary{cursor:pointer;font-weight:700;font-size:.95rem;min-height:40px;display:flex;align-items:center;color:var(--muted)}
+details.card[open]>summary{margin-bottom:8px;color:var(--text)}
+.pe{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border:1px solid var(--border);background:var(--card2);border-radius:12px;padding:12px;margin-bottom:10px}
+.pe.ant{border:2px solid var(--yellow)}
+.pe .info{flex:1 1 220px;min-width:0}.pe .info b{display:block;font-size:1.1rem}.pe .info span{display:block;font-size:.78rem;color:var(--muted)}
+.pe .info em{font-style:normal;font-weight:800;color:var(--yellow);font-size:.78rem}
+.pe input.qty{width:140px;min-height:54px}
+.pe .btn{width:auto;flex:1 1 210px;margin:0}
+.pe-vacio{font-size:1.1rem;font-weight:700;color:#6fdc9a;padding:10px 4px}
 .gate{max-width:420px;margin:80px auto;text-align:center}
 .modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;z-index:50}
 .modal .box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:460px;width:100%}
@@ -118,9 +128,15 @@ td.r,th.r{text-align:right}
     <div class="stat"><div class="l" id="s-pe"></div><div class="v" id="v-pe" style="color:#ffb84d">0</div></div>
   </div>
 
-  <div class="grid">
-    <div class="card">
-      <h2 id="c-close"></h2>
+  <div class="card" id="cardPorEt">
+    <h2 id="px-t"></h2>
+    <div class="note" id="px-sub" style="margin:-6px 0 10px"></div>
+    <div id="porEt"></div>
+  </div>
+
+  <details class="card" id="dManual">
+    <summary id="px-manual"></summary>
+    <h2 id="c-close"></h2>
       <label class="lbl" for="selModelo" id="l-model"></label><select id="selModelo" onchange="onModelo()"></select>
       <label class="lbl" for="selParte" id="l-part"></label><select id="selParte" onchange="onParte()"></select>
       <div class="note" id="sinPal"></div>
@@ -128,15 +144,16 @@ td.r,th.r{text-align:right}
       <label class="lbl" for="selDest" id="l-dest"></label>
       <select id="selDest"><option value="IMS P4">IMS P4</option><option value="IMS P3">IMS P3</option></select>
       <button class="btn" id="btnClose" onclick="cerrarPallet()"></button>
-    </div>
-    <div class="card">
-      <h2 id="c-queue"></h2>
+  </details>
+
+  <details class="card" id="dCola">
+    <summary id="px-cola"></summary>
+    <h2 id="c-queue"></h2>
       <div id="lineaBox"></div>
       <button class="btn line2" id="btnLinea" onclick="abrirPicker()"></button>
       <div id="queue"></div>
       <div class="note" id="queueNote"></div>
-    </div>
-  </div>
+  </details>
 
   <div class="card">
     <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
@@ -222,6 +239,9 @@ const T = {
     printB:'출력',closeB:'닫기',closed:'팔레트 마감됨',err:'오류',qtyBad:'올바른 수량을 입력하세요',pickAll:'모델과 품번을 선택하세요',
     confirmVoid:'이 팔레트를 취소하시겠습니까? IMS에서 아직 입고되지 않은 경우에만 가능합니다.',voided:'팔레트 취소됨',noParts:'BOM에 이 설비의 품목이 없습니다'}
 };
+Object.assign(T.es,{pxT:'Por etiquetar',pxSub:'Piezas registradas en el MES que todavía no tienen etiqueta (últimos 3 días)',pxVacio:'✅ Todo está etiquetado',pxBtn:'🖨️ Imprimir etiqueta',pxAnt:'⚠ día anterior',pxManual:'Otra cantidad o captura manual',pxCola:'Qué corre en la línea y cola del plan',pxPzs:'pzs',pxSinModelo:'Sin modelo: usa "Otra cantidad o captura manual"',pxTotal:(n,m)=>`Faltan ${n} pzs en ${m} parte(s)`,pxCant:'Cantidad de esta etiqueta'});
+Object.assign(T.en,{pxT:'To label',pxSub:'Pieces logged in MES that do not have a label yet (last 3 days)',pxVacio:'✅ Everything is labeled',pxBtn:'🖨️ Print label',pxAnt:'⚠ previous day',pxManual:'Other quantity or manual entry',pxCola:'What runs on the line and plan queue',pxPzs:'pcs',pxSinModelo:'No model: use "Other quantity or manual entry"',pxTotal:(n,m)=>`${n} pcs missing in ${m} part(s)`,pxCant:'Quantity for this label'});
+Object.assign(T.ko,{pxT:'라벨 필요',pxSub:'MES에 등록되었지만 아직 라벨이 없는 수량 (최근 3일)',pxVacio:'✅ 모두 라벨 완료',pxBtn:'🖨️ 라벨 출력',pxAnt:'⚠ 전일',pxManual:'다른 수량 또는 수동 입력',pxCola:'라인 가동 항목 및 계획 순서',pxPzs:'pcs',pxSinModelo:'모델 없음: "다른 수량 또는 수동 입력"을 사용하세요',pxTotal:(n,m)=>`${m}개 품번에서 ${n} pcs 부족`,pxCant:'이 라벨의 수량'});
 let LANG = (()=>{const l=localStorage.getItem('mes-lang');return T[l]?l:'es';})();
 const t = k => T[LANG][k];
 const fmt = n => (Number(n)||0).toLocaleString('en-US');
@@ -251,6 +271,7 @@ function pintarTextos(){
   $('btnClose').textContent=t('btnClose'); $('c-list').textContent=t('cList'); $('l-date').textContent=t('lDate'); $('legend').textContent=t('legend');
   $('l-todas').textContent=t('verTodas'); $('m-print').textContent=t('printB'); $('m-close').textContent=t('closeB');
   $('thead').innerHTML=['thPallet','thMaq','thModel','thPart','thDesc','thQty','thHora','thEstado','thHoja'].map((k,i)=>`<th class="${i===5?'r':''}">${t(k)}</th>`).join('');
+  $('px-t').textContent=t('pxT'); $('px-sub').textContent=t('pxSub'); $('px-manual').textContent=t('pxManual'); $('px-cola').textContent=t('pxCola');
   $('g-t').textContent=t('gateT'); $('g-s').textContent=t('gateS'); $('g-l').textContent=t('gateL');
 }
 window.setLang = l => { LANG=l; localStorage.setItem('mes-lang',l); pintarTextos(); pintarTodo(); };
@@ -304,7 +325,7 @@ function partesDe(m, sm){
 function pintarChips(){
   $('maqChips').innerHTML = MAQS.map(m=>`<button class="chip ${m===maq?'on':''}" onclick="selMaq('${m}')">${m}</button>`).join('');
 }
-window.selMaq = m => { maq=m; localStorage.setItem('pm-maq',m); pintarChips(); cargarRegs().then(()=>{ llenarModelos(); pintarCola(); pintarLista(); }); };
+window.selMaq = m => { maq=m; localStorage.setItem('pm-maq',m); pintarChips(); pintarPorEtiquetar(); cargarRegs().then(()=>{ llenarModelos(); pintarCola(); pintarLista(); }); };
 
 function llenarModelos(sel){
   // No reconstruir las listas mientras el usuario las tiene abiertas o está eligiendo
@@ -451,7 +472,7 @@ function pintarLista(){
   }).join('') || `<tr><td colspan="9" class="note" style="padding:14px">—</td></tr>`;
 }
 window.onVerTodas = () => pintarLista();
-function pintarTodo(){ pintarChips(); llenarModelos($('selModelo').value||null); pintarCola(); pintarLista(); }
+function pintarTodo(){ pintarChips(); pintarPorEtiquetar(); llenarModelos($('selModelo').value||null); pintarCola(); pintarLista(); }
 
 /* ───────── Datos en vivo ───────── */
 function escucharPallets(){
@@ -469,6 +490,72 @@ async function cargarRegs(){
   catch(e){ REGS=[]; console.warn('registros:',e.message); }
 }
 
+/* ───────── Por etiquetar: cortes del MES sin pallet (hoy + 3 días anteriores) ───────── */
+let PREV = {regs:[], pals:[]}, REGS_HOY = [], PAL_HOY = [], PE_LISTA = [], unsubRegsHoy = null, unsubPalHoy = null;
+function desdeISO(){ const d=new Date(); d.setDate(d.getDate()-3); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+async function cargarPrev(){
+  const desde=desdeISO(), hoy=hoyISO();
+  try {
+    const [a,b] = await Promise.all([
+      getDocs(query(collection(db,'registros'), where('fecha','>=',desde), where('fecha','<',hoy))),
+      getDocs(query(collection(db,'pallets_medio'), where('fecha','>=',desde), where('fecha','<',hoy)))
+    ]);
+    PREV = {regs:a.docs.map(d=>d.data()), pals:b.docs.map(d=>({id:d.id,...d.data()}))};
+  } catch(e){ console.warn('prev:',e.message); }
+  pintarPorEtiquetar();
+}
+function escucharHoy(){
+  if (unsubRegsHoy) unsubRegsHoy(); if (unsubPalHoy) unsubPalHoy();
+  const hoy=hoyISO();
+  unsubRegsHoy = onSnapshot(query(collection(db,'registros'), where('fecha','==',hoy)), sn=>{ REGS_HOY=sn.docs.map(d=>d.data()); pintarPorEtiquetar(); }, e=>console.warn('regs hoy:',e.message));
+  unsubPalHoy  = onSnapshot(query(collection(db,'pallets_medio'), where('fecha','==',hoy)), sn=>{ PAL_HOY=sn.docs.map(d=>({id:d.id,...d.data()})); pintarPorEtiquetar(); }, e=>console.warn('pallets hoy:',e.message));
+}
+function porEtiquetar(m){
+  const norm=x=>String(x||'').trim().toUpperCase();
+  const cs={}, ps={};
+  PREV.regs.concat(REGS_HOY).forEach(r=>{
+    if ((r.maqNombre||r.maquina)!==m) return;
+    const pn=norm(r.parte); if(!pn) return;
+    const c = cs[pn] || (cs[pn]={pn, f:String(r.fecha), q:0, sm:'', fm:''});
+    if (String(r.fecha)<c.f) c.f=String(r.fecha);
+    c.q += Number(r.prod!=null?r.prod:r.qty)||0;
+    if (r.modelo && String(r.fecha)>=c.fm) { c.sm=String(r.modelo).trim(); c.fm=String(r.fecha); }
+  });
+  PREV.pals.concat(PAL_HOY).forEach(p=>{ if(p.maquina!==m || p.status==='VOID') return; const k=norm(p.parte); ps[k]=(ps[k]||0)+(Number(p.qty)||0); });
+  return Object.values(cs).map(c=>({...c, pal:ps[c.pn]||0, falta:c.q-(ps[c.pn]||0)})).filter(x=>x.falta>0)
+    .sort((a,b)=>a.f.localeCompare(b.f) || a.pn.localeCompare(b.pn));
+}
+function pintarPorEtiquetar(){
+  const box=$('porEt'); if(!box) return;
+  const hoy=hoyISO(), lista=porEtiquetar(maq); PE_LISTA=lista;
+  const norm=x=>String(x||'').trim().toUpperCase();
+  if (!lista.length) { box.innerHTML=`<div class="pe-vacio">${t('pxVacio')}</div>`; return; }
+  const tot=lista.reduce((s,x)=>s+x.falta,0);
+  box.innerHTML = `<div class="note" style="margin:0 0 8px"><b>${T[LANG].pxTotal(fmt(tot),lista.length)}</b></div>` + lista.map((x,i)=>{
+    let sm=x.sm;
+    if (!sm) { const q=colaDe(maq).find(c=>norm(c.pn)===x.pn); sm=q?(q.modelos||[q.sm])[0]:''; }
+    if (!sm) { const b=BOM.find(r=>r.pn && norm(r.pn)===x.pn); sm=b?b.sm:''; }
+    x._sm=sm;
+    const parte=sm?partesDe(maq,sm).find(p=>p.pn===x.pn):null;
+    const bom=BOM.find(r=>r.pn && norm(r.pn)===x.pn);
+    x._desc=parte?parte.desc:(bom?bom.desc:''); x._fam=parte?parte.familia:(bom?bom.familia:'');
+    const ant = x.f!==hoy;
+    return `<div class="pe ${ant?'ant':''}">
+      <div class="info"><b>${esc(x.pn)}</b><span>${esc(x._desc)}${sm?' · '+esc(sm):''}</span>${ant?`<em>${t('pxAnt')} (${esc(x.f)})</em>`:''}${sm?'':`<em>${t('pxSinModelo')}</em>`}</div>
+      <input class="qty" id="pe-q-${i}" type="number" min="1" inputmode="numeric" value="${x.falta}" aria-label="${t('pxCant')}">
+      <button class="btn" id="pe-b-${i}" ${sm?'':'disabled'} onclick="cerrarPorEtiquetar(${i})">${t('pxBtn')}</button>
+    </div>`;
+  }).join('');
+}
+window.cerrarPorEtiquetar = async i => {
+  const x=PE_LISTA[i]; if(!x) return;
+  const qty=parseInt($('pe-q-'+i).value)||0;
+  if (qty<=0) { toast(t('qtyBad')); return; }
+  const b=$('pe-b-'+i); b.disabled=true;
+  await crearPallet({sm:x._sm, pn:x.pn, qty, dest:DEST_DEFAULT[maq]||'IMS P4', desc:x._desc, familia:x._fam});
+  pintarPorEtiquetar();
+};
+
 /* ───────── Cerrar pallet ───────── */
 function qrTexto(p){ return [p.parte, p.desc, p.familia, p.qty, p.id].map(x=>String(x??'').replace(/\|/g,'/')).join('|'); }
 
@@ -478,23 +565,28 @@ window.cerrarPallet = async () => {
   if (qty<=0) { toast(t('qtyBad')); return; }
   const parte = partesDe(maq, sm).find(p=>p.pn===pn);
   const btn = $('btnClose'); btn.disabled = true;
+  const ok = await crearPallet({sm, pn, qty, dest:$('selDest').value, desc:parte?parte.desc:'', familia:parte?parte.familia:''});
+  if (ok) $('qty').value = '';
+  btn.disabled = false;
+};
+async function crearPallet(d){
+  const sm=d.sm, pn=d.pn, qty=d.qty;
   try {
     const f = hoyISO(), ymd = f.replace(/-/g,'');
-    let n = Math.max(0, ...PALLETS.filter(p=>p.maquina===maq && p.fecha===f).map(p=>p.palletNo||0)) + 1;
+    let n = Math.max(0, ...PALLETS.concat(PAL_HOY).filter(p=>p.maquina===maq && p.fecha===f).map(p=>p.palletNo||0)) + 1;
     let id = `${ymd}-${maq}-${n}`;
     while ((await getDoc(doc(db,'pallets_medio',id))).exists()) { n++; id = `${ymd}-${maq}-${n}`; }
     const ahora = new Date();
-    const p = { id, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:parte?parte.desc:'', familia:parte?parte.familia:'', qty,
-      destino:$('selDest').value, status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
+    const p = { id, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:d.desc||'', familia:d.familia||'', qty,
+      destino:d.dest, status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
       horaMs:ahora.getTime(), horaTxt:ahora.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), creadoEn:serverTimestamp() };
     p.qr = qrTexto(p);
     await setDoc(doc(db,'pallets_medio',id), p);
     toast(t('closed')+': '+id);
-    $('qty').value = '';
     mostrarHoja(p);
-  } catch(e){ console.error(e); toast(t('err')+': '+e.message); }
-  btn.disabled = false;
-};
+    return true;
+  } catch(e){ console.error(e); toast(t('err')+': '+e.message); return false; }
+}
 
 window.anular = async id => {
   const p = PALLETS.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
@@ -544,6 +636,7 @@ async function iniciar(fireUser){
   $('fecha').value = hoyISO();
   await cargarRegs();
   escucharPallets();
+  cargarPrev(); escucharHoy();
   pintarTextos(); pintarTodo();
   $('gate').classList.add('hide'); $('app').classList.remove('hide');
   const qm = new URLSearchParams(location.search).get('m');
