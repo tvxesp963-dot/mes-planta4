@@ -569,7 +569,10 @@ async function cargarCierresAuto() {
       html += '<div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">';
       filas.slice(0, 12).forEach(f => {
         const dia = esc(diaDe(f));
-        const lista = arr => (Array.isArray(arr) ? arr : []).slice(0, 8).map(x => '• ' + esc(x)).join('<br>');
+        const lista = (arr, max) => {
+          const a = Array.isArray(arr) ? arr : [], n = max || 8;
+          return a.slice(0, n).map(x => '• ' + esc(x)).join('<br>') + (a.length > n ? '<br>… +' + (a.length - n) : '');
+        };
         let tag, cuerpo = '';
         if (f.id.startsWith('error_')) {
           tag = `<span style="color:var(--red);font-weight:700">❌ ${esc(t('cj_tag_err'))}</span>`;
@@ -577,7 +580,7 @@ async function cargarCierresAuto() {
         } else if (f.id.startsWith('sim_')) {
           tag = `<span style="color:#5BA3FF;font-weight:700">🧪 ${esc(t('cj_tag_sim'))}</span>`;
           cuerpo = `${esc(t('cj_registros'))}: <b>${Number(f.registrosAssy1) || 0}</b> · ${esc(t('cj_consumo'))}: <b>${(Number(f.totalConsumo) || 0).toLocaleString()}</b> · ${esc(t('cj_componentes'))}: <b>${Number(f.componentes) || 0}</b>`
-            + (Array.isArray(f.lineas) && f.lineas.length ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--accent)">${esc(t('cj_ver_detalle'))}</summary><div style="font-family:monospace;font-size:11px;line-height:1.6;margin-top:4px">${lista(f.lineas.slice(0, 60))}</div></details>` : '');
+            + (Array.isArray(f.lineas) && f.lineas.length ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--accent)">${esc(t('cj_ver_detalle'))}</summary><div style="font-family:monospace;font-size:11px;line-height:1.6;margin-top:4px">${lista(f.lineas, 100)}</div></details>` : '');
         } else if (f.auto) {
           tag = `<span style="color:var(--green);font-weight:700">✅ ${esc(t('cj_tag_auto'))}</span>`;
           cuerpo = `${esc(t('cj_registros'))}: <b>${Number(f.totalRegistros) || 0}</b> · Def: <b>${Number(f.totalDef) || 0}</b> · Scrap: <b>${Number(f.totalScr) || 0}</b> · ${esc(t('cj_componentes'))}: <b>${Number(f.componentesDescontados) || 0}</b>`
