@@ -538,231 +538,90 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
   }
 }
 
-// ── CIERRE DE JORNADA ──
-async function calcularCierreJornada() {
-  const fecha = document.getElementById('cj-fecha').value;
-  if (!fecha) { showToast('Selecciona la fecha','var(--red)'); return; }
-  const div = document.getElementById('cj-resultado');
-  div.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳ Calculando...</div>';
+// ── CIERRE DE JORNADA AUTOMÁTICO (scrap + defectos de ASSY1 → IMS) ──
+// Lo ejecuta una Cloud Function todos los días a las 8:00 pm (hora del reporte del MES): NO hay botón manual.
+// El único descuento de producción buena es el envío a ShipQR (descontarMaterialEnvioShipqr).
+// Aquí solo se elige el modo (cierres_jornada/_config) y se ven los resultados de cada cierre.
+async function cargarCierresAuto() {
+  const box = document.getElementById('cj-resultado');
+  if (!box) return;
+  box.innerHTML = '<div style="color:var(--muted);font-size:12px">⏳ …</div>';
   try {
-    // 1. Verificar si ya se cerró ese día (evitar duplicados)
-    const cierreSnap = await getDocs(collection(db,'cierres_jornada'));
-    let yaCerrado = null;
-    cierreSnap.forEach(d => { if (d.id === fecha) yaCerrado = d.data(); });
-    if (yaCerrado) {
-      const fechaCierre = yaCerrado.fechaCierre ? new Date(yaCerrado.fechaCierre).toLocaleString('es-MX') : '';
-      div.innerHTML = `<div style="padding:.75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-weight:600;font-size:12px">⚠️ Esta fecha ya fue cerrada el ${fechaCierre} por ${yaCerrado.usuario||'?'}.<br><br>Si necesitas reabrir, contacta al admin.</div>`;
-      return;
-    }
-
-    // 2. Leer registros ASSY1 del día
-    const snap = await getDocs(collection(db,'registros'));
-    const assy1Regs = [];
+    const snap = await getDocs(collection(db, 'cierres_jornada'));
+    let modo = 'simulacion', cfg = null;
+    const filas = [];
     snap.forEach(d => {
-      const r = d.data();
-      const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
-      const esASSY1 = r.maquina === 'ASSY1' || r.tipo === 'ASSY' || r.maqNombre === 'ASSY1' || r.maqTipo === 'ASSY';
-      if (fechaReg === fecha && esASSY1) assy1Regs.push({id:d.id,...r});
+      if (d.id === '_config') { cfg = d.data(); modo = cfg.modo || 'simulacion'; return; }
+      filas.push({ id: d.id, ...d.data() });
     });
-    if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
-
-    // 3. Leer BOM ACTIVO (no plan_produccion)
-    const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
-    if (!bomDoc.exists()) {
-      div.innerHTML = '<div style="color:var(--red);font-size:12px">❌ No hay BOM activo en bom_simulator_p4</div>';
-      return;
-    }
-    const bomData = bomDoc.data();
-    const BOM = JSON.parse(bomData.bom||'[]');
-    const semanaRef = bomData.semana || '';
-
-    // 4. Leer inventario IMS — se indexa por pn+descripción para no confundir
-    //    registros que comparten el mismo número de parte (ej. Lower Box (Bottom)
-    //    y Chip Board Bottom (Ranurado) pueden tener el mismo pn pero son artículos distintos)
-    const imsSnap = await getDocs(collection(db,'planta4_inventario'));
-    const imsMap = {};       // key: "PN|||DESC" exacto
-    const imsPorPn = {};     // fallback: solo se usa si ese pn tiene un único registro
-    imsSnap.forEach(d => {
-      const data = d.data();
-      if (!data.pn) return;
-      const pnU = (data.pn||'').trim().toUpperCase();
-      const descU = (data.desc||data.descripcion||data.nombre||'').trim().toUpperCase();
-      imsMap[pnU+'|||'+descU] = {...data, _docId:d.id};
-      if (!imsPorPn[pnU]) imsPorPn[pnU] = [];
-      imsPorPn[pnU].push({...data, _docId:d.id});
-    });
-    const buscarIMS = (pn, desc) => {
-      const pnU = (pn||'').trim().toUpperCase();
-      const descU = (desc||'').trim().toUpperCase();
-      const exacto = imsMap[pnU+'|||'+descU];
-      if (exacto) return exacto;
-      const candidatos = imsPorPn[pnU] || [];
-      if (candidatos.length === 1) return candidatos[0]; // único registro con ese pn, sin ambigüedad
-      return null; // hay varios y ninguno coincide con la descripción exacta
-    };
-
-    // 5. Calcular descuentos — cada combinación pn+descripción es una línea independiente
-    const descuentos = {};
-    let totalPiezasConsumo = 0;
-    assy1Regs.forEach(r => {
-      const modelo = (r.modelo||'').trim();
-      const qty = Number(r.qty ?? r.prod)||0;
-      const defectos = Number(r.defectos ?? r.def)||0;
-      const scrap = Number(r.scrap)||0;
-      // Ya no se incluye "qty" aquí: las piezas buenas se descuentan en tiempo real
-      // al momento de enviarlas a ShipQR (ver descontarMaterialEnvioShipqr).
-      // Cierre de Jornada ahora solo cubre lo que nunca llega a ShipQR: defectos y scrap.
-      const consumo = defectos + scrap;
-      if (!modelo || !consumo) return;
-      totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)'];
-      const compsModelo = BOM.filter(b => {
-        if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
-        const desc = (b.desc||'').trim().toUpperCase();
-        return DESC_DESCUENTO.includes(desc);
-      });
-      compsModelo.forEach(c => {
-        const pnU = (c.pn||'').trim().toUpperCase();
-        const descU = (c.desc||'').trim().toUpperCase();
-        const key = pnU+'|||'+descU;
-        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
-        descuentos[key].total += consumo;
-        descuentos[key].detalle.push({modelo, qty, defectos, scrap, consumo});
-      });
-    });
-
-    // 6. Render preview
-    const totalQty = assy1Regs.reduce((s,r)=>s+(Number(r.qty ?? r.prod)||0),0);
-    const totalDef = assy1Regs.reduce((s,r)=>s+(Number(r.defectos ?? r.def)||0),0);
-    const totalScr = assy1Regs.reduce((s,r)=>s+(Number(r.scrap)||0),0);
-
-    let html = `<div style="margin-bottom:.75rem;padding:.6rem .8rem;background:rgba(0,230,118,.06);border:1px solid rgba(0,230,118,.2);border-radius:8px;font-size:12px"><b style="color:var(--green)">ASSY1 producido el ${fecha}</b><br><span style="color:var(--muted)">Registros: ${assy1Regs.length} · Qty: ${totalQty.toLocaleString()} · Def: ${totalDef.toLocaleString()} · Scrap: ${totalScr.toLocaleString()} · <b style="color:var(--fg)">Total consumo: ${totalPiezasConsumo.toLocaleString()} pzas</b></span></div>`;
-
-    const descList = Object.values(descuentos);
-    if (!descList.length) {
-      html += '<div style="color:var(--amber);font-size:12px;padding:.5rem">⚠️ No se encontraron componentes en el BOM activo para los modelos producidos.</div>';
-      div.innerHTML = html;
-      return;
-    }
-
-    let conFaltante = 0;
-    html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
-    html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
-    descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach((d,i) => {
-      const imsDoc = buscarIMS(d.pn, d.desc);
-      const invAct = imsDoc ? (Number(imsDoc.actual)||0) : null;
-      const nuevoInvCrudo = invAct !== null ? invAct - d.total : -d.total;
-      const nuevoInv = Math.max(0, nuevoInvCrudo);
-      const sinIMS = imsDoc === null || imsDoc === undefined;
-      const faltante = nuevoInvCrudo < 0 ? Math.abs(nuevoInvCrudo) : 0;
-      if (sinIMS || faltante>0) conFaltante++;
-      const colorNuevo = sinIMS?'var(--red)':faltante>0?'var(--red)':'var(--fg)';
-      const tagInv = sinIMS?'<span style="color:var(--red);font-style:italic;font-size:12px">no existe</span>':invAct.toLocaleString();
-      const tagNuevo = faltante>0 ? `0 <span style="font-size:10px;opacity:.8">(faltan ${faltante.toLocaleString()})</span>` : nuevoInv.toLocaleString();
-      const sumaCheck = (d.detalle||[]).reduce((s,x)=>s+x.consumo,0);
-      const detalleTxt = (d.detalle||[]).map(x=>`${x.modelo}: ${x.qty.toLocaleString()} prod + ${x.defectos.toLocaleString()} def + ${x.scrap.toLocaleString()} scrap = <b>${x.consumo.toLocaleString()}</b>`).join('<br>')
-        + `<br><span style="color:var(--green)">Suma = ${sumaCheck.toLocaleString()} ${sumaCheck===d.total?'✅ coincide con el descuento':'⚠️ NO coincide con el descuento'}</span>`;
-      html += `<tr style="border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer" title="Clic para ver el desglose del cálculo" onclick="const e=document.getElementById('cj-det-${i}');e.style.display=e.style.display==='none'?'table-row':'none'"><td style="padding:5px 6px;font-family:monospace;color:var(--accent)">${d.pn} 🔍</td><td style="padding:5px 6px;color:var(--muted);max-width:180px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap" title="${(d.desc||'').replace(/"/g,'&quot;')}">${d.desc||''}</td><td style="padding:5px 6px;text-align:right">${tagInv}</td><td style="padding:5px 6px;text-align:right;color:var(--red)">-${d.total.toLocaleString()}</td><td style="padding:5px 6px;text-align:right;color:${colorNuevo};font-weight:600">${tagNuevo}</td></tr><tr id="cj-det-${i}" style="display:none;background:rgba(255,255,255,.03)"><td colspan="5" style="padding:6px 10px;font-size:11px;color:var(--muted);line-height:1.6">${detalleTxt}</td></tr>`;
-    });
-    html += '</table></div>';
-    if (conFaltante > 0) {
-      html += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,68,68,.08);border:1px solid rgba(255,68,68,.3);border-radius:8px;color:var(--red);font-size:12px;font-weight:600">⚠️ ${conFaltante} parte(s) sin stock suficiente. Se permitirá el descuento (quedará en 0, se registrará el faltante).</div>`;
-    }
-    window._cierreDescuentos = {fecha, semanaRef, descuentos:descList, imsMap, buscarIMS, totalRegs:assy1Regs.length, totalConsumo:totalPiezasConsumo, totalQty, totalDef, totalScr};
-    html += `<button onclick="confirmarCierreJornada()" style="margin-top:.75rem;width:100%;padding:11px;border-radius:8px;border:none;background:var(--green);color:#000;font-weight:700;cursor:pointer;font-size:13px">✅ Confirmar y Descontar IMS</button>`;
-    div.innerHTML = html;
-  } catch(e) { div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`; console.error(e); }
-}
-
-async function confirmarCierreJornada() {
-  if (!window._cierreDescuentos) return;
-  const cd = window._cierreDescuentos;
-  const modoSim = document.getElementById('cj-modoSim') && document.getElementById('cj-modoSim').checked;
-  const msgConfirm = modoSim
-    ? `MODO SIMULACIÓN — NO se tocará Firebase.\n\nSe mostrará lo que pasaría si se descontaran:\n• ${cd.descuentos.length} componentes\n• Consumo: ${cd.totalConsumo.toLocaleString()} pzas\n\n¿Ejecutar simulación?`
-    : `Confirmar cierre de jornada del ${cd.fecha}?\n\n• ${cd.descuentos.length} componentes a descontar\n• Consumo total: ${cd.totalConsumo.toLocaleString()} pzas\n• Esta acción NO se puede deshacer fácilmente.`;
-  if (!confirm(msgConfirm)) return;
-  const div = document.getElementById('cj-resultado');
-  div.innerHTML = `<div style="color:var(--muted);font-size:12px">⏳ ${modoSim?'Simulando':'Procesando'} descuentos...</div>`;
-  try {
-    const fechaISO = new Date().toISOString();
-    const userActual = (typeof currentUser!=='undefined' && currentUser && currentUser.email) ? currentUser.email : (window._userEmail || 'Sistema MES');
-    let actualizados = 0, faltantes = 0, movimientos = 0;
-    const detalleFaltantes = [];
-    const detalleSim = [];
-
-    for (const d of cd.descuentos) {
-      const imsDoc = cd.buscarIMS ? cd.buscarIMS(d.pn, d.desc) : cd.imsMap[(d.pn||'').toUpperCase()];
-      const refTxt = `Descuento ASSY1 ${cd.fecha} (${cd.semanaRef||'BOM'})`;
-      if (!imsDoc) {
-        faltantes++;
-        detalleFaltantes.push(`${d.pn} (${d.desc}): ${d.total} no descontado (no se encontró registro IMS único para esta descripción)`);
-        if (modoSim) detalleSim.push(`❌ ${d.pn} (${d.desc}) → no se encontró registro IMS único, NO se podría descontar ${d.total}`);
-        continue;
-      }
-      const invAnterior = Number(imsDoc.actual)||0;
-      const salidasAnt = Number(imsDoc.salidas)||0;
-      const nuevoActualCrudo = invAnterior - d.total;
-      const nuevoActual = Math.max(0, nuevoActualCrudo);
-      const faltante = nuevoActualCrudo < 0 ? Math.abs(nuevoActualCrudo) : 0;
-
-      if (modoSim) {
-        detalleSim.push(`✓ ${d.pn} → ${invAnterior.toLocaleString()} - ${d.total.toLocaleString()} = ${nuevoActual.toLocaleString()}${faltante>0?` ⚠️ FALTANTE ${faltante.toLocaleString()} (queda en 0)`:''}`);
-        actualizados++; movimientos++;
-        if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, queda en 0`); }
-        continue;
-      }
-
-      // ── MODO REAL ──
-      const histEntry = { tipo:'OUT', fecha:fechaISO, qty:d.total, loc:imsDoc.ubicacion||'Almacén', user:userActual, ref:refTxt };
-      const nuevoHist = (Array.isArray(imsDoc.historial)?imsDoc.historial:[]).concat([histEntry]);
-      await updateDoc(doc(db,'planta4_inventario',imsDoc._docId), {
-        actual: nuevoActual, salidas: salidasAnt + d.total, historial: nuevoHist,
-        ultimoMovimiento: cd.fecha, ultimaModificacion: fechaISO
-      });
-      if (faltante>0) { faltantes++; detalleFaltantes.push(`${d.pn}: faltan ${faltante.toLocaleString()}, quedó en 0`); }
-      await addDoc(collection(db,'planta4_movimientos'), {
-        tipo:'OUT', pn:d.pn, desc:d.desc||'', familia:d.familia||'', cantidad:d.total, faltante:faltante,
-        fecha:fechaISO, fechaProduccion:cd.fecha, ubicacion:imsDoc.ubicacion||'Almacén',
-        usuario:userActual, referencia:refTxt, origen:'CIERRE_JORNADA_MES'
-      });
-      movimientos++; actualizados++;
-    }
-
-    if (!modoSim) {
-      await setDoc(doc(db,'cierres_jornada',cd.fecha), {
-        fecha:cd.fecha, fechaCierre:fechaISO, usuario:userActual, semanaRef:cd.semanaRef||'',
-        totalRegistros:cd.totalRegs, totalConsumo:cd.totalConsumo, totalQty:cd.totalQty,
-        totalDef:cd.totalDef, totalScr:cd.totalScr, componentesDescontados:actualizados,
-        faltantes:faltantes, movimientosCreados:movimientos
-      });
-    }
-
-    let resumen;
-    if (modoSim) {
-      resumen = `<div style="padding:.75rem;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;color:#5BA3FF;font-weight:700;margin-bottom:.5rem">🧪 SIMULACIÓN COMPLETA — Firebase NO se modificó</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7;margin-bottom:.5rem">• Componentes que SÍ se podrían descontar: <b style="color:var(--fg)">${actualizados}</b><br>• Componentes con problemas: <b style="color:var(--fg)">${faltantes}</b><br>• Total consumo simulado: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b></div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);margin:.5rem 0 .3rem;font-weight:600">DETALLE LÍNEA POR LÍNEA</div>`;
-      resumen += `<div style="max-height:240px;overflow-y:auto;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:.4rem .6rem;font-family:monospace;font-size:12px;line-height:1.7">${detalleSim.join('<br>')}</div>`;
-      resumen += `<div style="margin-top:.6rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">💡 Para ejecutar de verdad: desmarca <b>"Modo simulación"</b> y vuelve a calcular.</div>`;
+    const sel = document.getElementById('cj-modo');
+    if (sel) sel.value = modo;
+    const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    const diaDe = f => String(f.fecha || f.id.replace(/^(sim_|error_)/, ''));
+    const rango = f => (f.id.startsWith('error_') ? 3 : f.id.startsWith('sim_') ? 2 : 1);
+    filas.sort((a, b) => diaDe(a) < diaDe(b) ? 1 : diaDe(a) > diaDe(b) ? -1 : rango(b) - rango(a));
+    const modoTxt = { real: t('cj_opt_real'), simulacion: t('cj_opt_sim'), apagado: t('cj_opt_off') }[modo];
+    let html = `<div style="margin-bottom:.6rem;padding:.5rem .75rem;border-radius:8px;font-size:12px;background:${modo === 'real' ? 'rgba(0,230,118,.08)' : modo === 'apagado' ? 'rgba(255,68,68,.08)' : 'rgba(77,166,255,.08)'};border:1px solid ${modo === 'real' ? 'rgba(0,230,118,.3)' : modo === 'apagado' ? 'rgba(255,68,68,.3)' : 'rgba(77,166,255,.3)'}"><b>${esc(t('cj_modo_actual'))}:</b> ${esc(modoTxt)}${cfg && cfg.cambiadoPor ? ' <span style="color:var(--muted)">· ' + esc(cfg.cambiadoPor) + '</span>' : ''}</div>`;
+    if (!filas.length) {
+      html += `<div style="color:var(--muted);font-size:12px">${esc(t('cj_vacio'))}</div>`;
     } else {
-      resumen = `<div style="padding:.75rem;background:rgba(0,230,118,.08);border:1px solid rgba(0,230,118,.3);border-radius:8px;color:var(--green);font-weight:700;margin-bottom:.5rem">✅ Cierre aplicado — ${actualizados} componentes descontados</div>`;
-      resumen += `<div style="font-size:12px;color:var(--muted);line-height:1.7">• Movimientos creados en IMS: <b style="color:var(--fg)">${movimientos}</b><br>• Total consumo: <b style="color:var(--fg)">${cd.totalConsumo.toLocaleString()} pzas</b><br>• Cierre registrado en cierres_jornada/${cd.fecha}</div>`;
-      if (faltantes > 0) {
-        resumen += `<div style="margin-top:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px"><b>⚠️ ${faltantes} parte(s) con faltante:</b><br>${detalleFaltantes.slice(0,5).map(t=>'• '+t).join('<br>')}${detalleFaltantes.length>5?'<br>• ... y '+(detalleFaltantes.length-5)+' más':''}</div>`;
-      }
+      html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">${esc(t('cj_hist'))}</div>`;
+      html += '<div style="max-height:340px;overflow-y:auto;border:1px solid var(--border);border-radius:8px">';
+      filas.slice(0, 12).forEach(f => {
+        const dia = esc(diaDe(f));
+        const lista = arr => (Array.isArray(arr) ? arr : []).slice(0, 8).map(x => '• ' + esc(x)).join('<br>');
+        let tag, cuerpo = '';
+        if (f.id.startsWith('error_')) {
+          tag = `<span style="color:var(--red);font-weight:700">❌ ${esc(t('cj_tag_err'))}</span>`;
+          cuerpo = `<div style="color:var(--red)">${esc(f.error)}</div>`;
+        } else if (f.id.startsWith('sim_')) {
+          tag = `<span style="color:#5BA3FF;font-weight:700">🧪 ${esc(t('cj_tag_sim'))}</span>`;
+          cuerpo = `${esc(t('cj_registros'))}: <b>${Number(f.registrosAssy1) || 0}</b> · ${esc(t('cj_consumo'))}: <b>${(Number(f.totalConsumo) || 0).toLocaleString()}</b> · ${esc(t('cj_componentes'))}: <b>${Number(f.componentes) || 0}</b>`
+            + (Array.isArray(f.lineas) && f.lineas.length ? `<details style="margin-top:4px"><summary style="cursor:pointer;color:var(--accent)">${esc(t('cj_ver_detalle'))}</summary><div style="font-family:monospace;font-size:11px;line-height:1.6;margin-top:4px">${lista(f.lineas.slice(0, 60))}</div></details>` : '');
+        } else if (f.auto) {
+          tag = `<span style="color:var(--green);font-weight:700">✅ ${esc(t('cj_tag_auto'))}</span>`;
+          cuerpo = `${esc(t('cj_registros'))}: <b>${Number(f.totalRegistros) || 0}</b> · Def: <b>${Number(f.totalDef) || 0}</b> · Scrap: <b>${Number(f.totalScr) || 0}</b> · ${esc(t('cj_componentes'))}: <b>${Number(f.componentesDescontados) || 0}</b>`
+            + (f.fechaCierre ? ` · <span style="color:var(--muted)">${esc(new Date(f.fechaCierre).toLocaleString())}</span>` : '');
+          const av = [];
+          if (Number(f.faltantes) > 0) av.push(`<div style="color:var(--amber)">⚠️ ${esc(t('cj_faltantes'))}: ${Number(f.faltantes)}<br>${lista(f.detalleFaltantes)}</div>`);
+          if (Array.isArray(f.sinIMS) && f.sinIMS.length) av.push(`<div style="color:var(--amber)">⚠️ ${esc(t('cj_sin_ims'))}<br>${lista(f.sinIMS)}</div>`);
+          if (Array.isArray(f.sinBOM) && f.sinBOM.length) av.push(`<div style="color:var(--amber)">⚠️ ${esc(t('cj_sin_bom'))}: ${esc(f.sinBOM.slice(0, 8).join(', '))}</div>`);
+          if (Number(f.conflictos) > 0) av.push(`<div style="color:var(--amber)">⚠️ ${esc(t('cj_conflictos'))}: ${Number(f.conflictos)}</div>`);
+          if (av.length) cuerpo += `<div style="margin-top:4px;font-size:11px">${av.join('')}</div>`;
+        } else {
+          tag = `<span style="color:var(--muted);font-weight:700">✍️ ${esc(t('cj_tag_manual'))}</span>`;
+          cuerpo = `${esc(t('cj_consumo'))}: <b>${(Number(f.totalConsumo) || 0).toLocaleString()}</b>${f.usuario ? ' · ' + esc(f.usuario) : ''}`;
+        }
+        html += `<div style="padding:7px 10px;border-bottom:1px solid rgba(255,255,255,.06);font-size:12px;line-height:1.5"><div><b style="font-family:monospace;color:var(--accent)">${dia}</b> &nbsp;${tag}</div><div style="color:var(--muted)">${cuerpo}</div></div>`;
+      });
+      html += '</div>';
     }
-    div.innerHTML = resumen;
-    if (!modoSim) { showToast(`✅ IMS actualizado — ${actualizados} partes`,'var(--green)'); window._cierreDescuentos = null; }
-    else { showToast(`🧪 Simulación completa — ${actualizados} descuentos posibles`,'#5BA3FF'); }
-  } catch(e) {
-    div.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
-    console.error('confirmarCierreJornada:', e);
-    showToast('Error: '+e.message,'var(--red)');
+    box.innerHTML = html;
+  } catch (e) {
+    box.innerHTML = `<div style="color:var(--red);font-size:12px">Error: ${e.message}</div>`;
+    console.error('cargarCierresAuto:', e);
   }
 }
-window.calcularCierreJornada=calcularCierreJornada;
-window.confirmarCierreJornada=confirmarCierreJornada;
+
+async function guardarModoCierre() {
+  const sel = document.getElementById('cj-modo');
+  if (!sel) return;
+  const modo = sel.value;
+  if (modo === 'real' && !confirm(t('cj_confirm_real'))) { cargarCierresAuto(); return; }
+  try {
+    await setDoc(doc(db, 'cierres_jornada', '_config'), {
+      modo, cambiadoPor: (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && (CURRENT_USER.nombre || CURRENT_USER.email)) || 'Admin',
+      cambiadoEn: new Date().toISOString()
+    }, { merge: true });
+    showToast(t('cj_guardado'), 'var(--green)');
+    cargarCierresAuto();
+  } catch (e) {
+    showToast('Error: ' + e.message, 'var(--red)');
+    console.error('guardarModoCierre:', e);
+  }
+}
+window.cargarCierresAuto = cargarCierresAuto;
+window.guardarModoCierre = guardarModoCierre;
 window.buscarRegistrosEdit=buscarRegistrosEdit;
 window.editarRegistro=editarRegistro;
 window.guardarRegistroEdit=guardarRegistroEdit;
@@ -1775,7 +1634,7 @@ function initApp(){
 }
 function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
-window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
+window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();if(typeof cargarCierresAuto==='function')cargarCierresAuto();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
@@ -2726,7 +2585,31 @@ const TRANSLATIONS = {
     adm_maquinas:  '🖥️ Estado de Máquinas',
     adm_targets:   '🎯 Targets por Máquina',
     adm_email:     '📧 Reportes por Email',
-    adm_cierre:    '🔒 Cierre de Jornada — Descuento IMS',
+    adm_cierre: '🔒 Cierre de Jornada automático — Scrap y defectos',
+    adm_cierre_desc: 'Se ejecuta SOLO todos los días a las 8:00 pm (misma hora del reporte): descuenta del IMS el scrap y los defectos de ASSY1 según el BOM activo. La producción buena se descuenta únicamente al enviar a ShipQR.',
+    cj_modo: 'Modo',
+    cj_opt_sim: '🧪 Simulación (no toca el IMS)',
+    cj_opt_real: '✅ Real (descuenta el IMS)',
+    cj_opt_off: '⏸️ Apagado',
+    cj_guardar: '💾 Guardar modo',
+    cj_actualizar: '🔄 Actualizar',
+    cj_modo_actual: 'Modo actual',
+    cj_vacio: 'Aún no hay cierres. El primero se genera hoy a las 8:00 pm.',
+    cj_hist: 'ÚLTIMOS CIERRES',
+    cj_tag_err: 'Error',
+    cj_tag_sim: 'Simulación',
+    cj_tag_auto: 'Automático',
+    cj_tag_manual: 'Manual (anterior)',
+    cj_registros: 'Registros ASSY1',
+    cj_consumo: 'Consumo',
+    cj_componentes: 'Componentes',
+    cj_ver_detalle: 'Ver detalle',
+    cj_faltantes: 'Sin stock suficiente (quedó en 0)',
+    cj_sin_ims: 'Sin registro en el IMS (no se descontó)',
+    cj_sin_bom: 'Modelos sin BOM',
+    cj_conflictos: 'Lotes omitidos por conflicto',
+    cj_guardado: '✅ Modo guardado',
+    cj_confirm_real: '¿Activar el modo REAL?\n\nDesde esta noche a las 8:00 pm el sistema descontará SOLO el scrap y los defectos de ASSY1 del IMS, automáticamente.',
     adm_corregir:  '✏️ Corregir Registros',
     adm_lote:      '🔄 Corregir modelos en lote',
     adm_buscar:    '🔍 Buscar',
@@ -2853,7 +2736,31 @@ const TRANSLATIONS = {
     adm_maquinas:  '🖥️ Machine Status',
     adm_targets:   '🎯 Targets per Machine',
     adm_email:     '📧 Email Reports',
-    adm_cierre:    '🔒 Day Close — IMS Deduction',
+    adm_cierre: '🔒 Automatic Day Close — Scrap & Defects',
+    adm_cierre_desc: 'Runs BY ITSELF every day at 8:00 pm (same time as the report): deducts ASSY1 scrap and defects from the IMS using the active BOM. Good production is deducted only when sent to ShipQR.',
+    cj_modo: 'Mode',
+    cj_opt_sim: '🧪 Simulation (does not touch the IMS)',
+    cj_opt_real: '✅ Real (deducts from the IMS)',
+    cj_opt_off: '⏸️ Off',
+    cj_guardar: '💾 Save mode',
+    cj_actualizar: '🔄 Refresh',
+    cj_modo_actual: 'Current mode',
+    cj_vacio: 'No closings yet. The first one runs today at 8:00 pm.',
+    cj_hist: 'LATEST CLOSINGS',
+    cj_tag_err: 'Error',
+    cj_tag_sim: 'Simulation',
+    cj_tag_auto: 'Automatic',
+    cj_tag_manual: 'Manual (previous)',
+    cj_registros: 'ASSY1 records',
+    cj_consumo: 'Consumption',
+    cj_componentes: 'Components',
+    cj_ver_detalle: 'Show details',
+    cj_faltantes: 'Not enough stock (left at 0)',
+    cj_sin_ims: 'Not found in the IMS (not deducted)',
+    cj_sin_bom: 'Models without BOM',
+    cj_conflictos: 'Batches skipped due to conflict',
+    cj_guardado: '✅ Mode saved',
+    cj_confirm_real: 'Turn on REAL mode?\n\nStarting tonight at 8:00 pm the system will automatically deduct ONLY ASSY1 scrap and defects from the IMS.',
     adm_corregir:  '✏️ Edit Records',
     adm_lote:      '🔄 Batch model correction',
     adm_buscar:    '🔍 Search',
@@ -2979,7 +2886,31 @@ const TRANSLATIONS = {
     adm_maquinas:  '🖥️ 기계 상태',
     adm_targets:   '🎯 기계별 목표',
     adm_email:     '📧 이메일 보고서',
-    adm_cierre:    '🔒 일일 마감 — IMS 차감',
+    adm_cierre: '🔒 자동 일일 마감 — 스크랩 및 불량',
+    adm_cierre_desc: '매일 오후 8시(리포트와 같은 시간)에 자동으로 실행됩니다: 활성 BOM 기준으로 ASSY1의 스크랩과 불량을 IMS에서 차감합니다. 양품은 ShipQR 전송 시에만 차감됩니다.',
+    cj_modo: '모드',
+    cj_opt_sim: '🧪 시뮬레이션 (IMS 변경 없음)',
+    cj_opt_real: '✅ 실제 (IMS 차감)',
+    cj_opt_off: '⏸️ 끄기',
+    cj_guardar: '💾 모드 저장',
+    cj_actualizar: '🔄 새로고침',
+    cj_modo_actual: '현재 모드',
+    cj_vacio: '아직 마감 기록이 없습니다. 첫 마감은 오늘 오후 8시에 실행됩니다.',
+    cj_hist: '최근 마감',
+    cj_tag_err: '오류',
+    cj_tag_sim: '시뮬레이션',
+    cj_tag_auto: '자동',
+    cj_tag_manual: '수동 (이전)',
+    cj_registros: 'ASSY1 기록',
+    cj_consumo: '소비량',
+    cj_componentes: '부품',
+    cj_ver_detalle: '상세 보기',
+    cj_faltantes: '재고 부족 (0으로 처리)',
+    cj_sin_ims: 'IMS에 없음 (차감 안 됨)',
+    cj_sin_bom: 'BOM 없는 모델',
+    cj_conflictos: '충돌로 건너뛴 배치',
+    cj_guardado: '✅ 모드 저장됨',
+    cj_confirm_real: '실제 모드를 켜시겠습니까?\n\n오늘 밤 오후 8시부터 시스템이 ASSY1의 스크랩과 불량만 IMS에서 자동으로 차감합니다.',
     adm_corregir:  '✏️ 기록 수정',
     adm_lote:      '🔄 모델 일괄 수정',
     adm_buscar:    '🔍 검색',
@@ -3095,6 +3026,13 @@ function applyTranslations(){
     'adm-h-targets': t('adm_targets'),
     'adm-h-email':   t('adm_email'),
     'adm-h-cierre':  t('adm_cierre'),
+    'cj-desc':       t('adm_cierre_desc'),
+    'cj-lbl-modo':   t('cj_modo'),
+    'cj-opt-sim':    t('cj_opt_sim'),
+    'cj-opt-real':   t('cj_opt_real'),
+    'cj-opt-off':    t('cj_opt_off'),
+    'cj-btn-guardar':t('cj_guardar'),
+    'cj-btn-refresh':t('cj_actualizar'),
     'adm-h-corregir':t('adm_corregir'),
     'adm-h-lote':    t('adm_lote'),
     'adm-btn-buscar':t('adm_buscar'),
@@ -3626,18 +3564,19 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
       </div>
     </div>
   <div class="acard">
-    <h3 id="adm-h-cierre">🔒 Cierre de Jornada — Descuento IMS</h3>
-    <div style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Al confirmar, descuenta los materiales usados en ASSY1 (qty + defectos + scrap) del inventario IMS según el BOM activo.</div>
+    <h3 id="adm-h-cierre">🔒 Cierre de Jornada automático — Scrap y defectos</h3>
+    <div id="cj-desc" style="font-size:12px;color:var(--muted);margin-bottom:.75rem">Se ejecuta SOLO todos los días a las 8:00 pm (misma hora del reporte): descuenta del IMS el scrap y los defectos de ASSY1 según el BOM activo. La producción buena se descuenta únicamente al enviar a ShipQR.</div>
     <div style="display:flex;gap:8px;margin-bottom:12px;align-items:flex-end;flex-wrap:wrap">
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Fecha de cierre</div>
-        <input type="date" id="cj-fecha" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
+        <div id="cj-lbl-modo" style="font-size:12px;color:var(--muted);margin-bottom:4px">Modo</div>
+        <select id="cj-modo" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 12px;font-size:.85rem;outline:none;">
+          <option value="simulacion" id="cj-opt-sim">🧪 Simulación (no toca el IMS)</option>
+          <option value="real" id="cj-opt-real">✅ Real (descuenta el IMS)</option>
+          <option value="apagado" id="cj-opt-off">⏸️ Apagado</option>
+        </select>
       </div>
-      <button class="abtn abtn-add" onclick="calcularCierreJornada()">📊 Calcular descuentos</button>
-      <label style="display:flex;align-items:center;gap:6px;padding:8px 12px;background:rgba(77,166,255,.08);border:1px solid rgba(77,166,255,.3);border-radius:8px;cursor:pointer;font-size:.85rem;color:#5BA3FF;font-weight:600" title="Si está activo, NO toca Firebase. Solo simula el resultado.">
-        <input type="checkbox" id="cj-modoSim" checked style="cursor:pointer;accent-color:#5BA3FF">
-        🧪 Modo simulación (NO toca Firebase)
-      </label>
+      <button class="abtn abtn-add" id="cj-btn-guardar" onclick="guardarModoCierre()">💾 Guardar modo</button>
+      <button class="abtn" id="cj-btn-refresh" style="background:#1a1a3d;color:#4f8ef7;border:1px solid #4f8ef7" onclick="cargarCierresAuto()">🔄 Actualizar</button>
     </div>
     <div id="cj-resultado"></div>
   </div>
