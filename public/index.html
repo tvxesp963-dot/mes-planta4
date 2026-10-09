@@ -505,6 +505,7 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
     };
 
     const fechaISO = new Date().toISOString();
+    const faltantesEnvio = [];
     for (const c of compsModelo) {
       const imsDoc = buscarIMS(c.pn, c.desc);
       if (!imsDoc) { console.error(`Sin registro IMS único para ${c.pn} (${c.desc}), no se descontó`); continue; }
@@ -529,7 +530,22 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
         usuario, referencia: `Envío a ShipQR - ${refDocId}`, origen: 'ENVIO_SHIPQR'
       });
 
-      if (faltante > 0) console.warn(`⚠️ Faltante de ${c.pn} (${c.desc}) al enviar a ShipQR: ${faltante}`);
+      if (faltante > 0) {
+        console.warn(`⚠️ Faltante de ${c.pn} (${c.desc}) al enviar a ShipQR: ${faltante}`);
+        faltantesEnvio.push({ pn: c.pn, desc: c.desc || '', faltante, stock: invAnterior });
+      }
+    }
+    // Aviso: el inventario NO queda en negativo (se deja en 0); se registra la alerta para revisar/ajustar con conteo físico
+    if (faltantesEnvio.length) {
+      try {
+        for (const f of faltantesEnvio) {
+          await addDoc(collection(db, 'alertas_ims'), {
+            tipo: 'FALTANTE_ENVIO', pn: f.pn, desc: f.desc, faltante: f.faltante, stockAntes: f.stock,
+            modelo, cantidadEnvio: cantidad, referencia: refDocId, usuario, fecha: fechaISO, revisada: false
+          });
+        }
+        showToast('⚠️ ' + t('cj_alerta_toast') + ': ' + faltantesEnvio.map(f => f.pn).join(', '), 'var(--amber)');
+      } catch (e2) { console.error('No se pudo guardar alerta de faltante:', e2); }
     }
   } catch (e) {
     console.error('Error descontando material por envío a ShipQR:', e);
@@ -561,7 +577,20 @@ async function cargarCierresAuto() {
     const rango = f => (f.id.startsWith('error_') ? 3 : f.id.startsWith('sim_') ? 2 : 1);
     filas.sort((a, b) => diaDe(a) < diaDe(b) ? 1 : diaDe(a) > diaDe(b) ? -1 : rango(b) - rango(a));
     const modoTxt = { real: t('cj_opt_real'), simulacion: t('cj_opt_sim'), apagado: t('cj_opt_off') }[modo];
-    let html = `<div style="margin-bottom:.6rem;padding:.5rem .75rem;border-radius:8px;font-size:12px;background:${modo === 'real' ? 'rgba(0,230,118,.08)' : modo === 'apagado' ? 'rgba(255,68,68,.08)' : 'rgba(77,166,255,.08)'};border:1px solid ${modo === 'real' ? 'rgba(0,230,118,.3)' : modo === 'apagado' ? 'rgba(255,68,68,.3)' : 'rgba(77,166,255,.3)'}"><b>${esc(t('cj_modo_actual'))}:</b> ${esc(modoTxt)}${cfg && cfg.cambiadoPor ? ' <span style="color:var(--muted)">· ' + esc(cfg.cambiadoPor) + '</span>' : ''}</div>`;
+    let alertas = [];
+    try {
+      const sa = await getDocs(collection(db, 'alertas_ims'));
+      sa.forEach(d => { const x = d.data(); if (!x.revisada) alertas.push({ _id: d.id, ...x }); });
+      alertas.sort((a, b) => String(b.fecha).localeCompare(String(a.fecha)));
+    } catch (ea) { console.warn('alertas_ims:', ea); }
+    let htmlAl = '';
+    if (alertas.length) {
+      htmlAl = `<div style="margin-bottom:.6rem;padding:.5rem .75rem;border-radius:8px;font-size:12px;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.4)"><div style="color:var(--amber);font-weight:700;margin-bottom:4px">⚠️ ${esc(t('cj_alertas'))} (${alertas.length})</div>`
+        + alertas.slice(0, 15).map(a => `<div style="font-family:monospace;font-size:11px">• ${esc(String(a.fecha).slice(0, 16).replace('T', ' '))} · ${esc(a.pn)} ${esc(a.desc)} · ${esc(t('cj_falto'))}: <b>${Number(a.faltante) || 0}</b> · ${esc(a.modelo || '')}</div>`).join('')
+        + `<button onclick="marcarAlertasRevisadas()" style="margin-top:6px;padding:5px 10px;border-radius:6px;border:1px solid var(--border);background:transparent;color:var(--text);cursor:pointer;font-size:11px">✔ ${esc(t('cj_revisada'))}</button></div>`;
+    }
+    window._alertasIms = alertas.map(a => a._id);
+    let html = htmlAl + `<div style="margin-bottom:.6rem;padding:.5rem .75rem;border-radius:8px;font-size:12px;background:${modo === 'real' ? 'rgba(0,230,118,.08)' : modo === 'apagado' ? 'rgba(255,68,68,.08)' : 'rgba(77,166,255,.08)'};border:1px solid ${modo === 'real' ? 'rgba(0,230,118,.3)' : modo === 'apagado' ? 'rgba(255,68,68,.3)' : 'rgba(77,166,255,.3)'}"><b>${esc(t('cj_modo_actual'))}:</b> ${esc(modoTxt)}${cfg && cfg.cambiadoPor ? ' <span style="color:var(--muted)">· ' + esc(cfg.cambiadoPor) + '</span>' : ''}</div>`;
     if (!filas.length) {
       html += `<div style="color:var(--muted);font-size:12px">${esc(t('cj_vacio'))}</div>`;
     } else {
@@ -623,6 +652,13 @@ async function guardarModoCierre() {
     console.error('guardarModoCierre:', e);
   }
 }
+async function marcarAlertasRevisadas() {
+  try {
+    for (const id of (window._alertasIms || [])) await updateDoc(doc(db, 'alertas_ims', id), { revisada: true, revisadaPor: (typeof CURRENT_USER !== 'undefined' && CURRENT_USER && (CURRENT_USER.nombre || CURRENT_USER.email)) || 'Admin', revisadaEn: new Date().toISOString() });
+    cargarCierresAuto();
+  } catch (e) { showToast('Error: ' + e.message, 'var(--red)'); }
+}
+window.marcarAlertasRevisadas = marcarAlertasRevisadas;
 window.cargarCierresAuto = cargarCierresAuto;
 window.guardarModoCierre = guardarModoCierre;
 window.buscarRegistrosEdit=buscarRegistrosEdit;
@@ -2608,6 +2644,10 @@ const TRANSLATIONS = {
     cj_componentes: 'Componentes',
     cj_ver_detalle: 'Ver detalle',
     cj_faltantes: 'Sin stock suficiente (quedó en 0)',
+    cj_alertas: 'Faltante de material al enviar a ShipQR (quedó en 0)',
+    cj_falto: 'Faltó',
+    cj_revisada: 'Marcar como revisadas',
+    cj_alerta_toast: 'Faltante de material en el envío',
     cj_sin_ims: 'Sin registro en el IMS (no se descontó)',
     cj_sin_bom: 'Modelos sin BOM',
     cj_conflictos: 'Lotes omitidos por conflicto',
@@ -2759,6 +2799,10 @@ const TRANSLATIONS = {
     cj_componentes: 'Components',
     cj_ver_detalle: 'Show details',
     cj_faltantes: 'Not enough stock (left at 0)',
+    cj_alertas: 'Material shortage when sending to ShipQR (left at 0)',
+    cj_falto: 'Short',
+    cj_revisada: 'Mark as reviewed',
+    cj_alerta_toast: 'Material shortage on shipment',
     cj_sin_ims: 'Not found in the IMS (not deducted)',
     cj_sin_bom: 'Models without BOM',
     cj_conflictos: 'Batches skipped due to conflict',
@@ -2909,6 +2953,10 @@ const TRANSLATIONS = {
     cj_componentes: '부품',
     cj_ver_detalle: '상세 보기',
     cj_faltantes: '재고 부족 (0으로 처리)',
+    cj_alertas: 'ShipQR 전송 시 자재 부족 (0으로 처리)',
+    cj_falto: '부족',
+    cj_revisada: '확인 완료',
+    cj_alerta_toast: '출하 시 자재 부족',
     cj_sin_ims: 'IMS에 없음 (차감 안 됨)',
     cj_sin_bom: 'BOM 없는 모델',
     cj_conflictos: '충돌로 건너뛴 배치',
