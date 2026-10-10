@@ -155,8 +155,10 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, doc, getDoc, setDoc, onSnapshot, query, where, serverTimestamp }
+import { getFirestore, collection, addDoc, doc, setDoc, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getDoc, getDocs, onSnapshot, usoApp } from "./uso-lecturas-mod.js";
+usoApp("MES · Pallet ASSY");
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",

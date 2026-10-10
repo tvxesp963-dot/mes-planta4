@@ -11,9 +11,11 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail, createUserWithEmailAndPassword }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, getDoc, getDocs, deleteDoc, setDoc,
-  onSnapshot, query, orderBy, where, updateDoc, serverTimestamp, Timestamp }
+import { getFirestore, collection, doc, addDoc, deleteDoc, setDoc,
+  query, orderBy, where, updateDoc, serverTimestamp, Timestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getDoc, getDocs, onSnapshot, usoApp } from "./uso-lecturas-mod.js";
+usoApp("MES");
 
 const firebaseConfig = {
   apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",

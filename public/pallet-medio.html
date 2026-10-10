@@ -188,8 +188,10 @@ details.card[open]>summary{margin-bottom:8px;color:var(--text)}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, getDoc, getDocs, setDoc, updateDoc, onSnapshot, query, where, serverTimestamp }
+import { getFirestore, collection, doc, setDoc, updateDoc, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+import { getDoc, getDocs, onSnapshot, usoApp } from "./uso-lecturas-mod.js";
+usoApp("MES · Pallet Medio");
 
 const firebaseConfig = {
   apiKey: "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
