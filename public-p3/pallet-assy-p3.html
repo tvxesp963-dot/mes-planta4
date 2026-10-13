@@ -1,0 +1,738 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Salida de Pallet · ASSY · P3</title>
+<style>
+  :root{--bg:#0f1117;--card:#171a23;--card2:#1e2230;--border:#2a2f3d;--text:#e8eaf0;--muted:#8a90a3;
+    --blue:#4f8ef7;--green:#2ecc71;--red:#e74c3c;--yellow:#f1c40f;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;
+    min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .wrap{width:100%;max-width:420px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+  h1{font-size:18px;margin:0 0 4px;display:flex;align-items:center;gap:8px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:14px 0 6px;}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:11px;font-size:15px;}
+  input:focus,select:focus{outline:none;border-color:var(--blue);}
+  button{width:100%;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;
+    cursor:pointer;margin-top:18px;}
+  .btn-primary{background:var(--blue);color:#fff;}
+  .btn-primary:disabled{opacity:.5;cursor:not-allowed;}
+  .btn-ok{background:var(--green);color:#06210f;}
+  .btn-logout{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:8px;font-weight:400;font-size:13px;padding:8px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 18px;border-radius:8px;
+    font-size:14px;font-weight:600;color:#fff;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;text-align:center;}
+  .badge{display:inline-flex;align-items:center;gap:6px;background:var(--card2);border:1px solid var(--border);
+    border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted);margin-bottom:10px;}
+  .badge b{color:var(--text);}
+  .row2{display:flex;gap:10px;}
+  .row2>div{flex:1;}
+  .hist{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
+  .hist-item{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .hist-item:last-child{border-bottom:none;}
+  .err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+  .hide{display:none !important;}
+  .forgot{display:block;text-align:center;margin-top:14px;font-size:13px;color:var(--blue);text-decoration:none;}
+  .forgot:hover{text-decoration:underline;}
+  .langs{display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;}
+  .langs button{width:auto;margin:0;padding:3px;border-radius:5px;border:2px solid transparent;background:transparent;opacity:.55;line-height:0;}
+  .langs button.on{border-color:var(--blue);opacity:1;}
+  .langs img{width:28px;height:19px;border-radius:3px;object-fit:cover;}
+  .linea{border-radius:10px;padding:11px 12px;margin-bottom:6px;font-size:13px;}
+  .linea.warn{background:rgba(241,196,15,.12);border:2px solid var(--yellow);}
+  .linea.ok{background:rgba(46,204,113,.12);border:2px solid var(--green);}
+  .linea b{font-size:16px;display:block;margin:3px 0;}
+  .linea small{color:var(--muted);}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:14px;}
+  .pick{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;width:100%;max-width:420px;max-height:92vh;overflow:auto;}
+  .opt{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px 12px;margin-bottom:8px;display:flex;gap:10px;align-items:center;cursor:pointer;}
+  .opt.sel{border-color:var(--green);background:rgba(46,204,113,.12);}
+  .opt .n{background:var(--blue);color:#fff;border-radius:50%;width:26px;height:26px;display:flex;align-items:center;justify-content:center;font-weight:800;font-size:13px;flex:none;}
+  .opt.wait{opacity:.6;} .opt.wait .n{background:#5c6678;}
+  .opt .m{font-weight:700;font-size:14px;} .opt .d{font-size:11px;color:var(--muted);}
+  .tag{font-size:10px;background:var(--green);color:#06210f;border-radius:4px;padding:1px 6px;font-weight:800;margin-left:6px;}
+</style>
+</head>
+<body>
+
+<div class="wrap">
+
+  <!-- LOGIN -->
+  <div id="view-login" class="card">
+    <div class="langs"></div>
+    <h1>🔒 <span data-i18n="title"></span> · P3</h1>
+    <div class="sub" data-i18n="loginSub"></div>
+    <label data-i18n="email"></label>
+    <input type="email" id="lg-email" autocomplete="username">
+    <label data-i18n="pass"></label>
+    <input type="password" id="lg-pass" autocomplete="current-password">
+    <button class="btn-primary" id="btn-login" onclick="doLogin()" data-i18n="enter"></button>
+    <div class="err" id="lg-err"></div>
+    <a href="#" class="forgot" onclick="abrirReset(event)" data-i18n="forgot"></a>
+  </div>
+
+  <!-- FORMULARIO -->
+  <div id="view-form" class="card hide">
+    <div class="langs"></div>
+    <h1>📦 <span data-i18n="title"></span> · P3</h1>
+    <div class="sub"><span data-i18n="machine"></span> <span id="maq-nombre">Pre-Kit</span> · <span id="op-name">—</span></div>
+
+    <div id="linea-box"></div>
+    <button type="button" id="btn-linea" class="btn-primary" style="margin-top:8px" onclick="abrirPicker()"></button>
+
+    <div class="badge" style="margin-top:14px">⏰ <span data-i18n="cutDetected"></span>: <b id="corte-auto">—</b> &nbsp;|&nbsp; 🎯 <span data-i18n="target"></span>: <b id="corte-target">—</b></div>
+
+    <label data-i18n="shift"></label>
+    <select id="ip-turno">
+      <option value="A" data-i18n="shiftA"></option>
+      <option value="B" data-i18n="shiftB"></option>
+      <option value="C" data-i18n="shiftC"></option>
+    </select>
+
+    <label data-i18n="model"></label>
+    <select id="ip-modelo" onchange="onModeloChange()"></select>
+
+    <label data-i18n="part"></label>
+    <select id="ip-parte"></select>
+
+    <label data-i18n="qty"></label>
+    <input type="number" id="ip-qty" placeholder="500" min="1">
+
+    <div class="row2">
+      <div>
+        <label data-i18n="defects"></label>
+        <input type="number" id="ip-def" value="0" min="0">
+      </div>
+      <div>
+        <label data-i18n="scrap"></label>
+        <input type="number" id="ip-scrap" value="0" min="0">
+      </div>
+    </div>
+
+    <label data-i18n="shipType"></label>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <button type="button" id="tp-plan" onclick="setTipoEnvio('PLAN')" style="flex:1;padding:12px 8px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;background:rgba(46,204,113,.18);border:2px solid var(--green);color:var(--green);margin-top:0">📦 <span data-i18n="normal"></span></button>
+      <button type="button" id="tp-remplazo" onclick="setTipoEnvio('REMPLAZO')" style="flex:1;padding:12px 8px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer;background:transparent;border:2px solid var(--border);color:var(--muted);margin-top:0">⚠️ <span data-i18n="replacement"></span></button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted);margin-bottom:4px" data-i18n="replNote"></div>
+
+    <button class="btn-primary" id="btn-guardar" onclick="guardarPallet()"></button>
+    <button class="btn-logout" onclick="doLogout()" data-i18n="logout"></button>
+    <div class="err" id="fm-err"></div>
+
+    <div class="hist" id="hist-wrap">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px" data-i18n="histTitle"></div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+
+</div>
+
+<!-- VENTANA: elegir el modelo que va a correr -->
+<div class="overlay hide" id="pick-ov">
+  <div class="pick">
+    <h1>▶ <span data-i18n="pickTitle"></span></h1>
+    <div class="sub" data-i18n="pickSub"></div>
+    <div id="pick-list"></div>
+    <label data-i18n="otherModel"></label>
+    <select id="pick-otro" onchange="elegirOtro()"></select>
+    <button class="btn-ok" id="pick-ok" onclick="confirmarPicker()"></button>
+    <button class="btn-logout" onclick="terminarCorrida()" data-i18n="endRun"></button>
+    <button class="btn-logout" onclick="cerrarPicker()" data-i18n="cancel"></button>
+  </div>
+</div>
+
+<!-- VENTANA: restablecer contraseña -->
+<div class="overlay hide" id="reset-ov">
+  <div class="pick">
+    <h1>🔑 <span data-i18n="rstTitle"></span></h1>
+    <div class="sub" data-i18n="rstSub"></div>
+    <label data-i18n="email"></label>
+    <input type="email" id="rst-email" autocomplete="username">
+    <button class="btn-primary" id="rst-send" onclick="enviarReset()" data-i18n="rstSend"></button>
+    <button class="btn-logout" onclick="cerrarReset()" data-i18n="cancel"></button>
+    <div class="err" id="rst-err"></div>
+    <div id="rst-ok" style="display:none;color:var(--green);font-size:13px;margin-top:10px"></div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, doc, setDoc, query, where, serverTimestamp,
+         getDoc as fsGetDoc, getDocs as fsGetDocs, onSnapshot as fsOnSnapshot }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+// Contador de lecturas (si el archivo existe en public-p3\); si no existe, usa Firestore normal
+let usoMod = null;
+try { usoMod = await import("./uso-lecturas-mod.js"); } catch(e){}
+const getDoc      = (usoMod && usoMod.getDoc)      || fsGetDoc;
+const getDocs     = (usoMod && usoMod.getDocs)     || fsGetDocs;
+const onSnapshot  = (usoMod && usoMod.onSnapshot)  || fsOnSnapshot;
+const usoApp      = (usoMod && usoMod.usoApp)      || (()=>{});
+usoApp("MES P3 · Pallet ASSY");
+
+/* ============================================================
+   CONFIGURACIÓN P3  ← VERIFICAR ESTOS VALORES ANTES DE DESPLEGAR
+   ============================================================ */
+const CFG = {
+  COL_REGISTROS : "registros_p3",            // colección de producción de MES P3
+  COL_USUARIOS  : "usuarios_p3",             // usuarios de MES P3
+  BOM_COL       : "bom_simulator_p4",        // BOM compartido P4/P3
+  BOM_DOC       : "bom_activo",
+  LINEA_DOC     : "linea_asy1_p3",           // modelo confirmado en ASSY de P3 (documento propio)
+  PLAN_DOC      : "plan_piso_p3",            // plan de piso P3 (si no existe, se elige de la lista del BOM)
+};
+// Línea de MES P3 donde se registra este pallet. idx = posición en LINEAS del index.html de P3
+// (0 Pre-Kit, 1 B2, 2 B1, 3 Pre-Folding, 4 Bandita). Cámbialo aquí si debe ser otra línea.
+const MAQUINA = { idx:0, nombre:"Pre-Kit", tipo:"Pre-Kit", target:8000,
+  cortes:{ C1:1600, C2:3200, C3:3200, OT:2000 } };
+/* ============================================================ */
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef",
+  measurementId:     "G-SGJTX6W9HS"
+};
+
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const REGS_COL  = () => collection(db, CFG.COL_REGISTROS);
+const USERS_COL = () => collection(db, CFG.COL_USUARIOS);
+const LINEA_DOC = () => doc(db, CFG.BOM_COL, CFG.LINEA_DOC);
+const HORAS_CONF = 12;
+
+// ===== Idiomas ES / EN / KO =====
+const I18N = {
+  es:{
+    title:"Salida de Pallet", loginSub:"Inicia sesión con tu cuenta MES", email:"Correo", pass:"Contraseña", enter:"Entrar", entering:"Entrando...",
+    errFields:"Ingresa correo y contraseña.", errCreds:"Correo o contraseña incorrectos.", notReg:"Tu usuario no está registrado en el sistema.",
+    machine:"Máquina", cutDetected:"Corte detectado", target:"Target", shift:"Turno", shiftA:"Turno A", shiftB:"Turno B", shiftC:"Turno C",
+    model:"Modelo", selModel:"— Seleccionar modelo —", part:"N° de Parte", selPart:"— Seleccionar N° Parte —", noParts:"⚠️ Sin partes en el BOM para este modelo",
+    qty:"Cantidad en el pallet", defects:"Defectos (opcional)", scrap:"Scrap (opcional)", shipType:"¿Qué tipo de envío es?",
+    normal:"Producción normal", replacement:"Remplazo", replNote:"Un Remplazo se jala a ShipQR igual que producción GH90, aunque la parte sea especial (ej. GH69).",
+    save:"✅ Registrar pallet", saving:"Guardando...", logout:"Cerrar sesión", histTitle:"Pallets registrados hoy (este corte)", histEmpty:"Sin pallets registrados en este corte todavía.", pcs:"pz",
+    errModel:"Ingresa el modelo.", errPart:"Ingresa el número de parte.", errQty:"La cantidad del pallet debe ser mayor a 0.", errSave:"Error al guardar: ", savedOk:"✅ Pallet registrado · {q} pz · {c}",
+    bomErr:"⚠️ No se pudo cargar el catálogo BOM.",
+    forgot:"¿Olvidaste tu contraseña? Da clic aquí para restablecerla", rstTitle:"Restablecer contraseña",
+    rstSub:"Escribe el correo de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.", rstSend:"Enviar enlace", rstSending:"Enviando...",
+    rstBad:"Escribe un correo válido.", rstErr:"No se pudo enviar el correo. Revisa que esté bien escrito e inténtalo de nuevo.",
+    rstOk:"✅ Listo. Te enviamos un enlace a {e}. Revisa tu correo y también la carpeta de SPAM.",
+    lineNone:"⚠️ Modelo en línea", unconfirmed:"SIN CONFIRMAR", unconfirmedMsg:"Confirma qué modelo vas a correr antes de empezar.",
+    lineRunning:"▶ Corriendo ahora", confirmedBy:"Confirmado por {n} · {h}", startModel:"▶ Iniciar modelo", changeModel:"🔄 Cambiar modelo",
+    pickTitle:"¿Qué modelo vas a correr?", pickSub:"Ordenados por prioridad (los mismos de la pantalla de Piso)", suggested:"SUGERIDO",
+    pend:"Pendiente", ready:"Listo", missing:"Falta material", otherModel:"Otro modelo (fuera del plan)", selOther:"— Elegir otro modelo —",
+    confirm:"Confirmar: {m}", chooseFirst:"Elige un modelo", endRun:"⏹ Terminar corrida (ningún modelo)", cancel:"Cancelar", noPlan:"No hay plan publicado. Elige el modelo de la lista de abajo.",
+    confirmOk:"✅ Modelo confirmado: {m}", endOk:"Corrida terminada. Sin modelo en línea.", errPerm:"No se pudo guardar la confirmación (permisos). Avisa a Ingeniería.",
+    mustConfirm:"Primero confirma el modelo que vas a correr (botón ▶ Iniciar modelo).",
+    changedAsk:"Tienes confirmado {a}, pero vas a registrar {b}.\n\n¿Cambiaste de modelo a {b}?\n\nAceptar = Sí, cambié\nCancelar = No, corregir"
+  },
+  en:{
+    title:"Pallet Output", loginSub:"Sign in with your MES account", email:"Email", pass:"Password", enter:"Sign in", entering:"Signing in...",
+    errFields:"Enter email and password.", errCreds:"Wrong email or password.", notReg:"Your user is not registered in the system.",
+    machine:"Machine", cutDetected:"Detected cut", target:"Target", shift:"Shift", shiftA:"Shift A", shiftB:"Shift B", shiftC:"Shift C",
+    model:"Model", selModel:"— Select model —", part:"Part No.", selPart:"— Select part No. —", noParts:"⚠️ No parts in the BOM for this model",
+    qty:"Quantity on the pallet", defects:"Defects (optional)", scrap:"Scrap (optional)", shipType:"What type of shipment is it?",
+    normal:"Normal production", replacement:"Replacement", replNote:"A Replacement is pulled into ShipQR just like GH90 production, even if the part is special (e.g. GH69).",
+    save:"✅ Register pallet", saving:"Saving...", logout:"Sign out", histTitle:"Pallets registered today (this cut)", histEmpty:"No pallets registered in this cut yet.", pcs:"pcs",
+    errModel:"Enter the model.", errPart:"Enter the part number.", errQty:"Pallet quantity must be greater than 0.", errSave:"Error saving: ", savedOk:"✅ Pallet registered · {q} pcs · {c}",
+    bomErr:"⚠️ Could not load the BOM catalog.",
+    forgot:"Forgot your password? Click here to reset it", rstTitle:"Reset password",
+    rstSub:"Enter your account email and we will send you a link to create a new password.", rstSend:"Send link", rstSending:"Sending...",
+    rstBad:"Enter a valid email.", rstErr:"Could not send the email. Check that it is correct and try again.",
+    rstOk:"✅ Done. We sent a link to {e}. Check your inbox and also your SPAM folder.",
+    lineNone:"⚠️ Model on the line", unconfirmed:"NOT CONFIRMED", unconfirmedMsg:"Confirm which model you will run before starting.",
+    lineRunning:"▶ Running now", confirmedBy:"Confirmed by {n} · {h}", startModel:"▶ Start model", changeModel:"🔄 Change model",
+    pickTitle:"Which model will you run?", pickSub:"Sorted by priority (same as the Floor screen)", suggested:"SUGGESTED",
+    pend:"Pending", ready:"Ready", missing:"Missing material", otherModel:"Other model (not in the plan)", selOther:"— Choose another model —",
+    confirm:"Confirm: {m}", chooseFirst:"Choose a model", endRun:"⏹ End run (no model)", cancel:"Cancel", noPlan:"No plan published. Choose the model from the list below.",
+    confirmOk:"✅ Model confirmed: {m}", endOk:"Run ended. No model on the line.", errPerm:"Could not save the confirmation (permissions). Tell Engineering.",
+    mustConfirm:"First confirm the model you will run (▶ Start model button).",
+    changedAsk:"You confirmed {a}, but you are about to register {b}.\n\nDid you change the model to {b}?\n\nOK = Yes, I changed\nCancel = No, fix it"
+  },
+  ko:{
+    title:"팔레트 출고", loginSub:"MES 계정으로 로그인", email:"이메일", pass:"비밀번호", enter:"로그인", entering:"로그인 중...",
+    errFields:"이메일과 비밀번호를 입력하세요.", errCreds:"이메일 또는 비밀번호가 올바르지 않습니다.", notReg:"시스템에 등록되지 않은 사용자입니다.",
+    machine:"설비", cutDetected:"감지된 컷", target:"목표", shift:"근무조", shiftA:"A조", shiftB:"B조", shiftC:"C조",
+    model:"모델", selModel:"— 모델 선택 —", part:"부품 번호", selPart:"— 부품 번호 선택 —", noParts:"⚠️ 이 모델의 BOM에 부품이 없습니다",
+    qty:"팔레트 수량", defects:"불량 (선택)", scrap:"스크랩 (선택)", shipType:"출하 유형은 무엇입니까?",
+    normal:"정상 생산", replacement:"교체", replNote:"교체는 특수 부품(예: GH69)이어도 GH90 생산과 동일하게 ShipQR로 전송됩니다.",
+    save:"✅ 팔레트 등록", saving:"저장 중...", logout:"로그아웃", histTitle:"오늘 등록된 팔레트 (이번 컷)", histEmpty:"이번 컷에 등록된 팔레트가 없습니다.", pcs:"개",
+    errModel:"모델을 입력하세요.", errPart:"부품 번호를 입력하세요.", errQty:"팔레트 수량은 0보다 커야 합니다.", errSave:"저장 오류: ", savedOk:"✅ 팔레트 등록됨 · {q}개 · {c}",
+    bomErr:"⚠️ BOM 목록을 불러오지 못했습니다.",
+    forgot:"비밀번호를 잊으셨나요? 여기를 눌러 재설정하세요", rstTitle:"비밀번호 재설정",
+    rstSub:"계정 이메일을 입력하면 새 비밀번호를 만들 수 있는 링크를 보내드립니다.", rstSend:"링크 보내기", rstSending:"전송 중...",
+    rstBad:"올바른 이메일을 입력하세요.", rstErr:"이메일을 보내지 못했습니다. 주소를 확인한 후 다시 시도하세요.",
+    rstOk:"✅ 완료. {e}(으)로 링크를 보냈습니다. 받은편지함과 스팸 폴더도 확인하세요.",
+    lineNone:"⚠️ 라인 모델", unconfirmed:"미확인", unconfirmedMsg:"시작하기 전에 생산할 모델을 확인하세요.",
+    lineRunning:"▶ 현재 생산 중", confirmedBy:"확인자 {n} · {h}", startModel:"▶ 모델 시작", changeModel:"🔄 모델 변경",
+    pickTitle:"어떤 모델을 생산합니까?", pickSub:"우선순위 순 (현장 화면과 동일)", suggested:"추천",
+    pend:"잔량", ready:"가능", missing:"자재 부족", otherModel:"다른 모델 (계획 외)", selOther:"— 다른 모델 선택 —",
+    confirm:"확인: {m}", chooseFirst:"모델을 선택하세요", endRun:"⏹ 생산 종료 (모델 없음)", cancel:"취소", noPlan:"게시된 계획이 없습니다. 아래 목록에서 모델을 선택하세요.",
+    confirmOk:"✅ 모델 확인됨: {m}", endOk:"생산 종료. 라인에 모델 없음.", errPerm:"확인을 저장하지 못했습니다 (권한). 엔지니어링에 알리세요.",
+    mustConfirm:"먼저 생산할 모델을 확인하세요 (▶ 모델 시작 버튼).",
+    changedAsk:"{a} 모델이 확인되어 있지만 {b}를 등록하려고 합니다.\n\n{b}(으)로 모델을 변경했습니까?\n\n확인 = 예, 변경함\n취소 = 아니오, 수정"
+  }
+};
+let lang = 'es';
+try { lang = localStorage.getItem('palletLang') || 'es'; } catch(e){}
+if(!I18N[lang]) lang = 'es';
+const t = (k, v) => {
+  let s = (I18N[lang] && I18N[lang][k]) || I18N.es[k] || k;
+  if(v) for(const x in v) s = s.split('{'+x+'}').join(v[x]);
+  return s;
+};
+const FLAGS = { es:"mx", en:"us", ko:"kr" };
+function pintarBanderas(){
+  document.querySelectorAll('.langs').forEach(box=>{
+    box.innerHTML = Object.keys(FLAGS).map(l =>
+      `<button type="button" class="${l===lang?'on':''}" onclick="setLang('${l}')" title="${l.toUpperCase()}"><img src="https://flagcdn.com/w40/${FLAGS[l]}.png" alt="${l.toUpperCase()}"></button>`).join('');
+  });
+}
+window.setLang = (l) => {
+  lang = l;
+  try { localStorage.setItem('palletLang', l); } catch(e){}
+  aplicarIdioma();
+};
+function aplicarIdioma(){
+  document.documentElement.lang = lang;
+  document.title = t('title') + ' · ASSY · P3';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = t(el.dataset.i18n); });
+  document.getElementById('maq-nombre').textContent = MAQUINA.nombre;
+  pintarBanderas();
+  llenarModelos();
+  llenarPartes();
+  renderLinea();
+  renderHistorial();
+  renderPicker();
+  const bg = document.getElementById('btn-guardar');
+  if(!bg.disabled || bg.textContent !== t('saving')) bg.textContent = t('save');
+  const bl = document.getElementById('btn-login');
+  if(!bl.disabled) bl.textContent = t('enter');
+}
+
+// Mismas ventanas de corte que index.html
+const RANGOS = [
+  { id:"C1", finH:8,  finM:45 },
+  { id:"C2", finH:12, finM:30 },
+  { id:"C3", finH:16, finM:30 },
+  { id:"OT", finH:18, finM:25 },
+];
+function corteActual(){
+  const n = new Date();
+  const mins = n.getHours()*60 + n.getMinutes();
+  for(const r of RANGOS){
+    if(mins <= r.finH*60+r.finM) return r.id;
+  }
+  return "OT";
+}
+function hoyStr(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
+}
+const esc = (s) => String(s==null?'':s).replace(/[&<>"']/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+const hora = (ts) => new Date(ts).toLocaleTimeString(lang==='ko'?'ko-KR':(lang==='en'?'en-US':'es-MX'), {hour:'numeric', minute:'2-digit'});
+
+let CURRENT_USER = null;
+let corteHoy = null;
+let BOM_ACTIVO = [];
+let MODELOS_BOM = [];
+let tipoEnvio = 'PLAN';
+let LINEA = null;
+let unsubLinea = null;
+let PLAN_MODELOS = [];
+let pickSel = null;
+window._misPalletsHoy = [];
+
+window.setTipoEnvio = (tipo) => {
+  tipoEnvio = tipo;
+  const btnPlan = document.getElementById('tp-plan');
+  const btnRemplazo = document.getElementById('tp-remplazo');
+  const esPlan = tipo === 'PLAN';
+  btnPlan.style.background = esPlan ? 'rgba(46,204,113,.18)' : 'transparent';
+  btnPlan.style.border = esPlan ? '2px solid var(--green)' : '2px solid var(--border)';
+  btnPlan.style.color = esPlan ? 'var(--green)' : 'var(--muted)';
+  btnRemplazo.style.background = !esPlan ? 'rgba(230,126,34,.18)' : 'transparent';
+  btnRemplazo.style.border = !esPlan ? '2px solid #e67e22' : '2px solid var(--border)';
+  btnRemplazo.style.color = !esPlan ? '#e67e22' : 'var(--muted)';
+};
+
+async function cargarBOM(){
+  try{
+    const bomDoc = await getDoc(doc(db, CFG.BOM_COL, CFG.BOM_DOC));
+    if(!bomDoc.exists()){ BOM_ACTIVO=[]; MODELOS_BOM=[]; llenarModelos(); return; }
+    BOM_ACTIVO = JSON.parse(bomDoc.data().bom || '[]');
+    MODELOS_BOM = [...new Set(BOM_ACTIVO.map(r=>r.sm).filter(Boolean))].sort();
+    llenarModelos();
+  }catch(e){
+    BOM_ACTIVO=[]; MODELOS_BOM=[];
+    llenarModelos();
+    showToast(t('bomErr'), "var(--red)");
+  }
+}
+
+function llenarModelos(){
+  const sel = document.getElementById("ip-modelo");
+  const actual = sel.value;
+  sel.innerHTML = `<option value="">${t('selModel')}</option>` +
+    MODELOS_BOM.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join("");
+  if(actual && MODELOS_BOM.includes(actual)) sel.value = actual;
+}
+
+function llenarPartes(seleccion){
+  const modelo = document.getElementById("ip-modelo").value.trim();
+  const selParte = document.getElementById("ip-parte");
+  const actual = seleccion || selParte.value;
+  if(!modelo){
+    selParte.innerHTML = `<option value="">${t('selPart')}</option>`;
+    return;
+  }
+  const partes = [...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
+  if(!partes.length){
+    selParte.innerHTML = `<option value="">${t('noParts')}</option>`;
+    return;
+  }
+  selParte.innerHTML = `<option value="">${t('selPart')}</option>` +
+    partes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
+  if(actual && partes.includes(actual.toUpperCase())) selParte.value = actual.toUpperCase();
+  else if(partes.length === 1) selParte.value = partes[0];
+}
+
+window.onModeloChange = () => { llenarPartes(); };
+
+window.doLogin = async () => {
+  const email = document.getElementById("lg-email").value.trim();
+  const pass  = document.getElementById("lg-pass").value;
+  const errEl = document.getElementById("lg-err");
+  errEl.style.display = "none";
+  if(!email || !pass){ errEl.textContent=t('errFields'); errEl.style.display="block"; return; }
+  const btn = document.getElementById("btn-login");
+  btn.disabled = true; btn.textContent = t('entering');
+  try {
+    await signInWithEmailAndPassword(auth, email, pass);
+  } catch(e){
+    errEl.textContent = t('errCreds');
+    errEl.style.display = "block";
+  }
+  btn.disabled = false; btn.textContent = t('enter');
+};
+
+window.doLogout = async () => { await signOut(auth); };
+
+// ===== Recuperar contraseña (autoservicio por correo) =====
+window.abrirReset = (ev) => {
+  if(ev) ev.preventDefault();
+  document.getElementById('rst-email').value = document.getElementById('lg-email').value.trim();
+  document.getElementById('rst-err').style.display = 'none';
+  document.getElementById('rst-ok').style.display = 'none';
+  document.getElementById('reset-ov').classList.remove('hide');
+};
+window.cerrarReset = () => { document.getElementById('reset-ov').classList.add('hide'); };
+window.enviarReset = async () => {
+  const email = document.getElementById('rst-email').value.trim();
+  const errEl = document.getElementById('rst-err');
+  const okEl  = document.getElementById('rst-ok');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if(!email || email.indexOf('@') < 1){ errEl.textContent = t('rstBad'); errEl.style.display = 'block'; return; }
+  const btn = document.getElementById('rst-send');
+  btn.disabled = true; btn.textContent = t('rstSending');
+  try {
+    await sendPasswordResetEmail(auth, email);
+    okEl.textContent = t('rstOk', {e: email});
+    okEl.style.display = 'block';
+  } catch(e){
+    // Por seguridad, si el correo no existe Firebase puede responder igual; solo se muestra error en fallas reales
+    if(e && e.code === 'auth/user-not-found'){
+      okEl.textContent = t('rstOk', {e: email});
+      okEl.style.display = 'block';
+    } else {
+      errEl.textContent = t('rstErr'); errEl.style.display = 'block';
+    }
+  }
+  btn.disabled = false; btn.textContent = t('rstSend');
+};
+
+onAuthStateChanged(auth, async (fireUser) => {
+  if(!fireUser){
+    CURRENT_USER = null;
+    if(unsubLinea){ unsubLinea(); unsubLinea = null; }
+    LINEA = null;
+    document.getElementById("view-login").classList.remove("hide");
+    document.getElementById("view-form").classList.add("hide");
+    return;
+  }
+  const q = query(USERS_COL(), where("uid","==",fireUser.uid));
+  const snap = await getDocs(q);
+  if(snap.empty){
+    showToast(t('notReg'), "var(--red)");
+    await signOut(auth);
+    return;
+  }
+  CURRENT_USER = { uid: fireUser.uid, email: fireUser.email, ...snap.docs[0].data() };
+  document.getElementById("op-name").textContent = CURRENT_USER.nombre || CURRENT_USER.email;
+  document.getElementById("view-login").classList.add("hide");
+  document.getElementById("view-form").classList.remove("hide");
+  refrescarCorte();
+  setTipoEnvio('PLAN');
+  await cargarBOM();
+  escucharLinea();
+  await cargarHistorial();
+  aplicarIdioma();
+});
+
+function refrescarCorte(){
+  corteHoy = corteActual();
+  document.getElementById("corte-auto").textContent = corteHoy;
+  document.getElementById("corte-target").textContent = MAQUINA.cortes[corteHoy].toLocaleString();
+}
+setInterval(refrescarCorte, 60000);
+
+// ===== MODELO EN LÍNEA =====
+function lineaVigente(d){
+  if(!d || !d.sm || !d.ts) return null;
+  if(Date.now() - d.ts > HORAS_CONF*36e5) return null;
+  return d;
+}
+function escucharLinea(){
+  if(unsubLinea) unsubLinea();
+  unsubLinea = onSnapshot(LINEA_DOC(), (snap)=>{
+    const previo = LINEA && LINEA.sm;
+    LINEA = lineaVigente(snap.exists() ? snap.data() : null);
+    renderLinea();
+    if(LINEA && LINEA.sm !== previo) precargarFormulario();
+  }, (e)=>{ console.warn('No se pudo leer el modelo en línea:', e); });
+}
+setInterval(()=>{ if(LINEA){ LINEA = lineaVigente(LINEA); renderLinea(); } }, 60000);
+
+function precargarFormulario(){
+  if(!LINEA) return;
+  const sel = document.getElementById("ip-modelo");
+  if(!MODELOS_BOM.includes(LINEA.sm)){
+    MODELOS_BOM.push(LINEA.sm); MODELOS_BOM.sort(); llenarModelos();
+  }
+  sel.value = LINEA.sm;
+  llenarPartes((LINEA.code || '').toUpperCase());
+}
+
+function renderLinea(){
+  const box = document.getElementById('linea-box');
+  const btn = document.getElementById('btn-linea');
+  if(!box) return;
+  if(LINEA){
+    box.innerHTML = `<div class="linea ok">${t('lineRunning')}<b>${esc(LINEA.sm)}</b><small>${t('confirmedBy',{n:esc(LINEA.por||'—'), h:hora(LINEA.ts)})}</small></div>`;
+    btn.textContent = t('changeModel');
+    btn.className = 'btn-logout';
+    btn.style.marginTop = '0';
+  } else {
+    box.innerHTML = `<div class="linea warn">${t('lineNone')}<b>${t('unconfirmed')}</b><small>${t('unconfirmedMsg')}</small></div>`;
+    btn.textContent = t('startModel');
+    btn.className = 'btn-primary';
+    btn.style.marginTop = '8px';
+  }
+}
+
+async function cargarPlan(){
+  PLAN_MODELOS = [];
+  try{
+    const d = await getDoc(doc(db, CFG.BOM_COL, CFG.PLAN_DOC));
+    if(d.exists() && Array.isArray(d.data().modelos)) PLAN_MODELOS = d.data().modelos.filter(m=>m && m.sm);
+  }catch(e){ console.warn('No se pudo leer el plan:', e); }
+}
+
+window.abrirPicker = async () => {
+  pickSel = LINEA ? { sm: LINEA.sm, code: LINEA.code || '' } : null;
+  await cargarPlan();
+  const { run } = listasPlan();
+  if(!pickSel && run.length) pickSel = { sm: run[0].sm, code: run[0].code || '' };
+  document.getElementById('pick-ov').classList.remove('hide');
+  renderPicker();
+};
+window.cerrarPicker = () => { document.getElementById('pick-ov').classList.add('hide'); };
+
+function listasPlan(){
+  const pend = (m) => Math.max(0, (m.target||0) - (m.producido||0));
+  const run  = PLAN_MODELOS.filter(m=>m.orden && pend(m)>0).sort((a,b)=>a.orden-b.orden);
+  const wait = PLAN_MODELOS.filter(m=>!m.orden && pend(m)>0).sort((a,b)=>(a.prioridad||999)-(b.prioridad||999));
+  return { run, wait, pend };
+}
+
+function renderPicker(){
+  const ov = document.getElementById('pick-ov');
+  if(!ov || ov.classList.contains('hide')) return;
+  const { run, wait, pend } = listasPlan();
+  const list = document.getElementById('pick-list');
+  const fila = (m, i, esRun) => {
+    const sel = pickSel && pickSel.sm === m.sm;
+    const faltan = ['Strip','Top','Bot','Bundle'].filter(k=>m.materiales && m.materiales[k]===false);
+    const detalle = esRun
+      ? `${esc(m.code||'')} · ${t('pend')} ${pend(m).toLocaleString()} · ${t('ready')} ${Math.min(m.cap||0, pend(m)).toLocaleString()}`
+      : `${esc(m.code||'')} · ${t('missing')}${faltan.length?': '+faltan.join(', '):''}`;
+    return `<div class="opt ${esRun?'':'wait'} ${sel?'sel':''}" onclick="elegirModelo(${JSON.stringify(m.sm).replace(/"/g,'&quot;')}, ${JSON.stringify(m.code||'').replace(/"/g,'&quot;')})">
+      <div class="n">${esRun ? i+1 : '⏳'}</div>
+      <div><div class="m">${esc(m.sm)}${esRun && i===0 ? `<span class="tag">${t('suggested')}</span>` : ''}</div><div class="d">${detalle}</div></div></div>`;
+  };
+  list.innerHTML = (run.length || wait.length)
+    ? run.map((m,i)=>fila(m,i,true)).join('') + wait.map((m,i)=>fila(m,i,false)).join('')
+    : `<div style="color:var(--muted);font-size:13px;margin-bottom:8px">${t('noPlan')}</div>`;
+  const otro = document.getElementById('pick-otro');
+  otro.innerHTML = `<option value="">${t('selOther')}</option>` + MODELOS_BOM.map(m=>`<option value="${esc(m)}">${esc(m)}</option>`).join('');
+  if(pickSel && !PLAN_MODELOS.some(m=>m.sm===pickSel.sm) && MODELOS_BOM.includes(pickSel.sm)) otro.value = pickSel.sm;
+  const ok = document.getElementById('pick-ok');
+  ok.textContent = pickSel ? t('confirm',{m:pickSel.sm}) : t('chooseFirst');
+  ok.disabled = !pickSel;
+  ok.style.opacity = pickSel ? '1' : '.5';
+}
+window.elegirModelo = (sm, code) => { pickSel = { sm, code }; renderPicker(); };
+window.elegirOtro = () => {
+  const v = document.getElementById('pick-otro').value;
+  if(!v) return;
+  const dePlan = PLAN_MODELOS.find(m=>m.sm===v);
+  pickSel = { sm: v, code: dePlan ? (dePlan.code||'') : '' };
+  renderPicker();
+};
+
+async function guardarLinea(sm, code){
+  const data = {
+    maq: MAQUINA.nombre, sm: sm || '', code: code || '',
+    por: (CURRENT_USER && (CURRENT_USER.nombre || CURRENT_USER.email)) || '',
+    empleado: (CURRENT_USER && CURRENT_USER.empleado) || '',
+    userId: CURRENT_USER ? CURRENT_USER.uid : '',
+    ts: Date.now(), tsServer: serverTimestamp()
+  };
+  try{
+    await setDoc(LINEA_DOC(), data);
+    return true;
+  }catch(e){
+    console.warn('Error guardando modelo en línea:', e);
+    showToast(t('errPerm'), "var(--red)");
+    return false;
+  }
+}
+
+window.confirmarPicker = async () => {
+  if(!pickSel) return;
+  const { sm, code } = pickSel;
+  if(await guardarLinea(sm, code)){
+    cerrarPicker();
+    showToast(t('confirmOk',{m:sm}), "var(--green)");
+  }
+};
+window.terminarCorrida = async () => {
+  if(await guardarLinea('', '')){
+    cerrarPicker();
+    showToast(t('endOk'), "var(--blue)");
+  }
+};
+
+async function cargarHistorial(){
+  const HOY = hoyStr();
+  const q = query(REGS_COL(), where("fecha","==",HOY), where("maqIdx","==",MAQUINA.idx));
+  const snap = await getDocs(q);
+  window._misPalletsHoy = snap.docs.map(d=>d.data()).filter(r=>r.corte===corteHoy);
+  renderHistorial();
+}
+
+function renderHistorial(){
+  const list = document.getElementById("hist-list");
+  if(!list) return;
+  if(!window._misPalletsHoy.length){
+    list.innerHTML = `<div style="color:var(--muted);font-size:13px">${t('histEmpty')}</div>`;
+    return;
+  }
+  list.innerHTML = window._misPalletsHoy.map(r=>`
+    <div class="hist-item">
+      <span>${esc(r.modelo||"—")} · ${esc(r.parte||"—")}${r.esRemplazo?` <span style="color:#e67e22;font-weight:700">⚠ ${t('replacement')}</span>`:''}</span>
+      <span style="color:var(--muted)">${(r.prod||0).toLocaleString()} ${t('pcs')}</span>
+    </div>`).join("");
+}
+
+function showToast(msg, color){
+  const el = document.getElementById("toast");
+  el.textContent = msg; el.style.background = color; el.style.opacity = "1";
+  setTimeout(()=>{ el.style.opacity = "0"; }, 3200);
+}
+
+window.guardarPallet = async () => {
+  const errEl = document.getElementById("fm-err");
+  errEl.style.display = "none";
+
+  const turno  = document.getElementById("ip-turno").value;
+  const modelo = document.getElementById("ip-modelo").value.trim().toUpperCase();
+  const parte  = document.getElementById("ip-parte").value.trim().toUpperCase();
+  const qty    = parseInt(document.getElementById("ip-qty").value) || 0;
+  const def    = parseInt(document.getElementById("ip-def").value) || 0;
+  const scrap  = parseInt(document.getElementById("ip-scrap").value) || 0;
+  const esRemplazo = tipoEnvio === 'REMPLAZO';
+
+  if(!LINEA){ errEl.textContent=t('mustConfirm'); errEl.style.display="block"; return; }
+  if(!modelo){ errEl.textContent=t('errModel'); errEl.style.display="block"; return; }
+  if(!parte){ errEl.textContent=t('errPart'); errEl.style.display="block"; return; }
+  if(qty<=0){ errEl.textContent=t('errQty'); errEl.style.display="block"; return; }
+
+  if(!esRemplazo && modelo !== (LINEA.sm||'').toUpperCase()){
+    if(!window.confirm(t('changedAsk',{a:LINEA.sm, b:modelo}))) return;
+    if(!(await guardarLinea(document.getElementById("ip-modelo").value.trim(), parte))) return;
+  }
+
+  refrescarCorte();
+  const target = MAQUINA.cortes[corteHoy] || MAQUINA.target;
+
+  const btn = document.getElementById("btn-guardar");
+  btn.disabled = true; btn.textContent = t('saving');
+
+  const reg = {
+    userId: CURRENT_USER.uid,
+    operador: CURRENT_USER.nombre || "",
+    empleado: CURRENT_USER.empleado || "",
+    modelo, parte,
+    fecha: hoyStr(),
+    turno,
+    corte: corteHoy,
+    maqIdx: MAQUINA.idx, maqNombre: MAQUINA.nombre, maqTipo: MAQUINA.tipo,
+    target,
+    prod: qty, def, scrap,
+    pct: target>0 ? +(qty/target*100).toFixed(2) : 0,
+    defPct: qty>0 ? +(def/qty*100).toFixed(2) : 0,
+    scrapPct: qty>0 ? +(scrap/qty*100).toFixed(2) : 0,
+    notas: "Registrado desde Salida de Pallet (Pre-Kit) · P3",
+    origen: "pallet_assy_p3",
+    esRemplazo,
+    causaParo: "", minParo: 0,
+    tsLocal: new Date().toISOString(),
+    ts: serverTimestamp(),
+  };
+
+  try {
+    await addDoc(REGS_COL(), reg);
+    showToast(t('savedOk',{q:qty.toLocaleString(), c:corteHoy}), "var(--green)");
+    document.getElementById("ip-qty").value = "";
+    document.getElementById("ip-def").value = "0";
+    document.getElementById("ip-scrap").value = "0";
+    setTipoEnvio('PLAN');
+    precargarFormulario();
+    window._misPalletsHoy.push(reg);
+    renderHistorial();
+  } catch(e){
+    errEl.textContent = t('errSave') + e.message;
+    errEl.style.display = "block";
+  }
+  btn.disabled = false; btn.textContent = t('save');
+};
+
+aplicarIdioma();
+</script>
+</body>
+</html>
