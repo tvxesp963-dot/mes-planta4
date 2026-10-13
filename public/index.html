@@ -474,6 +474,9 @@ window.ejecutarCorregirModelo = ejecutarCorregirModelo;
 // avance del plan. Descuenta solo las piezas BUENAS enviadas. Los defectos
 // y scrap de ese registro nunca pasan por aquí (nunca se envían a ShipQR)
 // y los sigue cubriendo Cierre de Jornada (ver el cambio en su "consumo").
+// El descuento SIEMPRE sale de ALMACÉN. Si hay otro registro con el mismo PN+descripción en otra
+// ubicación (ej. Línea S1), se ignora; solo se usa si no existe registro en Almacén.
+const esAlmacenIMS = x => { const u = String((x && x.ubicacion) || '').trim().toUpperCase(); return u === '' || u === 'ALMACEN' || u === 'ALMACÉN'; };
 const DESC_DESCUENTO_ENVIO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE',
   'CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD',
   'BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)'];
@@ -500,7 +503,7 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
       if (!data.pn) return;
       const pnU = (data.pn || '').trim().toUpperCase();
       const descU = (data.desc || data.descripcion || data.nombre || '').trim().toUpperCase();
-      imsMap[pnU + '|||' + descU] = { ...data, _docId: d.id };
+      { const _k = pnU + '|||' + descU, _p = imsMap[_k]; if (!_p || esAlmacenIMS(data) || !esAlmacenIMS(_p)) imsMap[_k] = { ...data, _docId: d.id }; }
       (imsPorPn[pnU] = imsPorPn[pnU] || []).push({ ...data, _docId: d.id });
     });
     const buscarIMS = (pn, desc) => {
@@ -558,7 +561,7 @@ async function reversarDescuentoEnvioShipqr(refDocId, usuario) {
     if (!data.pn) return;
     const pnU = (data.pn || '').trim().toUpperCase();
     const descU = (data.desc || data.descripcion || data.nombre || '').trim().toUpperCase();
-    imsMap[pnU + '|||' + descU] = { ...data, _docId: d.id };
+    { const _k = pnU + '|||' + descU, _p = imsMap[_k]; if (!_p || esAlmacenIMS(data) || !esAlmacenIMS(_p)) imsMap[_k] = { ...data, _docId: d.id }; }
     (imsPorPn[pnU] = imsPorPn[pnU] || []).push({ ...data, _docId: d.id });
   });
   const buscar = (pn, desc) => {
@@ -639,7 +642,7 @@ async function calcularCierreJornada() {
       if (!data.pn) return;
       const pnU = (data.pn||'').trim().toUpperCase();
       const descU = (data.desc||data.descripcion||data.nombre||'').trim().toUpperCase();
-      imsMap[pnU+'|||'+descU] = {...data, _docId:d.id};
+      { const _k = pnU+'|||'+descU, _p = imsMap[_k]; if (!_p || esAlmacenIMS(data) || !esAlmacenIMS(_p)) imsMap[_k] = {...data, _docId:d.id}; }
       if (!imsPorPn[pnU]) imsPorPn[pnU] = [];
       imsPorPn[pnU].push({...data, _docId:d.id});
     });

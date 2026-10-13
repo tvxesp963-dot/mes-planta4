@@ -1,0 +1,10 @@
+{
+  "name": "functions",
+  "description": "Cierre de Jornada automatico - IMS P4",
+  "main": "index.js",
+  "engines": { "node": "22" },
+  "dependencies": {
+    "firebase-admin": "^13.0.0",
+    "firebase-functions": "^6.3.0"
+  }
+}
