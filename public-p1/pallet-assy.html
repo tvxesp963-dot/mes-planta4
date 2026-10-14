@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Salida de Pallet · TC</title>
+<style>
+  :root{--bg:#0f1117;--card:#171a23;--card2:#1e2230;--border:#2a2f3d;--text:#e8eaf0;--muted:#8a90a3;--blue:#4f8ef7;--green:#2ecc71;--red:#e74c3c;}
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh;display:flex;align-items:center;justify-content:center;padding:16px;}
+  .wrap{width:100%;max-width:420px;}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px;}
+  h1{font-size:18px;margin:0 0 4px;}
+  .sub{color:var(--muted);font-size:13px;margin-bottom:18px;}
+  label{display:block;font-size:12px;color:var(--muted);margin:14px 0 6px;}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:11px;font-size:15px;}
+  input:focus,select:focus{outline:none;border-color:var(--blue);}
+  button{width:100%;border:none;border-radius:8px;padding:13px;font-size:15px;font-weight:700;cursor:pointer;margin-top:18px;}
+  .btn-primary{background:var(--blue);color:#fff;} .btn-primary:disabled{opacity:.5;}
+  .btn-logout{background:transparent;color:var(--muted);border:1px solid var(--border);margin-top:8px;font-weight:400;font-size:13px;padding:8px;}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);padding:12px 18px;border-radius:8px;font-size:14px;font-weight:600;color:#fff;z-index:999;opacity:0;transition:opacity .3s;pointer-events:none;max-width:90%;text-align:center;}
+  .badge{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px 12px;font-size:13px;color:var(--muted);margin-bottom:6px;}
+  .badge b{color:var(--text);}
+  .row2{display:flex;gap:10px;} .row2>div{flex:1;}
+  .hist{margin-top:16px;border-top:1px solid var(--border);padding-top:12px;}
+  .hist-item{display:flex;justify-content:space-between;font-size:13px;padding:7px 0;border-bottom:1px solid var(--border);}
+  .err{color:var(--red);font-size:13px;margin-top:10px;display:none;}
+  .hide{display:none !important;}
+  .link{color:var(--blue);font-size:13px;text-align:center;margin-top:14px;cursor:pointer;}
+  .langs{display:flex;gap:6px;justify-content:flex-end;margin-bottom:8px;}
+  .langs button{width:auto;margin:0;padding:3px;border-radius:5px;border:2px solid transparent;background:transparent;opacity:.55;line-height:0;}
+  .langs button.on{border-color:var(--blue);opacity:1;}
+  .langs img{width:28px;height:19px;border-radius:3px;object-fit:cover;}
+  .overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:500;display:flex;align-items:center;justify-content:center;padding:14px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div id="view-login" class="card">
+    <div class="langs"></div>
+    <h1>🔒 <span data-i18n="title"></span></h1>
+    <div class="sub" data-i18n="loginSub"></div>
+    <label data-i18n="email"></label>
+    <input type="email" id="lg-email" autocomplete="username">
+    <label data-i18n="pass"></label>
+    <input type="password" id="lg-pass" autocomplete="current-password">
+    <button class="btn-primary" id="btn-login" onclick="doLogin()"></button>
+    <div class="err" id="lg-err"></div>
+    <div class="link" onclick="abrirReset()" data-i18n="forgot"></div>
+  </div>
+
+  <div id="view-form" class="card hide">
+    <div class="langs"></div>
+    <h1>📦 <span data-i18n="title"></span></h1>
+    <div class="sub"><span data-i18n="machine"></span> TC · <span id="op-name">—</span></div>
+
+    <div class="badge">⏰ <span data-i18n="cutDetected"></span>: <b id="corte-auto">—</b> &nbsp;|&nbsp; 🎯 <span data-i18n="target"></span>: <b id="corte-target">—</b></div>
+
+    <label data-i18n="shift"></label>
+    <select id="ip-turno">
+      <option value="A" data-i18n="shiftA"></option>
+      <option value="B" data-i18n="shiftB"></option>
+      <option value="C" data-i18n="shiftC"></option>
+    </select>
+
+    <label data-i18n="model"></label>
+    <input id="ip-modelo" placeholder="SM-S936" autocapitalize="characters" list="dl-modelos">
+    <datalist id="dl-modelos"></datalist>
+
+    <label data-i18n="part"></label>
+    <input id="ip-parte" placeholder="GH90-12345A" autocapitalize="characters" list="dl-partes">
+    <datalist id="dl-partes"></datalist>
+
+    <label data-i18n="qty"></label>
+    <input type="number" id="ip-qty" placeholder="500" min="1">
+
+    <div class="row2">
+      <div><label data-i18n="defects"></label><input type="number" id="ip-def" value="0" min="0"></div>
+      <div><label data-i18n="scrap"></label><input type="number" id="ip-scrap" value="0" min="0"></div>
+    </div>
+
+    <label data-i18n="shipType"></label>
+    <div style="display:flex;gap:8px;margin-bottom:4px">
+      <button type="button" id="tp-plan" onclick="setTipoEnvio('PLAN')" style="flex:1;padding:12px 8px;font-size:13px;margin-top:0">📦 <span data-i18n="normal"></span></button>
+      <button type="button" id="tp-remplazo" onclick="setTipoEnvio('REMPLAZO')" style="flex:1;padding:12px 8px;font-size:13px;margin-top:0">⚠️ <span data-i18n="replacement"></span></button>
+    </div>
+    <div style="font-size:11.5px;color:var(--muted)" data-i18n="replNote"></div>
+
+    <button class="btn-primary" id="btn-guardar" onclick="guardarPallet()"></button>
+    <button class="btn-logout" onclick="doLogout()" data-i18n="logout"></button>
+    <div class="err" id="fm-err"></div>
+
+    <div class="hist">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:6px" data-i18n="histTitle"></div>
+      <div id="hist-list"></div>
+    </div>
+  </div>
+</div>
+
+<div class="overlay hide" id="reset-ov">
+  <div class="card" style="width:100%;max-width:380px">
+    <h1 data-i18n="resetTitle"></h1>
+    <label data-i18n="email"></label>
+    <input type="email" id="rs-email">
+    <div class="err" id="rs-msg" style="display:block"></div>
+    <button class="btn-primary" onclick="enviarReset()" data-i18n="send"></button>
+    <button class="btn-logout" onclick="cerrarReset()" data-i18n="close"></button>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:"AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI", authDomain:"mes-production-esp.firebaseapp.com",
+  projectId:"mes-production-esp", storageBucket:"mes-production-esp.firebasestorage.app",
+  messagingSenderId:"165168379582", appId:"1:165168379582:web:9707579b363156208cd0ef", measurementId:"G-SGJTX6W9HS"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+const REGS_COL  = () => collection(db, "registros_p1");
+const USERS_COL = () => collection(db, "usuarios_p1");
+
+const I18N = {
+ es:{title:"Salida de Pallet",loginSub:"Inicia sesión con tu cuenta MES P1",email:"Correo",pass:"Contraseña",enter:"Entrar",entering:"Entrando...",
+  forgot:"¿Olvidaste tu contraseña? Da clic aquí para restablecerla",resetTitle:"Restablecer contraseña",send:"Enviar",close:"Cerrar",
+  resetOk:"✅ Te enviamos un correo. Revisa tu bandeja y también SPAM.",resetNo:"Escribe tu correo",resetErr:"No se pudo enviar. Verifica el correo.",
+  errFields:"Ingresa correo y contraseña.",errCreds:"Correo o contraseña incorrectos.",notReg:"Tu usuario no está registrado en MES P1.",
+  machine:"Máquina",cutDetected:"Corte detectado",target:"Target",shift:"Turno",shiftA:"Turno A",shiftB:"Turno B",shiftC:"Turno C",
+  model:"Modelo",part:"N° de Parte",qty:"Cantidad en el pallet",defects:"Defectos (opcional)",scrap:"Scrap (opcional)",shipType:"¿Qué tipo de envío es?",
+  normal:"Producción normal",replacement:"Remplazo",replNote:"Un Remplazo se jala a ShipQR igual que producción GH90, aunque la parte sea especial (ej. GH69).",
+  save:"✅ Registrar pallet",saving:"Guardando...",logout:"Cerrar sesión",histTitle:"Pallets registrados hoy (este corte)",histEmpty:"Sin pallets registrados en este corte todavía.",pcs:"pz",
+  errModel:"Ingresa el modelo.",errPart:"Ingresa el número de parte.",errQty:"La cantidad del pallet debe ser mayor a 0.",errSave:"Error al guardar: ",savedOk:"✅ Pallet registrado · {q} pz · {c}",
+  warnGH:"La parte no empieza con GH90. ¿Es un Remplazo? Aceptar = registrar así, Cancelar = corregir."},
+ en:{title:"Pallet Output",loginSub:"Sign in with your MES P1 account",email:"Email",pass:"Password",enter:"Sign in",entering:"Signing in...",
+  forgot:"Forgot your password? Click here to reset it",resetTitle:"Reset password",send:"Send",close:"Close",
+  resetOk:"✅ We sent you an email. Check your inbox and also SPAM.",resetNo:"Enter your email",resetErr:"Could not send. Check the email.",
+  errFields:"Enter email and password.",errCreds:"Wrong email or password.",notReg:"Your user is not registered in MES P1.",
+  machine:"Machine",cutDetected:"Detected cut",target:"Target",shift:"Shift",shiftA:"Shift A",shiftB:"Shift B",shiftC:"Shift C",
+  model:"Model",part:"Part No.",qty:"Quantity on the pallet",defects:"Defects (optional)",scrap:"Scrap (optional)",shipType:"What type of shipment is it?",
+  normal:"Normal production",replacement:"Replacement",replNote:"A Replacement is pulled into ShipQR just like GH90 production, even if the part is special (e.g. GH69).",
+  save:"✅ Register pallet",saving:"Saving...",logout:"Sign out",histTitle:"Pallets registered today (this cut)",histEmpty:"No pallets registered in this cut yet.",pcs:"pcs",
+  errModel:"Enter the model.",errPart:"Enter the part number.",errQty:"Pallet quantity must be greater than 0.",errSave:"Error saving: ",savedOk:"✅ Pallet registered · {q} pcs · {c}",
+  warnGH:"The part does not start with GH90. Is it a Replacement? OK = register anyway, Cancel = fix it."},
+ ko:{title:"팔레트 출고",loginSub:"MES P1 계정으로 로그인",email:"이메일",pass:"비밀번호",enter:"로그인",entering:"로그인 중...",
+  forgot:"비밀번호를 잊으셨나요? 여기를 눌러 재설정하세요",resetTitle:"비밀번호 재설정",send:"보내기",close:"닫기",
+  resetOk:"✅ 이메일을 보냈습니다. 받은편지함과 스팸함을 확인하세요.",resetNo:"이메일을 입력하세요",resetErr:"전송 실패. 이메일을 확인하세요.",
+  errFields:"이메일과 비밀번호를 입력하세요.",errCreds:"이메일 또는 비밀번호가 올바르지 않습니다.",notReg:"MES P1에 등록되지 않은 사용자입니다.",
+  machine:"설비",cutDetected:"감지된 컷",target:"목표",shift:"근무조",shiftA:"A조",shiftB:"B조",shiftC:"C조",
+  model:"모델",part:"부품 번호",qty:"팔레트 수량",defects:"불량 (선택)",scrap:"스크랩 (선택)",shipType:"출하 유형은 무엇입니까?",
+  normal:"정상 생산",replacement:"교체",replNote:"교체는 특수 부품(예: GH69)이어도 GH90 생산과 동일하게 ShipQR로 전송됩니다.",
+  save:"✅ 팔레트 등록",saving:"저장 중...",logout:"로그아웃",histTitle:"오늘 등록된 팔레트 (이번 컷)",histEmpty:"이번 컷에 등록된 팔레트가 없습니다.",pcs:"개",
+  errModel:"모델을 입력하세요.",errPart:"부품 번호를 입력하세요.",errQty:"팔레트 수량은 0보다 커야 합니다.",errSave:"저장 오류: ",savedOk:"✅ 팔레트 등록됨 · {q}개 · {c}",
+  warnGH:"부품 번호가 GH90으로 시작하지 않습니다. 교체입니까? 확인 = 그대로 등록, 취소 = 수정."}
+};
+let lang='es';
+try{ lang=localStorage.getItem('mes-lang')||'es'; }catch(e){}
+if(!I18N[lang]) lang='es';
+const t=(k,v)=>{ let s=(I18N[lang]&&I18N[lang][k])||I18N.es[k]||k; if(v) for(const x in v) s=s.split('{'+x+'}').join(v[x]); return s; };
+const FLAGS={es:"mx",en:"us",ko:"kr"};
+function pintarBanderas(){
+  document.querySelectorAll('.langs').forEach(box=>{
+    box.innerHTML=Object.keys(FLAGS).map(l=>`<button type="button" class="${l===lang?'on':''}" onclick="setLang('${l}')"><img src="https://flagcdn.com/w40/${FLAGS[l]}.png" alt="${l}"></button>`).join('');
+  });
+}
+window.setLang=(l)=>{ lang=l; try{localStorage.setItem('mes-lang',l);}catch(e){} aplicarIdioma(); };
+function aplicarIdioma(){
+  document.documentElement.lang=lang;
+  document.title=t('title')+' · TC';
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.dataset.i18n); });
+  pintarBanderas(); renderHistorial();
+  document.getElementById('btn-guardar').textContent=t('save');
+  document.getElementById('btn-login').textContent=t('enter');
+  setTipoEnvio(tipoEnvio);
+}
+
+/* Máquina TC de MES P1 (posición 19 en MAQUINAS del index.html) */
+const MAQUINA={ idx:19, nombre:"TC", tipo:"DieCut", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000} };
+const RANGOS=[{id:"C1",finH:8,finM:45},{id:"C2",finH:12,finM:30},{id:"C3",finH:16,finM:30},{id:"OT",finH:18,finM:25}];
+function corteActual(){
+  const n=new Date(); const mins=n.getHours()*60+n.getMinutes();
+  for(const r of RANGOS){ if(mins<=r.finH*60+r.finM) return r.id; }
+  return "OT";
+}
+function hoyStr(){ const d=new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+const esc=(s)=>String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+
+let CURRENT_USER=null, corteHoy=null, tipoEnvio='PLAN', misPallets=[];
+
+window.setTipoEnvio=(tipo)=>{
+  tipoEnvio=tipo;
+  const p=document.getElementById('tp-plan'), r=document.getElementById('tp-remplazo'), esPlan=tipo==='PLAN';
+  p.style.background=esPlan?'rgba(46,204,113,.18)':'transparent';
+  p.style.border=esPlan?'2px solid var(--green)':'2px solid var(--border)';
+  p.style.color=esPlan?'var(--green)':'var(--muted)';
+  r.style.background=!esPlan?'rgba(230,126,34,.18)':'transparent';
+  r.style.border=!esPlan?'2px solid #e67e22':'2px solid var(--border)';
+  r.style.color=!esPlan?'#e67e22':'var(--muted)';
+};
+
+window.doLogin=async()=>{
+  const email=document.getElementById("lg-email").value.trim(), pass=document.getElementById("lg-pass").value;
+  const errEl=document.getElementById("lg-err"); errEl.style.display="none";
+  if(!email||!pass){ errEl.textContent=t('errFields'); errEl.style.display="block"; return; }
+  const btn=document.getElementById("btn-login"); btn.disabled=true; btn.textContent=t('entering');
+  try{ await signInWithEmailAndPassword(auth,email,pass); }
+  catch(e){ errEl.textContent=t('errCreds'); errEl.style.display="block"; }
+  btn.disabled=false; btn.textContent=t('enter');
+};
+window.doLogout=async()=>{ await signOut(auth); };
+
+window.abrirReset=()=>{ document.getElementById('rs-email').value=document.getElementById('lg-email').value; document.getElementById('rs-msg').textContent=''; document.getElementById('reset-ov').classList.remove('hide'); };
+window.cerrarReset=()=>document.getElementById('reset-ov').classList.add('hide');
+window.enviarReset=async()=>{
+  const email=document.getElementById('rs-email').value.trim(), m=document.getElementById('rs-msg');
+  if(!email){ m.style.color='var(--red)'; m.textContent=t('resetNo'); return; }
+  try{ await sendPasswordResetEmail(auth,email); m.style.color='var(--green)'; m.textContent=t('resetOk'); }
+  catch(e){ m.style.color='var(--red)'; m.textContent=t('resetErr'); }
+};
+
+onAuthStateChanged(auth,async(fireUser)=>{
+  if(!fireUser){
+    CURRENT_USER=null;
+    document.getElementById("view-login").classList.remove("hide");
+    document.getElementById("view-form").classList.add("hide");
+    return;
+  }
+  const snap=await getDocs(query(USERS_COL(),where("uid","==",fireUser.uid)));
+  if(snap.empty){ showToast(t('notReg'),"var(--red)"); await signOut(auth); return; }
+  CURRENT_USER={uid:fireUser.uid,email:fireUser.email,...snap.docs[0].data()};
+  document.getElementById("op-name").textContent=CURRENT_USER.nombre||CURRENT_USER.email;
+  document.getElementById("view-login").classList.add("hide");
+  document.getElementById("view-form").classList.remove("hide");
+  refrescarCorte(); setTipoEnvio('PLAN');
+  await cargarHistorial();
+  aplicarIdioma();
+});
+
+function refrescarCorte(){
+  corteHoy=corteActual();
+  document.getElementById("corte-auto").textContent=corteHoy;
+  document.getElementById("corte-target").textContent=MAQUINA.cortes[corteHoy].toLocaleString();
+}
+setInterval(refrescarCorte,60000);
+
+async function cargarHistorial(){
+  try{
+    const snap=await getDocs(query(REGS_COL(),where("fecha","==",hoyStr()),where("maqIdx","==",MAQUINA.idx)));
+    const todos=snap.docs.map(d=>d.data());
+    misPallets=todos.filter(r=>r.corte===corteHoy&&r.origen==="pallet_assy");
+    // sugerencias de modelo/parte según lo ya registrado hoy en TC
+    const mods=[...new Set(todos.map(r=>r.modelo).filter(Boolean))];
+    const pts=[...new Set(todos.map(r=>r.parte).filter(Boolean))];
+    document.getElementById('dl-modelos').innerHTML=mods.map(m=>`<option value="${esc(m)}">`).join('');
+    document.getElementById('dl-partes').innerHTML=pts.map(m=>`<option value="${esc(m)}">`).join('');
+  }catch(e){ console.warn(e); misPallets=[]; }
+  renderHistorial();
+}
+function renderHistorial(){
+  const list=document.getElementById("hist-list"); if(!list) return;
+  list.innerHTML=misPallets.length
+    ? misPallets.map(r=>`<div class="hist-item"><span>${esc(r.modelo||"—")} · ${esc(r.parte||"—")}${r.esRemplazo?` <span style="color:#e67e22;font-weight:700">⚠ ${t('replacement')}</span>`:''}</span><span style="color:var(--muted)">${(r.prod||0).toLocaleString()} ${t('pcs')}</span></div>`).join("")
+    : `<div style="color:var(--muted);font-size:13px">${t('histEmpty')}</div>`;
+}
+function showToast(msg,color){
+  const el=document.getElementById("toast"); el.textContent=msg; el.style.background=color; el.style.opacity="1";
+  setTimeout(()=>{ el.style.opacity="0"; },3200);
+}
+
+window.guardarPallet=async()=>{
+  const errEl=document.getElementById("fm-err"); errEl.style.display="none";
+  const turno=document.getElementById("ip-turno").value;
+  const modelo=document.getElementById("ip-modelo").value.trim().toUpperCase();
+  const parte=document.getElementById("ip-parte").value.trim().toUpperCase();
+  const qty=parseInt(document.getElementById("ip-qty").value)||0;
+  const def=parseInt(document.getElementById("ip-def").value)||0;
+  const scrap=parseInt(document.getElementById("ip-scrap").value)||0;
+  const esRemplazo=tipoEnvio==='REMPLAZO';
+  if(!modelo){ errEl.textContent=t('errModel'); errEl.style.display="block"; return; }
+  if(!parte){ errEl.textContent=t('errPart'); errEl.style.display="block"; return; }
+  if(qty<=0){ errEl.textContent=t('errQty'); errEl.style.display="block"; return; }
+  if(!esRemplazo && !parte.startsWith("GH90")){ if(!window.confirm(t('warnGH'))) return; }
+
+  refrescarCorte();
+  const target=MAQUINA.cortes[corteHoy]||MAQUINA.target;
+  const btn=document.getElementById("btn-guardar"); btn.disabled=true; btn.textContent=t('saving');
+  const reg={
+    userId:CURRENT_USER.uid, operador:CURRENT_USER.nombre||"", empleado:CURRENT_USER.empleado||"",
+    modelo, parte, fecha:hoyStr(), turno, corte:corteHoy,
+    maqIdx:MAQUINA.idx, maqNombre:MAQUINA.nombre, maqTipo:MAQUINA.tipo, target,
+    prod:qty, def, scrap,
+    pct:target>0?+(qty/target*100).toFixed(2):0,
+    defPct:qty>0?+(def/qty*100).toFixed(2):0,
+    scrapPct:qty>0?+(scrap/qty*100).toFixed(2):0,
+    notas:"Registrado desde Salida de Pallet (TC)",
+    origen:"pallet_assy", esRemplazo, causaParo:"", minParo:0,
+    tsLocal:new Date().toISOString(), ts:serverTimestamp(),
+  };
+  try{
+    await addDoc(REGS_COL(),reg);
+    showToast(t('savedOk',{q:qty.toLocaleString(),c:corteHoy}),"var(--green)");
+    document.getElementById("ip-qty").value=""; document.getElementById("ip-def").value="0"; document.getElementById("ip-scrap").value="0";
+    setTipoEnvio('PLAN');
+    misPallets.push(reg); renderHistorial();
+  }catch(e){ errEl.textContent=t('errSave')+e.message; errEl.style.display="block"; }
+  btn.disabled=false; btn.textContent=t('save');
+};
+
+aplicarIdioma();
+</script>
+</body>
+</html>

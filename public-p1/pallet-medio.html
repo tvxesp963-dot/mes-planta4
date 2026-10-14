@@ -1,0 +1,449 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Pallets de línea · MES P1</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<style>
+:root{--bg:#0f1117;--card:#1a1d27;--card2:#22263a;--accent:#4f8ef7;--green:#2ecc71;--yellow:#f1c40f;--red:#e74c3c;--text:#e8eaf0;--muted:#9aa5b5;--border:#2e3347;}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--text);min-height:100vh}
+button{font-family:inherit;cursor:pointer}
+.wrap{max-width:1100px;margin:0 auto;padding:14px}
+.top{display:flex;flex-wrap:wrap;align-items:center;justify-content:space-between;gap:10px;margin-bottom:12px}
+.top h1{font-size:1.25rem}
+.top small{display:block;color:var(--muted);font-size:.8rem;margin-top:2px}
+.flags{display:flex;gap:4px}
+.flags button{display:flex;align-items:center;justify-content:center;min-height:42px;min-width:42px;padding:0 8px;border-radius:8px;border:1px solid var(--border);background:var(--card);opacity:.6}
+.flags button img{width:34px;height:24px;object-fit:cover;border-radius:4px;display:block}
+.flags button.on{border:2px solid var(--accent);opacity:1}
+.link{color:var(--accent);text-decoration:none;font-size:.85rem}
+.grp{font-size:.72rem;color:var(--muted);font-weight:700;text-transform:uppercase;letter-spacing:.5px;margin:6px 0 4px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.chip{min-height:44px;min-width:56px;padding:0 14px;border-radius:22px;border:1px solid var(--border);background:var(--card);color:#c5cfdd;font-weight:700;font-size:.95rem}
+.chip.on{border:2px solid var(--accent);color:#fff;background:var(--card2)}
+.card{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:14px;margin-bottom:12px}
+.card h2{font-size:1rem;margin-bottom:10px}
+.lbl{display:block;font-size:.8rem;color:var(--muted);margin:8px 0 4px}
+select,input[type=number],input[type=date],input[type=text]{width:100%;min-height:46px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:0 10px;font-size:1rem}
+input.qty{font-size:1.5rem;font-weight:800;text-align:right}
+.btn{min-height:54px;width:100%;border-radius:10px;border:0;background:var(--green);color:#04140c;font-size:1.05rem;font-weight:800;margin-top:12px}
+.btn.sec{background:transparent;border:1px solid var(--accent);color:var(--accent);min-height:44px;width:auto;padding:0 14px;margin:0;font-size:.85rem;font-weight:700}
+.btn.warn{border-color:var(--red);color:var(--red)}
+.btn:disabled{opacity:.5}
+.stats{display:flex;flex-wrap:wrap;gap:10px;margin:10px 0 12px}
+.stat{flex:1 1 160px;background:var(--card);border:1px solid var(--border);border-radius:10px;padding:10px 14px}
+.stat .l{font-size:.75rem;color:var(--muted);font-weight:600}
+.stat .v{font-size:1.7rem;font-weight:800}
+.tag{font-size:.75rem;font-weight:800;padding:3px 9px;border-radius:12px;white-space:nowrap}
+.tag.pend{background:#3a2a0f;color:#ffb84d;border:1px solid #6b4a14}.tag.rec{background:#10261c;color:#6fdc9a;border:1px solid #2fa36a}.tag.void{background:#2a2a2a;color:#999;border:1px solid #444}
+.note{font-size:.78rem;color:var(--muted);margin-top:6px}
+.tw{overflow-x:auto}
+table{width:100%;min-width:860px;border-collapse:collapse;font-size:.85rem}
+th{background:var(--card2);color:var(--muted);text-align:left;padding:9px 10px;font-weight:600}
+td{padding:8px 10px;border-top:1px solid var(--border)}
+td.r,th.r{text-align:right}
+.pn{color:var(--accent);font-weight:700}
+.hide{display:none!important}
+details.card>summary{cursor:pointer;font-weight:700;font-size:.95rem;min-height:40px;display:flex;align-items:center;color:var(--muted)}
+details.card[open]>summary{margin-bottom:8px;color:var(--text)}
+.pe{display:flex;flex-wrap:wrap;align-items:center;gap:10px;border:1px solid var(--border);background:var(--card2);border-radius:12px;padding:12px;margin-bottom:10px}
+.pe.ant{border:2px solid var(--yellow)}
+.pe .info{flex:1 1 220px;min-width:0}.pe .info b{display:block;font-size:1.1rem}.pe .info span{display:block;font-size:.78rem;color:var(--muted)}
+.pe .info em{font-style:normal;font-weight:800;color:var(--yellow);font-size:.78rem}
+.pe input.qty{width:140px;min-height:54px}
+.pe .btn{width:auto;flex:1 1 210px;margin:0}
+.pe-vacio{font-size:1.1rem;font-weight:700;color:#6fdc9a;padding:10px 4px}
+.gate{max-width:420px;margin:80px auto;text-align:center}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.8);display:flex;align-items:flex-start;justify-content:center;overflow:auto;padding:16px;z-index:50}
+.modal .box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:460px;width:100%}
+.modal .acts{display:flex;gap:8px;margin-top:12px}
+.toast{position:fixed;left:50%;bottom:22px;transform:translateX(-50%);background:var(--card2);border:1px solid var(--border);padding:10px 16px;border-radius:10px;z-index:80;font-weight:600}
+/* Hoja impresa (4in x 6in) */
+#sheet{width:4in;height:6in;background:#fff;color:#111;font-family:Arial,Helvetica,sans-serif;padding:.22in;display:flex;flex-direction:column;margin:0 auto}
+#sheet .pl{font-size:10px;color:#444;text-align:center}
+#sheet .hd{display:flex;align-items:center;justify-content:space-between;padding:6px 4px 8px;border-bottom:2px solid #111}
+#sheet .esp{font-size:20px;font-weight:800;font-style:italic;color:#1a3a6b}
+#sheet .dst{font-size:28px;font-weight:800;letter-spacing:1px}
+#sheet .mq{font-size:12px;font-weight:700;border:1.5px solid #111;padding:2px 8px;border-radius:4px}
+#sheet .row{display:grid;grid-template-columns:1.05in 1fr;border-bottom:1px solid #999}
+#sheet .row>div:first-child{padding:8px 6px;font-size:14px;font-weight:800;border-right:1px solid #999}
+#sheet .row>div:last-child{padding:8px 6px;text-align:center;font-weight:700;display:flex;align-items:center;justify-content:center;flex-direction:column;word-break:break-word}
+#sheet .qrw{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px}
+#sheet .qrw img{width:1.7in;height:1.7in}
+#sheet .idt{font-family:'Courier New',monospace;font-size:12px;font-weight:700}
+@media print{
+  @page{size:4in 6in;margin:0}
+  html,body{background:#fff!important;height:auto!important;min-height:0!important;margin:0!important;padding:0!important}
+  body>*:not(#modal){display:none!important}
+  #modal{display:block!important;position:static!important;background:none!important;padding:0!important;overflow:visible!important;inset:auto!important}
+  #modal .box{border:0!important;padding:0!important;max-width:none!important;width:auto!important;background:none!important}
+  #modal .acts{display:none!important}
+  #sheet{position:static!important;margin:0!important;page-break-after:avoid;break-after:avoid;page-break-inside:avoid;break-inside:avoid;overflow:hidden}
+}
+</style>
+</head>
+<body>
+<div id="gate" class="gate hide"><h1 id="g-t"></h1><p class="note" id="g-s" style="margin:10px 0 16px"></p><a class="link" href="index.html" id="g-l"></a></div>
+
+<div id="app" class="wrap hide">
+  <div class="top">
+    <div><h1 id="t-title"></h1><small id="t-sub"></small></div>
+    <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
+      <a class="link" href="index.html" id="t-back"></a>
+      <div class="flags">
+        <button id="f-es" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w80/mx.png" alt="ES"></button>
+        <button id="f-en" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w80/us.png" alt="EN"></button>
+        <button id="f-ko" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w80/kr.png" alt="KO"></button>
+      </div>
+    </div>
+  </div>
+
+  <div id="maqChips"></div>
+
+  <div class="stats">
+    <div class="stat"><div class="l" id="s-n"></div><div class="v" id="v-n" style="color:var(--accent)">0</div></div>
+    <div class="stat"><div class="l" id="s-pz"></div><div class="v" id="v-pz" style="color:var(--green)">0</div></div>
+    <div class="stat"><div class="l" id="s-pe"></div><div class="v" id="v-pe" style="color:#ffb84d">0</div></div>
+  </div>
+
+  <div class="card">
+    <h2 id="px-t"></h2>
+    <div class="note" id="px-sub" style="margin:-6px 0 10px"></div>
+    <div id="porEt"></div>
+  </div>
+
+  <details class="card">
+    <summary id="px-manual"></summary>
+    <label class="lbl" for="inModelo" id="l-model"></label><input type="text" id="inModelo" autocomplete="off" style="text-transform:uppercase">
+    <label class="lbl" for="inParte" id="l-part"></label><input type="text" id="inParte" autocomplete="off" style="text-transform:uppercase">
+    <label class="lbl" for="inDesc" id="l-desc"></label><input type="text" id="inDesc" autocomplete="off">
+    <div class="note" id="sinPal"></div>
+    <label class="lbl" for="qty" id="l-qty"></label><input class="qty" id="qty" type="number" min="1" inputmode="numeric">
+    <label class="lbl" for="selDest" id="l-dest"></label>
+    <select id="selDest"><option value="IMS P1">IMS P1</option><option value="IMS P3">IMS P3</option><option value="IMS P4">IMS P4</option></select>
+    <button class="btn" id="btnClose" onclick="cerrarManual()"></button>
+  </details>
+
+  <div class="card">
+    <div style="display:flex;flex-wrap:wrap;justify-content:space-between;align-items:center;gap:8px;margin-bottom:8px">
+      <h2 id="c-list" style="margin:0"></h2>
+      <label class="note" style="display:flex;align-items:center;gap:6px;margin:0"><input type="checkbox" id="verTodas" onchange="pintarLista()" style="width:auto;min-height:0"><span id="l-todas"></span></label>
+      <div style="display:flex;align-items:center;gap:8px"><label for="fecha" class="note" id="l-date"></label><input type="date" id="fecha" style="width:auto" onchange="onFecha()"></div>
+    </div>
+    <div class="tw"><table>
+      <thead><tr id="thead"></tr></thead>
+      <tbody id="tbody"></tbody>
+    </table></div>
+    <div class="note" id="legend"></div>
+  </div>
+</div>
+
+<div id="modal" class="modal hide"><div class="box">
+  <div id="sheet"></div>
+  <div class="acts">
+    <button class="btn" style="margin:0" id="m-print" onclick="window.print()"></button>
+    <button class="btn sec" id="m-close" onclick="cerrarModal()"></button>
+  </div>
+</div></div>
+<div id="toast" class="toast hide"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, setDoc, getDoc, getDocs, updateDoc, onSnapshot, query, where, serverTimestamp }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey: "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain: "mes-production-esp.firebaseapp.com",
+  projectId: "mes-production-esp",
+  storageBucket: "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId: "1:165168379582:web:9707579b363156208cd0ef"
+};
+const app = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db = getFirestore(app);
+
+// Colecciones de Planta 1
+const COL_PALLETS = 'pallets_medio_p1';
+const COL_REGS    = 'registros_p1';
+const COL_USERS   = 'usuarios_p1';
+
+/* ───────── Máquinas de MES P1 (26) agrupadas por proceso ───────── */
+const GRUPOS = [
+  {k:'Printing', m:['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6']},
+  {k:'Folding',  m:['DA','DE','DB','DF','DG']},
+  {k:'Cutting',  m:['GA','GB']},
+  {k:'Finished', m:['LAMI','LINER','FOIL','UV']},
+  {k:'DieCut',   m:['TA','TB','TC']},
+  {k:'Stitching',m:['E1','E2']},
+  {k:'Label',    m:['A','B']},
+  {k:'GlueLine', m:['P1','P2']}
+];
+const MAQS = GRUPOS.flatMap(g=>g.m);
+const GRUPO_TXT = {
+  es:{Printing:'Impresión',Folding:'Doblado',Cutting:'Corte',Finished:'Terminado',DieCut:'Troquelado',Stitching:'Cosido',Label:'Etiqueta',GlueLine:'Línea de pegamento'},
+  en:{Printing:'Printing',Folding:'Folding',Cutting:'Cutting',Finished:'Finished',DieCut:'Die Cut',Stitching:'Stitching',Label:'Label',GlueLine:'Glue Line'},
+  ko:{Printing:'인쇄',Folding:'접지',Cutting:'절단',Finished:'후가공',DieCut:'톰슨',Stitching:'제본',Label:'라벨',GlueLine:'접착 라인'}
+};
+
+/* ───────── Idiomas ES / EN / KO ───────── */
+const T = {
+  es:{title:'Pallets de línea · MES Planta 1',sub:'Cierra el pallet, imprime la hoja con QR y recíbelo en IMS',back:'← Volver al MES',
+    sNum:'Pallets del día',sPz:'Piezas',sPend:'Pendientes de recibir en IMS',
+    pxT:'Por etiquetar',pxSub:'Piezas registradas en el MES que todavía no tienen etiqueta (últimos 3 días)',pxVacio:'✅ Todo está etiquetado',pxBtn:'🖨️ Imprimir etiqueta',pxAnt:'⚠ día anterior',
+    pxTotal:(n,m)=>`Faltan ${n} pzs en ${m} parte(s)`,pxCant:'Cantidad de esta etiqueta',
+    pxManual:'Otra cantidad o captura manual',lModel:'Modelo',lPart:'N° Parte',lDesc:'Descripción',lQty:'Cantidad del pallet',lDest:'Destino',
+    btnClose:'Cerrar pallet e imprimir hoja',cList:'Pallets del día',lDate:'Fecha',verTodas:'Ver todas las máquinas',
+    legend:'Pendiente = hoja impresa, aún sin escanear en IMS. Recibido = ya dio entrada por QR en IMS.',
+    thPallet:'Pallet',thMaq:'Máquina',thModel:'Modelo',thPart:'# Parte',thDesc:'Descripción',thQty:'Cant.',thHora:'Hora',thEstado:'Estado IMS',thHoja:'Hoja',
+    pend:'Pendiente',rec:'Recibido',void:'Anulado',reprint:'Reimprimir',anular:'Anular',
+    sinPal:(c,p,s)=>`Producido en cortes: ${c} · En pallets: ${p} · Sin paletizar: ${s}`,
+    gateT:'Inicia sesión',gateS:'Entra primero al MES con tu usuario y vuelve a abrir esta pantalla.',gateL:'Ir al MES',
+    printB:'Imprimir',closeB:'Cerrar',closed:'Pallet cerrado',err:'Error',qtyBad:'Captura una cantidad válida',pickAll:'Captura el N° de parte',
+    confirmVoid:'¿Anular este pallet? Solo se puede si aún no se recibe en IMS.',voided:'Pallet anulado'},
+  en:{title:'Line Pallets · MES Plant 1',sub:'Close the pallet, print the QR sheet and receive it in IMS',back:'← Back to MES',
+    sNum:'Pallets today',sPz:'Pieces',sPend:'Pending receipt in IMS',
+    pxT:'To label',pxSub:'Pieces logged in MES that do not have a label yet (last 3 days)',pxVacio:'✅ Everything is labeled',pxBtn:'🖨️ Print label',pxAnt:'⚠ previous day',
+    pxTotal:(n,m)=>`${n} pcs missing in ${m} part(s)`,pxCant:'Quantity for this label',
+    pxManual:'Other quantity or manual entry',lModel:'Model',lPart:'Part No.',lDesc:'Description',lQty:'Pallet quantity',lDest:'Destination',
+    btnClose:'Close pallet and print sheet',cList:'Pallets of the day',lDate:'Date',verTodas:'Show all machines',
+    legend:'Pending = sheet printed, not yet scanned in IMS. Received = already entered via QR in IMS.',
+    thPallet:'Pallet',thMaq:'Machine',thModel:'Model',thPart:'Part #',thDesc:'Description',thQty:'Qty',thHora:'Time',thEstado:'IMS status',thHoja:'Sheet',
+    pend:'Pending',rec:'Received',void:'Voided',reprint:'Reprint',anular:'Void',
+    sinPal:(c,p,s)=>`Produced in cuts: ${c} · In pallets: ${p} · Not palletized: ${s}`,
+    gateT:'Sign in',gateS:'Sign in to the MES first, then open this screen again.',gateL:'Go to MES',
+    printB:'Print',closeB:'Close',closed:'Pallet closed',err:'Error',qtyBad:'Enter a valid quantity',pickAll:'Enter the part number',
+    confirmVoid:'Void this pallet? Only possible if not yet received in IMS.',voided:'Pallet voided'},
+  ko:{title:'라인 팔레트 · MES 1공장',sub:'팔레트를 마감하고 QR 시트를 출력한 뒤 IMS에서 입고하세요',back:'← MES로 돌아가기',
+    sNum:'오늘 팔레트',sPz:'수량',sPend:'IMS 입고 대기',
+    pxT:'라벨 필요',pxSub:'MES에 등록되었지만 아직 라벨이 없는 수량 (최근 3일)',pxVacio:'✅ 모두 라벨 완료',pxBtn:'🖨️ 라벨 출력',pxAnt:'⚠ 전일',
+    pxTotal:(n,m)=>`${m}개 품번에서 ${n} pcs 부족`,pxCant:'이 라벨의 수량',
+    pxManual:'다른 수량 또는 수동 입력',lModel:'모델',lPart:'품번',lDesc:'품명',lQty:'팔레트 수량',lDest:'목적지',
+    btnClose:'팔레트 마감 및 시트 출력',cList:'오늘의 팔레트',lDate:'날짜',verTodas:'전체 설비 보기',
+    legend:'대기 = 시트 출력됨, IMS 미스캔. 입고 = IMS에서 QR로 입고 완료.',
+    thPallet:'팔레트',thMaq:'설비',thModel:'모델',thPart:'품번',thDesc:'품명',thQty:'수량',thHora:'시간',thEstado:'IMS 상태',thHoja:'시트',
+    pend:'대기',rec:'입고',void:'취소됨',reprint:'재출력',anular:'취소',
+    sinPal:(c,p,s)=>`컷 생산: ${c} · 팔레트: ${p} · 미적재: ${s}`,
+    gateT:'로그인',gateS:'먼저 MES에 로그인한 후 이 화면을 다시 여세요.',gateL:'MES로 이동',
+    printB:'출력',closeB:'닫기',closed:'팔레트 마감됨',err:'오류',qtyBad:'올바른 수량을 입력하세요',pickAll:'품번을 입력하세요',
+    confirmVoid:'이 팔레트를 취소하시겠습니까? IMS에서 아직 입고되지 않은 경우에만 가능합니다.',voided:'팔레트 취소됨'}
+};
+let LANG = (()=>{const l=localStorage.getItem('mes-lang');return T[l]?l:'es';})();
+const t = k => T[LANG][k];
+const fmt = n => (Number(n)||0).toLocaleString('en-US');
+
+let USER = null;
+let maq = localStorage.getItem('pm1-maq') || 'TC';
+if (!MAQS.includes(maq)) maq = MAQS[0];
+let PAL_LISTA = [], PAL_RANGO = [], REGS_RANGO = [], REGS_FECHA = [], PE_LISTA = [];
+let unsubLista = null, unsubPalRango = null, unsubRegsRango = null, unsubRegsFecha = null;
+
+const $ = id => document.getElementById(id);
+const norm = x => String(x==null?'':x).trim().toUpperCase();
+const esc = s => String(s==null?'':s).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
+function isoDe(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+function hoyISO(){ return isoDe(new Date()); }
+function desdeISO(){ const d=new Date(); d.setDate(d.getDate()-3); return isoDe(d); }
+function toast(msg){ const e=$('toast'); e.textContent=msg; e.classList.remove('hide'); setTimeout(()=>e.classList.add('hide'),2600); }
+
+/* ───────── Textos ───────── */
+function pintarTextos(){
+  document.documentElement.lang = LANG;
+  ['es','en','ko'].forEach(l=>$('f-'+l).classList.toggle('on',l===LANG));
+  const set=(id,k)=>{ $(id).textContent=t(k); };
+  set('t-title','title'); set('t-sub','sub'); set('t-back','back');
+  set('px-t','pxT'); set('px-sub','pxSub'); set('px-manual','pxManual');
+  set('l-model','lModel'); set('l-part','lPart'); set('l-desc','lDesc'); set('l-qty','lQty'); set('l-dest','lDest');
+  set('btnClose','btnClose'); set('c-list','cList'); set('l-date','lDate'); set('legend','legend'); set('l-todas','verTodas');
+  set('m-print','printB'); set('m-close','closeB'); set('g-t','gateT'); set('g-s','gateS'); set('g-l','gateL');
+  $('thead').innerHTML=['thPallet','thMaq','thModel','thPart','thDesc','thQty','thHora','thEstado','thHoja'].map((k,i)=>`<th class="${i===5?'r':''}">${t(k)}</th>`).join('');
+}
+window.setLang = l => { LANG=l; localStorage.setItem('mes-lang',l); pintarTextos(); pintarTodo(); };
+
+/* ───────── Selector de máquina ───────── */
+function pintarChips(){
+  $('maqChips').innerHTML = GRUPOS.map(g=>`<div class="grp">${esc(GRUPO_TXT[LANG][g.k])}</div><div class="chips">`+
+    g.m.map(m=>`<button class="chip ${m===maq?'on':''}" onclick="selMaq('${m}')">${m}</button>`).join('')+`</div>`).join('');
+}
+window.selMaq = m => { maq=m; localStorage.setItem('pm1-maq',m); pintarTodo(); };
+
+/* ───────── Por etiquetar: producción del MES sin pallet (hoy + 3 días anteriores) ───────── */
+function porEtiquetar(m){
+  const cs={}, ps={};
+  REGS_RANGO.forEach(r=>{
+    if ((r.maqNombre||r.maquina)!==m) return;
+    const pn=norm(r.parte), sm=norm(r.modelo);
+    if (!pn && !sm) return;
+    const k=sm+'||'+pn;
+    const c = cs[k] || (cs[k]={sm, pn, f:String(r.fecha), q:0});
+    if (String(r.fecha)<c.f) c.f=String(r.fecha);
+    c.q += Number(r.prod!=null?r.prod:r.qty)||0;
+  });
+  PAL_RANGO.forEach(p=>{
+    if (p.maquina!==m || p.status==='VOID') return;
+    const k=norm(p.modelo)+'||'+norm(p.parte);
+    ps[k]=(ps[k]||0)+(Number(p.qty)||0);
+  });
+  return Object.keys(cs).map(k=>({...cs[k], falta:cs[k].q-(ps[k]||0)})).filter(x=>x.falta>0)
+    .sort((a,b)=>a.f.localeCompare(b.f) || a.pn.localeCompare(b.pn));
+}
+function pintarPorEtiquetar(){
+  const box=$('porEt'); if(!box) return;
+  const hoy=hoyISO(); PE_LISTA=porEtiquetar(maq);
+  if (!PE_LISTA.length) { box.innerHTML=`<div class="pe-vacio">${t('pxVacio')}</div>`; return; }
+  const tot=PE_LISTA.reduce((s,x)=>s+x.falta,0);
+  box.innerHTML = `<div class="note" style="margin:0 0 8px"><b>${T[LANG].pxTotal(fmt(tot),PE_LISTA.length)}</b></div>` + PE_LISTA.map((x,i)=>{
+    const ant = x.f!==hoy;
+    return `<div class="pe ${ant?'ant':''}">
+      <div class="info"><b>${esc(x.pn||'—')}</b><span>${esc(x.sm||'—')}</span>${ant?`<em>${t('pxAnt')} (${esc(x.f)})</em>`:''}</div>
+      <input class="qty" id="pe-q-${i}" type="number" min="1" inputmode="numeric" value="${x.falta}" aria-label="${t('pxCant')}">
+      <button class="btn" id="pe-b-${i}" onclick="cerrarPorEtiquetar(${i})">${t('pxBtn')}</button>
+    </div>`;
+  }).join('');
+}
+window.cerrarPorEtiquetar = async i => {
+  const x=PE_LISTA[i]; if(!x) return;
+  const qty=parseInt($('pe-q-'+i).value)||0;
+  if (qty<=0) { toast(t('qtyBad')); return; }
+  $('pe-b-'+i).disabled=true;
+  await crearPallet({sm:x.sm, pn:x.pn, qty, dest:'IMS P1', desc:''});
+};
+
+/* ───────── Captura manual ───────── */
+function actualizarSinPaletizar(){
+  const sm=norm($('inModelo').value), pn=norm($('inParte').value);
+  if (!pn) { $('sinPal').textContent=''; return; }
+  const cap = REGS_FECHA.filter(r=>(r.maqNombre||r.maquina)===maq && norm(r.parte)===pn && (!sm || norm(r.modelo)===sm)).reduce((s,r)=>s+(Number(r.prod!=null?r.prod:r.qty)||0),0);
+  const pal = PAL_LISTA.filter(p=>p.maquina===maq && norm(p.parte)===pn && (!sm || norm(p.modelo)===sm) && p.status!=='VOID').reduce((s,p)=>s+(Number(p.qty)||0),0);
+  $('sinPal').textContent = T[LANG].sinPal(fmt(cap),fmt(pal),fmt(Math.max(0,cap-pal)));
+}
+['inModelo','inParte'].forEach(id=>document.addEventListener('input',e=>{ if(e.target.id===id) actualizarSinPaletizar(); }));
+window.cerrarManual = async () => {
+  const sm=norm($('inModelo').value), pn=norm($('inParte').value), qty=parseInt($('qty').value)||0;
+  if (!pn) { toast(t('pickAll')); return; }
+  if (qty<=0) { toast(t('qtyBad')); return; }
+  const btn=$('btnClose'); btn.disabled=true;
+  const ok = await crearPallet({sm, pn, qty, dest:$('selDest').value, desc:$('inDesc').value.trim()});
+  if (ok) $('qty').value='';
+  btn.disabled=false;
+};
+
+/* ───────── Crear / anular / reimprimir ───────── */
+function qrTexto(p){ return [p.parte, p.desc, p.familia, p.qty, p.id].map(x=>String(x==null?'':x).replace(/\|/g,'/')).join('|'); }
+async function crearPallet(d){
+  try {
+    const f = hoyISO(), ymd = f.replace(/-/g,'');
+    let n = Math.max(0, ...PAL_LISTA.concat(PAL_RANGO).filter(p=>p.maquina===maq && p.fecha===f).map(p=>p.palletNo||0)) + 1;
+    let id = `${ymd}-${maq}-${n}`;
+    while ((await getDoc(doc(db,COL_PALLETS,id))).exists()) { n++; id = `${ymd}-${maq}-${n}`; }
+    const ahora = new Date();
+    const p = { id, fecha:f, palletNo:n, maquina:maq, modelo:d.sm||'', parte:d.pn, desc:d.desc||'', familia:'', qty:d.qty,
+      destino:d.dest, status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
+      horaMs:ahora.getTime(), horaTxt:ahora.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), creadoEn:serverTimestamp() };
+    p.qr = qrTexto(p);
+    await setDoc(doc(db,COL_PALLETS,id), p);
+    toast(t('closed')+': '+id);
+    mostrarHoja(p);
+    return true;
+  } catch(e){ console.error(e); toast(t('err')+': '+e.message); return false; }
+}
+window.anular = async id => {
+  const p = PAL_LISTA.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
+  if (!confirm(t('confirmVoid'))) return;
+  try { await updateDoc(doc(db,COL_PALLETS,id), {status:'VOID', anuladoPor:(USER&&USER.nombre)||'', anuladoEn:serverTimestamp()}); toast(t('voided')); }
+  catch(e){ toast(t('err')+': '+e.message); }
+};
+window.reimprimir = id => { const p = PAL_LISTA.find(x=>x.id===id); if (p) mostrarHoja(p); };
+
+/* ───────── Lista del día ───────── */
+window.pintarLista = function(){
+  const todas = $('verTodas').checked;
+  const ambito = todas ? PAL_LISTA : PAL_LISTA.filter(p=>p.maquina===maq);
+  const et = todas?'*':maq;
+  $('s-n').textContent=t('sNum')+' · '+et; $('s-pz').textContent=t('sPz')+' · '+et; $('s-pe').textContent=t('sPend')+' · '+et;
+  const vivos = ambito.filter(p=>p.status!=='VOID');
+  $('v-n').textContent = fmt(vivos.length);
+  $('v-pz').textContent = fmt(vivos.reduce((s,p)=>s+(Number(p.qty)||0),0));
+  $('v-pe').textContent = fmt(vivos.filter(p=>p.status==='PENDING').length);
+  const filas = [...ambito].sort((a,b)=>(b.horaMs||0)-(a.horaMs||0));
+  $('tbody').innerHTML = filas.map(p=>{
+    const est = p.status==='RECEIVED' ? `<span class="tag rec">${t('rec')}${p.recibidoEn?' '+esc(p.recibidoEn):''}</span>` : p.status==='VOID' ? `<span class="tag void">${t('void')}</span>` : `<span class="tag pend">${t('pend')}</span>`;
+    const acc = p.status==='VOID' ? '' : `<button class="btn sec" onclick="reimprimir('${esc(p.id)}')">${t('reprint')}</button>` + (p.status==='PENDING' ? ` <button class="btn sec warn" onclick="anular('${esc(p.id)}')">${t('anular')}</button>` : '');
+    return `<tr><td><b>${esc(p.id)}</b></td><td>${esc(p.maquina)}</td><td>${esc(p.modelo)}</td><td class="pn">${esc(p.parte)}</td><td>${esc(p.desc)}</td><td class="r"><b>${fmt(p.qty)}</b></td><td>${esc(p.horaTxt||'')}</td><td>${est}</td><td>${acc}</td></tr>`;
+  }).join('') || `<tr><td colspan="9" class="note" style="padding:14px">—</td></tr>`;
+};
+function pintarTodo(){ pintarChips(); pintarPorEtiquetar(); window.pintarLista(); actualizarSinPaletizar(); }
+
+/* ───────── Datos en vivo ───────── */
+function escucharFecha(){
+  if (unsubLista) unsubLista(); if (unsubRegsFecha) unsubRegsFecha();
+  const f = $('fecha').value || hoyISO();
+  unsubLista = onSnapshot(query(collection(db,COL_PALLETS), where('fecha','==',f)), snap=>{
+    PAL_LISTA = snap.docs.map(d=>({id:d.id,...d.data()})); pintarTodo();
+  }, e=>{ console.error(e); toast(t('err')+': '+e.message); });
+  unsubRegsFecha = onSnapshot(query(collection(db,COL_REGS), where('fecha','==',f)), snap=>{
+    REGS_FECHA = snap.docs.map(d=>d.data()); actualizarSinPaletizar();
+  }, e=>console.warn('regs fecha:',e.message));
+}
+window.onFecha = () => escucharFecha();
+function escucharRango(){
+  if (unsubPalRango) unsubPalRango(); if (unsubRegsRango) unsubRegsRango();
+  const desde = desdeISO();
+  unsubPalRango = onSnapshot(query(collection(db,COL_PALLETS), where('fecha','>=',desde)), snap=>{
+    PAL_RANGO = snap.docs.map(d=>({id:d.id,...d.data()})); pintarPorEtiquetar();
+  }, e=>console.warn('pallets rango:',e.message));
+  unsubRegsRango = onSnapshot(query(collection(db,COL_REGS), where('fecha','>=',desde)), snap=>{
+    REGS_RANGO = snap.docs.map(d=>d.data()); pintarPorEtiquetar();
+  }, e=>console.warn('regs rango:',e.message));
+}
+
+/* ───────── Hoja con QR (4in x 6in) ───────── */
+function qrDataUrl(texto){
+  const tmp = document.createElement('div'); tmp.style.cssText='position:fixed;left:-9999px;top:0';
+  document.body.appendChild(tmp);
+  new QRCode(tmp, {text:texto, width:300, height:300, colorDark:'#000000', colorLight:'#ffffff', correctLevel:QRCode.CorrectLevel.M});
+  const c = tmp.querySelector('canvas'), im = tmp.querySelector('img');
+  const url = c ? c.toDataURL('image/png') : (im ? im.src : '');
+  document.body.removeChild(tmp);
+  return url;
+}
+function mostrarHoja(p){
+  const [y,m,d] = p.fecha.split('-');
+  $('sheet').innerHTML = `
+    <div class="pl">Pallet ${esc(p.palletNo)}</div>
+    <div class="hd"><span class="esp">ESP</span><span class="dst">${esc(p.destino||'IMS P1')}</span><span class="mq">${esc(p.maquina)}</span></div>
+    <div class="row"><div># PART</div><div style="font-size:19px">${esc(p.parte)}</div></div>
+    <div class="row"><div>DESC:</div><div style="font-size:12px">${esc(p.desc)}<br>${esc(p.modelo)}</div></div>
+    <div class="row"><div>MACHINE:</div><div style="font-size:15px">${esc(p.maquina)}</div></div>
+    <div class="row"><div>QTY:</div><div style="font-size:22px">${fmt(p.qty)}</div></div>
+    <div class="row" style="border-bottom:1px solid #111"><div>DATE:</div><div style="font-size:15px">${d}.${m}.${y.slice(2)} · ${esc(p.horaTxt||'')}</div></div>
+    <div class="qrw"><img alt="QR" src="${qrDataUrl(p.qr || qrTexto(p))}"><span class="idt">${esc(p.id)}</span></div>`;
+  $('modal').classList.remove('hide');
+}
+window.cerrarModal = () => $('modal').classList.add('hide');
+
+/* ───────── Arranque ───────── */
+async function iniciar(fireUser){
+  try {
+    const us = await getDocs(query(collection(db,COL_USERS), where('uid','==',fireUser.uid)));
+    USER = us.empty ? {uid:fireUser.uid, nombre:fireUser.email} : {uid:fireUser.uid, ...us.docs[0].data()};
+  } catch(e){ USER = {uid:fireUser.uid, nombre:fireUser.email}; }
+  $('fecha').value = hoyISO();
+  escucharFecha(); escucharRango();
+  pintarTextos(); pintarTodo();
+  $('gate').classList.add('hide'); $('app').classList.remove('hide');
+  const qm = new URLSearchParams(location.search).get('m');
+  if (qm && MAQS.includes(qm)) window.selMaq(qm);
+}
+pintarTextos();
+onAuthStateChanged(auth, u => {
+  if (u) iniciar(u);
+  else { $('app').classList.add('hide'); $('gate').classList.remove('hide'); }
+});
+</script>
+</body>
+</html>

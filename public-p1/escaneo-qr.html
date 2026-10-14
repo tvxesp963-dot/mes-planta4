@@ -1,0 +1,469 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+<meta name="theme-color" content="#0f1117">
+<title>Escaneo QR · MES P1</title>
+<style>
+  :root{
+    --bg:#0f1117; --card:#171a23; --card2:#1e2230; --border:#2a2f3f;
+    --text:#e8eaed; --muted:#7f8c9a; --blue:#4f8ef7; --green:#2ecc71;
+    --red:#ff5b5b; --amber:#FFBA00;
+  }
+  *{box-sizing:border-box}
+  body{margin:0;background:var(--bg);color:var(--text);font-family:-apple-system,Segoe UI,Roboto,sans-serif;min-height:100vh}
+  .wrap{max-width:520px;margin:0 auto;padding:20px 16px 60px}
+  .top{display:flex;justify-content:space-between;align-items:center;gap:8px;margin-bottom:18px}
+  h1{font-size:1.1rem;margin:0}
+  .langs{display:flex;gap:4px}
+  .lang-btn{background:transparent;border:2px solid transparent;border-radius:6px;padding:2px;opacity:.5;cursor:pointer}
+  .lang-btn.active{opacity:1;border-color:var(--blue)}
+  .lang-btn img{display:block;border-radius:3px}
+  .card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px;margin-bottom:14px}
+  label{display:block;font-size:.8rem;color:var(--muted);margin-bottom:5px}
+  input,select{width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);
+    border-radius:8px;padding:10px;font-size:.95rem;margin-bottom:14px}
+  input:focus,select:focus{outline:2px solid var(--blue)}
+  button{cursor:pointer;border:none;border-radius:10px;font-weight:700;font-size:.9rem;padding:12px 16px}
+  .btn-main{width:100%;background:var(--blue);color:#fff}
+  .btn-green{background:var(--green);color:#04220f}
+  .btn-red{background:var(--red);color:#2a0303}
+  .btn-ghost{background:transparent;border:1px solid var(--border);color:var(--text)}
+  .row{display:flex;gap:8px}
+  .row>*{flex:1}
+  .err{color:var(--red);font-size:.85rem;margin-top:-6px;margin-bottom:10px;min-height:16px}
+  .hidden{display:none !important}
+  .link{color:var(--blue);font-size:.85rem;cursor:pointer;text-align:center;margin-top:12px}
+  .counter{font-size:4rem;font-weight:800;text-align:center;color:var(--green);line-height:1}
+  .counter-sub{text-align:center;color:var(--muted);font-size:.85rem;margin-bottom:16px}
+  .scanbox{border:2px dashed var(--blue);border-radius:14px;padding:22px;text-align:center;margin-bottom:16px;background:rgba(79,142,247,.06)}
+  .scanbox input{margin:0;text-align:center;font-size:1.1rem;letter-spacing:1px}
+  .log{max-height:170px;overflow-y:auto;font-size:.8rem;color:var(--muted);font-family:monospace}
+  .log div{padding:4px 0;border-bottom:1px solid var(--border);display:flex;justify-content:space-between}
+  .toast{position:fixed;bottom:20px;left:50%;transform:translateX(-50%);background:var(--card2);
+    border:1px solid var(--border);padding:10px 18px;border-radius:10px;font-size:.85rem;z-index:99;
+    opacity:0;transition:opacity .25s;pointer-events:none;max-width:90%}
+  .toast.show{opacity:1}
+  .badge{display:inline-block;background:var(--card2);border:1px solid var(--border);border-radius:6px;padding:2px 8px;font-size:.75rem;color:var(--muted)}
+  .spin{display:inline-block;width:14px;height:14px;border:2px solid rgba(255,255,255,.35);
+    border-top-color:#fff;border-radius:50%;animation:sp .7s linear infinite;margin-right:6px;vertical-align:-2px}
+  @keyframes sp{to{transform:rotate(360deg)}}
+  .modal{position:fixed;inset:0;background:rgba(0,0,0,.7);display:flex;align-items:center;justify-content:center;z-index:100;padding:16px}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <h1 data-i18n="titulo">📷 Escaneo QR — Captura de Producción</h1>
+    <div class="langs">
+      <button class="lang-btn" id="lang-es" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" alt="MX"></button>
+      <button class="lang-btn" id="lang-en" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" alt="US"></button>
+      <button class="lang-btn" id="lang-ko" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" alt="KR"></button>
+    </div>
+  </div>
+
+  <!-- LOGIN -->
+  <div id="scr-login" class="card">
+    <label data-i18n="correo">Correo</label>
+    <input id="lg-email" type="email" autocomplete="username">
+    <label data-i18n="clave">Contraseña</label>
+    <input id="lg-pass" type="password" autocomplete="current-password">
+    <div class="err" id="lg-err"></div>
+    <button class="btn-main" onclick="doLogin()" data-i18n="entrar">Entrar</button>
+    <div class="link" onclick="abrirReset()" data-i18n="olvido">¿Olvidaste tu contraseña? Da clic aquí para restablecerla</div>
+  </div>
+
+  <!-- SETUP -->
+  <div id="scr-setup" class="card hidden">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:10px">
+      <span class="badge" id="setup-user"></span>
+      <span onclick="doLogout()" style="font-size:.8rem;color:var(--red);cursor:pointer" data-i18n="salir">Salir</span>
+    </div>
+    <label data-i18n="fecha">Fecha</label>
+    <input id="s-fecha" type="date">
+    <label data-i18n="turno">Turno</label>
+    <select id="s-turno">
+      <option value="A">A</option>
+      <option value="B">B</option>
+      <option value="C">C</option>
+    </select>
+    <label data-i18n="maquina">Máquina</label>
+    <select id="s-maquina"></select>
+    <label data-i18n="corte">Corte</label>
+    <select id="s-corte">
+      <option value="C1">C1 (Break)</option>
+      <option value="C2">C2 (Lunch)</option>
+      <option value="C3">C3 (Home)</option>
+      <option value="OT">OT</option>
+    </select>
+    <label data-i18n="modelo">Modelo</label>
+    <input id="s-modelo" placeholder="Ej. SM-S936" autocapitalize="characters">
+    <label data-i18n="parte">N° Parte</label>
+    <input id="s-parte" placeholder="Ej. GH90-12345A" autocapitalize="characters">
+    <label data-i18n="operador">Operador</label>
+    <input id="s-operador">
+    <label data-i18n="empleado">N° Empleado</label>
+    <input id="s-empleado" placeholder="12345">
+    <div class="err" id="setup-err"></div>
+    <button class="btn-main" onclick="iniciarEscaneo()" data-i18n="iniciar">▶️ Iniciar Escaneo</button>
+  </div>
+
+  <!-- ESCANEO -->
+  <div id="scr-scan" class="hidden">
+    <div class="card">
+      <div class="counter" id="sc-counter">0</div>
+      <div class="counter-sub" id="sc-sub"></div>
+      <div class="scanbox">
+        <input id="sc-input" data-i18n-ph="ph_scan" autocomplete="off">
+      </div>
+      <div class="row">
+        <button class="btn-ghost" onclick="deshacerUltimo()" data-i18n="deshacer">↩️ Deshacer último</button>
+        <button class="btn-ghost" onclick="pausarReanudar()" id="sc-pause-btn">⏸️</button>
+      </div>
+    </div>
+    <div class="card">
+      <label style="margin-bottom:8px" data-i18n="ultimos">Últimos escaneos</label>
+      <div class="log" id="sc-log"></div>
+    </div>
+    <div class="card">
+      <button class="btn-green" style="width:100%;margin-bottom:8px" onclick="abrirFinalizar()" data-i18n="finalizar">✅ Finalizar y Guardar</button>
+      <button class="btn-red" style="width:100%" onclick="cancelarSesion()" data-i18n="cancelar">🗑️ Cancelar sesión</button>
+    </div>
+  </div>
+
+  <!-- FINALIZAR -->
+  <div id="scr-final" class="card hidden">
+    <div style="margin-bottom:12px"><span data-i18n="total">Total escaneado:</span> <strong id="fin-total" style="color:var(--green);font-size:1.2rem"></strong></div>
+    <label data-i18n="def">Defectuosas</label>
+    <input id="f-def" type="number" min="0" value="0">
+    <label data-i18n="scrap">Scrap</label>
+    <input id="f-scr" type="number" min="0" value="0">
+    <label data-i18n="notas">Notas (opcional)</label>
+    <input id="f-notas">
+    <div class="err" id="fin-err"></div>
+    <div class="row">
+      <button class="btn-ghost" onclick="volverAEscaneo()" data-i18n="regresar">← Regresar</button>
+      <button class="btn-green" id="fin-guardar-btn" onclick="guardarRegistroFinal()" data-i18n="guardar">💾 Guardar registro</button>
+    </div>
+  </div>
+
+  <!-- EXITO -->
+  <div id="scr-exito" class="card hidden" style="text-align:center">
+    <div style="font-size:3rem">✅</div>
+    <div style="margin:10px 0" id="exito-msg"></div>
+    <button class="btn-main" onclick="nuevaSesion()" data-i18n="nueva">➕ Nueva captura</button>
+  </div>
+</div>
+
+<!-- RESET PASSWORD -->
+<div id="reset-modal" class="modal hidden">
+  <div class="card" style="max-width:380px;width:100%;margin:0">
+    <div style="font-weight:700;margin-bottom:10px" data-i18n="reset_t">Restablecer contraseña</div>
+    <label data-i18n="correo">Correo</label>
+    <input id="rs-email" type="email">
+    <div class="err" id="rs-msg" style="margin-top:-6px"></div>
+    <div class="row">
+      <button class="btn-ghost" onclick="cerrarReset()" data-i18n="cerrar">Cerrar</button>
+      <button class="btn-main" onclick="enviarReset()" data-i18n="enviar">Enviar</button>
+    </div>
+  </div>
+</div>
+<div class="toast" id="toast"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, addDoc, getDocs, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef",
+  measurementId:     "G-SGJTX6W9HS"
+};
+const app  = initializeApp(firebaseConfig);
+const auth = getAuth(app);
+const db   = getFirestore(app);
+const REGS_COL  = () => collection(db, "registros_p1");
+const USERS_COL = () => collection(db, "usuarios_p1");
+
+/* Mismas máquinas y cortes que el index.html de P1 */
+const CORTES = {C1:1600,C2:3200,C3:3200,OT:2000};
+const MAQUINAS = [
+  ...["ZP1","ZP2","ZP3","ZP4","ZP5","ZP6"].map(n=>({nombre:n,tipo:"Printing"})),
+  ...["DA","DE","DB","DF","DG"].map(n=>({nombre:n,tipo:"Folding"})),
+  ...["GA","GB"].map(n=>({nombre:n,tipo:"Cutting"})),
+  ...["LAMI","LINER","FOIL","UV"].map(n=>({nombre:n,tipo:"Finished"})),
+  ...["TA","TB","TC"].map(n=>({nombre:n,tipo:"DieCut"})),
+  ...["E1","E2"].map(n=>({nombre:n,tipo:"Stitching"})),
+  ...["A","B"].map(n=>({nombre:n,tipo:"Label"})),
+  ...["P1","P2"].map(n=>({nombre:n,tipo:"GlueLine"})),
+].map(m=>({...m,target:8000,cortes:CORTES}));
+
+/* ---------- Idiomas ES/EN/KO ---------- */
+const TR = {
+ es:{titulo:"📷 Escaneo QR — Captura de Producción",correo:"Correo",clave:"Contraseña",entrar:"Entrar",
+  olvido:"¿Olvidaste tu contraseña? Da clic aquí para restablecerla",salir:"Salir",fecha:"Fecha",turno:"Turno",
+  maquina:"Máquina",corte:"Corte",modelo:"Modelo",parte:"N° Parte",operador:"Operador",empleado:"N° Empleado",
+  iniciar:"▶️ Iniciar Escaneo",ph_scan:"Apunta y dispara la pistola aquí…",deshacer:"↩️ Deshacer último",
+  pausar:"⏸️ Pausar",reanudar:"▶️ Reanudar",ultimos:"Últimos escaneos",finalizar:"✅ Finalizar y Guardar",
+  cancelar:"🗑️ Cancelar sesión (borra el conteo)",total:"Total escaneado:",def:"Defectuosas",scrap:"Scrap",
+  notas:"Notas (opcional)",regresar:"← Regresar",guardar:"💾 Guardar registro",nueva:"➕ Nueva captura",
+  reset_t:"Restablecer contraseña",cerrar:"Cerrar",enviar:"Enviar",
+  piezas:"piezas escaneadas",sinesc:"Aún no hay escaneos",
+  e_login:"Escribe correo y contraseña",e_bad:"Correo o contraseña incorrectos",
+  e_perfil:"Tu cuenta no tiene perfil en MES P1",e_inact:"Tu usuario está desactivado",
+  e_maq:"Selecciona una máquina",e_mod:"Escribe el modelo",e_part:"Escribe el N° de parte",e_op:"Escribe el nombre del operador",
+  dup:"⚠️ Código ya escaneado, no se contó de nuevo",e_cero:"Escanea al menos una pieza antes de finalizar",
+  c_cancel:"¿Seguro? Se borrará todo el conteo de esta sesión sin guardar nada.",
+  c_resume:"Hay una sesión sin guardar con {n} piezas. ¿Quieres continuarla?",
+  e_save:"Error al guardar: ",guardadas:"piezas guardadas.",
+  rs_ok:"✅ Te enviamos un correo. Revisa tu bandeja y también SPAM.",rs_no:"Escribe tu correo",rs_err:"No se pudo enviar. Verifica el correo."},
+ en:{titulo:"📷 QR Scan — Production Capture",correo:"Email",clave:"Password",entrar:"Sign in",
+  olvido:"Forgot your password? Click here to reset it",salir:"Log out",fecha:"Date",turno:"Shift",
+  maquina:"Machine",corte:"Cut-off",modelo:"Model",parte:"Part No.",operador:"Operator",empleado:"Employee No.",
+  iniciar:"▶️ Start Scanning",ph_scan:"Aim and fire the scanner here…",deshacer:"↩️ Undo last",
+  pausar:"⏸️ Pause",reanudar:"▶️ Resume",ultimos:"Latest scans",finalizar:"✅ Finish & Save",
+  cancelar:"🗑️ Cancel session (clears count)",total:"Total scanned:",def:"Defective",scrap:"Scrap",
+  notas:"Notes (optional)",regresar:"← Back",guardar:"💾 Save record",nueva:"➕ New capture",
+  reset_t:"Reset password",cerrar:"Close",enviar:"Send",
+  piezas:"pieces scanned",sinesc:"No scans yet",
+  e_login:"Enter email and password",e_bad:"Wrong email or password",
+  e_perfil:"Your account has no profile in MES P1",e_inact:"Your user is disabled",
+  e_maq:"Select a machine",e_mod:"Enter the model",e_part:"Enter the part number",e_op:"Enter the operator name",
+  dup:"⚠️ Code already scanned, not counted again",e_cero:"Scan at least one piece before finishing",
+  c_cancel:"Sure? The whole count of this session will be deleted without saving.",
+  c_resume:"There is an unsaved session with {n} pieces. Continue it?",
+  e_save:"Save error: ",guardadas:"pieces saved.",
+  rs_ok:"✅ We sent you an email. Check your inbox and also SPAM.",rs_no:"Enter your email",rs_err:"Could not send. Check the email."},
+ ko:{titulo:"📷 QR 스캔 — 생산 입력",correo:"이메일",clave:"비밀번호",entrar:"로그인",
+  olvido:"비밀번호를 잊으셨나요? 여기를 눌러 재설정하세요",salir:"로그아웃",fecha:"날짜",turno:"교대",
+  maquina:"설비",corte:"마감",modelo:"모델",parte:"부품번호",operador:"작업자",empleado:"사원번호",
+  iniciar:"▶️ 스캔 시작",ph_scan:"여기에 스캐너를 사용하세요…",deshacer:"↩️ 마지막 취소",
+  pausar:"⏸️ 일시정지",reanudar:"▶️ 재개",ultimos:"최근 스캔",finalizar:"✅ 완료 및 저장",
+  cancelar:"🗑️ 세션 취소 (수량 삭제)",total:"총 스캔:",def:"불량",scrap:"스크랩",
+  notas:"메모 (선택)",regresar:"← 뒤로",guardar:"💾 기록 저장",nueva:"➕ 새 입력",
+  reset_t:"비밀번호 재설정",cerrar:"닫기",enviar:"보내기",
+  piezas:"개 스캔됨",sinesc:"스캔 내역 없음",
+  e_login:"이메일과 비밀번호를 입력하세요",e_bad:"이메일 또는 비밀번호가 올바르지 않습니다",
+  e_perfil:"MES P1에 프로필이 없습니다",e_inact:"비활성화된 사용자입니다",
+  e_maq:"설비를 선택하세요",e_mod:"모델을 입력하세요",e_part:"부품번호를 입력하세요",e_op:"작업자 이름을 입력하세요",
+  dup:"⚠️ 이미 스캔된 코드입니다",e_cero:"완료 전에 최소 1개를 스캔하세요",
+  c_cancel:"확실합니까? 이 세션의 수량이 저장 없이 삭제됩니다.",
+  c_resume:"저장되지 않은 세션({n}개)이 있습니다. 계속하시겠습니까?",
+  e_save:"저장 오류: ",guardadas:"개 저장됨.",
+  rs_ok:"✅ 이메일을 보냈습니다. 받은편지함과 스팸함을 확인하세요.",rs_no:"이메일을 입력하세요",rs_err:"전송 실패. 이메일을 확인하세요."}
+};
+let LANG = (()=>{try{return localStorage.getItem('mes-lang')||'es';}catch(e){return 'es';}})();
+if(!TR[LANG]) LANG='es';
+const tr = k => (TR[LANG][k] ?? TR.es[k] ?? k);
+window.setLang = (l) => {
+  LANG = l;
+  try{localStorage.setItem('mes-lang',l);}catch(e){}
+  applyLang();
+};
+function applyLang(){
+  document.documentElement.lang = LANG;
+  document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent = tr(el.dataset.i18n); });
+  document.querySelectorAll('[data-i18n-ph]').forEach(el=>{ el.placeholder = tr(el.dataset.i18nPh); });
+  ['es','en','ko'].forEach(l=>document.getElementById('lang-'+l).classList.toggle('active', l===LANG));
+  $("sc-pause-btn").textContent = paused ? tr('reanudar') : tr('pausar');
+  renderContador(); renderLog();
+}
+
+let CURRENT_USER = null;
+let scannedCodes = [];
+let paused = false;
+
+const $ = id => document.getElementById(id);
+const show = id => { ["scr-login","scr-setup","scr-scan","scr-final","scr-exito"].forEach(s=>$(s).classList.add("hidden")); $(id).classList.remove("hidden"); };
+function toast(msg,ms=2200){ const t=$("toast"); t.textContent=msg; t.classList.add("show"); setTimeout(()=>t.classList.remove("show"),ms); }
+function fechaLocal(d){ d=d||new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+
+/* ---------- LOGIN ---------- */
+window.doLogin = async () => {
+  const email = $("lg-email").value.trim();
+  const pass  = $("lg-pass").value;
+  $("lg-err").textContent = "";
+  if(!email || !pass){ $("lg-err").textContent = tr('e_login'); return; }
+  try{ await signInWithEmailAndPassword(auth, email, pass); }
+  catch(e){ $("lg-err").textContent = tr('e_bad'); }
+};
+window.doLogout = async () => { await signOut(auth); };
+
+window.abrirReset = () => { $("rs-email").value=$("lg-email").value; $("rs-msg").textContent=""; $("reset-modal").classList.remove("hidden"); };
+window.cerrarReset = () => $("reset-modal").classList.add("hidden");
+window.enviarReset = async () => {
+  const email = $("rs-email").value.trim();
+  if(!email){ $("rs-msg").style.color="var(--red)"; $("rs-msg").textContent=tr('rs_no'); return; }
+  try{
+    await sendPasswordResetEmail(auth, email);
+    $("rs-msg").style.color="var(--green)"; $("rs-msg").textContent=tr('rs_ok');
+  }catch(e){ $("rs-msg").style.color="var(--red)"; $("rs-msg").textContent=tr('rs_err'); }
+};
+
+onAuthStateChanged(auth, async (fireUser) => {
+  if(!fireUser){ CURRENT_USER=null; show("scr-login"); return; }
+  const snap = await getDocs(query(USERS_COL(), where("uid","==",fireUser.uid)));
+  if(snap.empty){ toast(tr('e_perfil'),3500); await signOut(auth); return; }
+  const perfil = snap.docs[0].data();
+  if(perfil.activo === false){ toast(tr('e_inact'),3500); await signOut(auth); return; }
+  CURRENT_USER = {uid:fireUser.uid, ...perfil};
+  $("setup-user").textContent = `${perfil.nombre||perfil.email}`;
+  initSetup();
+  checkSesionGuardada();
+});
+
+/* ---------- SETUP ---------- */
+function initSetup(){
+  $("s-maquina").innerHTML = MAQUINAS.map(m=>`<option value="${m.nombre}">${m.nombre} (${m.tipo})</option>`).join("");
+  $("s-maquina").value = "TC";
+  $("s-fecha").value = fechaLocal();
+  show("scr-setup");
+}
+
+/* ---------- SESIÓN (persistencia local) ---------- */
+const SKEY = "escaneoqr_session_p1";
+function guardarSesionLocal(){
+  const setup = {
+    fecha:$("s-fecha").value, turno:$("s-turno").value, maquina:$("s-maquina").value,
+    corte:$("s-corte").value, modelo:$("s-modelo").value, parte:$("s-parte").value,
+    operador:$("s-operador").value, empleado:$("s-empleado").value,
+  };
+  try{localStorage.setItem(SKEY, JSON.stringify({setup, scannedCodes, ts:Date.now()}));}catch(e){}
+}
+function checkSesionGuardada(){
+  let raw=null; try{raw=localStorage.getItem(SKEY);}catch(e){}
+  if(!raw) return;
+  try{
+    const data = JSON.parse(raw);
+    if(data.scannedCodes && data.scannedCodes.length){
+      if(confirm(tr('c_resume').replace('{n}',data.scannedCodes.length))){
+        scannedCodes = data.scannedCodes;
+        const s=data.setup;
+        $("s-fecha").value=s.fecha; $("s-turno").value=s.turno; $("s-maquina").value=s.maquina;
+        $("s-corte").value=s.corte; $("s-modelo").value=s.modelo; $("s-parte").value=s.parte;
+        $("s-operador").value=s.operador; $("s-empleado").value=s.empleado;
+        iniciarEscaneo(true);
+      } else { localStorage.removeItem(SKEY); }
+    }
+  }catch(e){ try{localStorage.removeItem(SKEY);}catch(_){} }
+}
+
+/* ---------- ESCANEO ---------- */
+window.iniciarEscaneo = (resumida=false) => {
+  $("setup-err").textContent = "";
+  if(!$("s-maquina").value){ $("setup-err").textContent=tr('e_maq'); return; }
+  if(!$("s-modelo").value.trim()){ $("setup-err").textContent=tr('e_mod'); return; }
+  if(!$("s-parte").value.trim()){ $("setup-err").textContent=tr('e_part'); return; }
+  if(!$("s-operador").value.trim()){ $("setup-err").textContent=tr('e_op'); return; }
+  if(resumida!==true) scannedCodes = [];
+  paused = false;
+  $("sc-pause-btn").textContent = tr('pausar');
+  renderContador(); renderLog();
+  show("scr-scan");
+  focoScan();
+};
+function focoScan(){ if(!paused) setTimeout(()=>$("sc-input").focus(), 50); }
+function renderContador(){
+  $("sc-counter").textContent = scannedCodes.length;
+  $("sc-sub").textContent = `${tr('piezas')} · ${$("s-maquina").value} · ${$("s-modelo").value}`;
+}
+function renderLog(){
+  const ultimos = scannedCodes.slice(-8).reverse();
+  $("sc-log").innerHTML = ultimos.length
+    ? ultimos.map(c=>`<div><span>${c.codigo}</span><span>${c.hora}</span></div>`).join("")
+    : `<div style="color:var(--muted)">${tr('sinesc')}</div>`;
+}
+
+$("sc-input").addEventListener("keydown", (e)=>{
+  if(e.key !== "Enter") return;
+  e.preventDefault();
+  const val = $("sc-input").value.trim();
+  $("sc-input").value = "";
+  if(!val || paused) return;
+  if(scannedCodes.some(c=>c.codigo===val)){ toast(tr('dup')); return; }
+  scannedCodes.push({codigo:val, hora:new Date().toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit',second:'2-digit'})});
+  renderContador(); renderLog(); guardarSesionLocal();
+});
+
+window.pausarReanudar = () => {
+  paused = !paused;
+  $("sc-pause-btn").textContent = paused ? tr('reanudar') : tr('pausar');
+  if(!paused) focoScan();
+};
+window.deshacerUltimo = () => {
+  if(!scannedCodes.length) return;
+  scannedCodes.pop();
+  renderContador(); renderLog(); guardarSesionLocal(); focoScan();
+};
+window.cancelarSesion = () => {
+  if(!confirm(tr('c_cancel'))) return;
+  scannedCodes = [];
+  try{localStorage.removeItem(SKEY);}catch(e){}
+  show("scr-setup");
+};
+
+/* ---------- FINALIZAR / GUARDAR ---------- */
+window.abrirFinalizar = () => {
+  if(!scannedCodes.length){ toast(tr('e_cero')); return; }
+  $("fin-total").textContent = scannedCodes.length.toLocaleString();
+  $("f-def").value=0; $("f-scr").value=0; $("f-notas").value=""; $("fin-err").textContent="";
+  show("scr-final");
+};
+window.volverAEscaneo = () => { show("scr-scan"); focoScan(); };
+
+window.guardarRegistroFinal = async () => {
+  const btn = $("fin-guardar-btn");
+  const def = parseInt($("f-def").value)||0;
+  const scr = parseInt($("f-scr").value)||0;
+  const prod = scannedCodes.length;
+  const m = MAQUINAS.find(x=>x.nombre===$("s-maquina").value);
+  const corte = $("s-corte").value;
+  const target = corte && m.cortes ? m.cortes[corte] : m.target;
+
+  btn.innerHTML = '<span class="spin"></span>...'; btn.disabled = true;
+
+  const reg = {
+    userId: CURRENT_USER.uid,
+    operador: $("s-operador").value.trim(),
+    empleado: $("s-empleado").value.trim(),
+    parte: $("s-parte").value.trim(),
+    modelo: $("s-modelo").value.trim().toUpperCase(),
+    fecha: $("s-fecha").value,
+    turno: $("s-turno").value,
+    corte: corte,
+    maqIdx: MAQUINAS.indexOf(m), maqNombre: m.nombre, maqTipo: m.tipo, target: target,
+    prod: prod, def: def, scrap: scr,
+    pct: +(prod/target*100).toFixed(2),
+    scrapPct: prod>0 ? +(scr/prod*100).toFixed(2) : 0,
+    defPct: prod>0 ? +(def/prod*100).toFixed(2) : 0,
+    notas: $("f-notas").value.trim(),
+    causaParo: "", minParo: 0,
+    origenCaptura: "escaneo_qr",
+    codigosEscaneados: scannedCodes.map(c=>c.codigo),
+    tsLocal: new Date().toISOString(),
+  };
+  try{
+    await addDoc(REGS_COL(), reg);
+    try{localStorage.removeItem(SKEY);}catch(e){}
+    $("exito-msg").innerHTML = `${m.nombre} · ${corte||reg.turno} · <strong>${prod.toLocaleString()}</strong> ${tr('guardadas')}`;
+    show("scr-exito");
+  }catch(e){
+    $("fin-err").textContent = tr('e_save') + e.message;
+  }
+  btn.innerHTML = tr('guardar'); btn.disabled = false;
+};
+
+window.nuevaSesion = () => { scannedCodes = []; show("scr-setup"); };
+
+applyLang();
+</script>
+</body>
+</html>

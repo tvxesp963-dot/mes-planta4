@@ -98,7 +98,7 @@ async function buscarRegistrosEdit() {
     const regs = [];
     snap.forEach(d => {
       const r = d.data();
-      const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
+      const fechaReg = r.fecha || (r.ts ? fechaLocal(new Date(r.ts.seconds*1000)) : '');
       if (fechaReg === fecha) regs.push({id:d.id, ...r});
     });
     if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
@@ -250,7 +250,7 @@ window.eliminarRegistroEdit=eliminarRegistroEdit;
 
 // ── AGREGAR REGISTRO MANUAL ──
 window.abrirNuevoRegistro = function() {
-  const fecha = document.getElementById('edit-reg-fecha').value || new Date().toISOString().slice(0,10);
+  const fecha = document.getElementById('edit-reg-fecha').value || fechaLocal();
   const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'];
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
@@ -618,6 +618,7 @@ let SHIPQR_ENVIADOS={};
 let QR_MACHINE=(()=>{try{const p=new URLSearchParams(window.location.search);const m=p.get('m');return(m!==null&&!isNaN(m))?parseInt(m):null;}catch(e){return null;}})();
 let charts={}, ranges={maq:"diario",tend:"diario"};
 let opStep=0, opTurno=null, opCorte=null, opMaq=null, alertasVistas=new Set();
+function fechaLocal(d){d=d||new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;}
 const HOY = (()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;})();
 
 /* ══ AUTH ══ */
@@ -671,6 +672,7 @@ function applyRoleUI() {
   rb.className="role-badge role-"+r;
   document.getElementById("mb-dash").disabled=(r==="operador");
   document.getElementById("mb-admin").style.display=(r==="admin")?"":"none";
+  document.getElementById("mb-pallet").style.display=(r==="admin"||r==="supervisor")?"":"none";
     const qrM=QR_MACHINE;
   if(qrM!==null){
     setMode('op');
@@ -1333,7 +1335,7 @@ function renderShipqr(){
   const tbShipqr=document.getElementById("tb-shipqr");
   if(!tbShipqr) return;
   tbShipqr.innerHTML="";
-  const HOY=new Date().toISOString().slice(0,10);
+  const HOY=fechaLocal();
   const inpDesde=document.getElementById("shipqr-desde");
   const inpHasta=document.getElementById("shipqr-hasta");
   // Si los inputs están vacíos, default a hoy
@@ -1705,13 +1707,13 @@ function buildReporte(tipo){
   let registros=[], titulo="";
 
   if(tipo==="diario"){
-    const fechaHoy=hoy.toISOString().slice(0,10);
+    const fechaHoy=fechaLocal(hoy);
     registros=REGISTROS.filter(r=>r.fecha===fechaHoy);
     titulo=`📊 Reporte Diario de Producción — ${fechaStr}`;
   } else if(tipo==="semanal"){
     const lunes=new Date(hoy);
     lunes.setDate(hoy.getDate()-hoy.getDay()+1);
-    const lunesStr=lunes.toISOString().slice(0,10);
+    const lunesStr=fechaLocal(lunes);
     registros=REGISTROS.filter(r=>r.fecha>=lunesStr);
     titulo=`📅 Reporte Semanal de Producción — Semana del ${lunes.toLocaleDateString("es-MX")}`;
   } else if(tipo==="mensual"){
@@ -1766,7 +1768,7 @@ function chkReporteAuto(){
   const ahora=new Date();
   const h=ahora.getHours(), m=ahora.getMinutes();
   const dia=ahora.getDay(); // 0=dom,5=vie
-  const fecha=ahora.toISOString().slice(0,10);
+  const fecha=fechaLocal(ahora);
   const keyD=`rep-diario-${fecha}`, keyS=`rep-semanal-${fecha}`, keyM=`rep-mensual-${fecha}`;
   if(h===16&&m===30){
     // Diario todos los días
@@ -1798,6 +1800,9 @@ const TRANSLATIONS = {
     menu_dash:     '🖥️ Dashboard',
     menu_admin:    '⚙️ Admin',
     menu_breaks:   '⏸ Breaks',
+    menu_escaneo:  '📷 Escaneo QR',
+    menu_pallet:   '📦 Pallet ASSY',
+    menu_palletmedio: '🏷️ Pallet Medio',
     btn_logout:    '⏏ Salir',
     // Operator form
     lbl_info:      '📅 Información del Registro',
@@ -1931,6 +1936,9 @@ const TRANSLATIONS = {
     menu_dash:     '🖥️ Dashboard',
     menu_admin:    '⚙️ Admin',
     menu_breaks:   '⏸ Breaks',
+    menu_escaneo:  '📷 QR Scan',
+    menu_pallet:   '📦 ASSY Pallet',
+    menu_palletmedio: '🏷️ In-process Pallet',
     btn_logout:    '⏏ Logout',
     lbl_info:      '📅 Record Information',
     lbl_fecha:     'Date',
@@ -2055,6 +2063,9 @@ const TRANSLATIONS = {
     menu_dash:     '🖥️ 대시보드',
     menu_admin:    '⚙️ 관리자',
     menu_breaks:   '⏸ 휴식',
+    menu_escaneo:  '📷 QR 스캔',
+    menu_pallet:   '📦 ASSY 팔레트',
+    menu_palletmedio: '🏷️ 공정 팔레트',
     btn_logout:    '⏏ 로그아웃',
     lbl_info:      '📅 기록 정보',
     lbl_fecha:     '날짜',
@@ -2195,6 +2206,9 @@ function applyTranslations(){
     'mb-dash':      t('menu_dash'),
     'mb-admin':     t('menu_admin'),
     'mb-breaks':    t('menu_breaks'),
+    'mb-escaneo':   t('menu_escaneo'),
+    'mb-pallet':    t('menu_pallet'),
+    'mb-palletmedio': t('menu_palletmedio'),
     'logout-lbl':   t('btn_logout'),
     // Operator form
     'lbl-info':     t('lbl_info'),
@@ -2520,7 +2534,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES P1 · Production System</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn active" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a><a class="mbtn" id="mb-pallet" href="pallet-assy.html" target="_blank" style="text-decoration:none;display:none">📦 Pallet ASSY</a><a class="mbtn" id="mb-palletmedio" href="pallet-medio.html" target="_blank" style="text-decoration:none">🏷️ Pallet Medio</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -2799,5 +2813,23 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   </div>
   </div></div>
 </div>
+<script>
+(function () {
+  var T = {es:["Mostrar contraseña","Ocultar contraseña"],en:["Show password","Hide password"],ko:["비밀번호 표시","비밀번호 숨기기"]};
+  function lang(){var l="es";try{l=(localStorage.getItem("mes-lang")||document.documentElement.lang||"es").slice(0,2).toLowerCase();}catch(e){}return T[l]?l:"es";}
+  function addEye(inp){
+    if(inp.dataset.eye)return; inp.dataset.eye="1";
+    var w=document.createElement("span"); w.style.cssText="position:relative;display:block;width:100%";
+    inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+    inp.style.boxSizing="border-box"; inp.style.width="100%"; inp.style.paddingRight="40px";
+    var b=document.createElement("button"); b.type="button"; b.textContent="👁"; b.title=T[lang()][0];
+    b.style.cssText="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:0;color:#888";
+    b.onclick=function(){var show=inp.type==="password";inp.type=show?"text":"password";b.title=T[lang()][show?1:0];b.style.opacity=show?"0.5":"1";};
+    w.appendChild(b);
+  }
+  function scan(){document.querySelectorAll('input[type="password"]').forEach(addEye);}
+  scan(); new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>
