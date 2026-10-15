@@ -525,29 +525,143 @@ async function loadModelos(){
     if(status){status.textContent='⚠️ Error al leer el BOM activo: '+e.message;status.style.color='var(--red)';}
   }
 }
+/* ══ PARTES P1: BOM (filas de P1) + CATÁLOGO propio (fuera del BOM) ══ */
+const CAT_COL=()=>collection(db,"catalogo_partes_p1");
+let CATALOGO_P1=[];
+const esFilaP1=(r)=>/P-?1\b|PLANTA\s*1/i.test(String(r.planta||''));
+function partesP1(){
+  // BOM: solo filas marcadas como P1; si ninguna trae planta P1, se usan todas
+  let filas=BOM_ACTIVO.filter(r=>r.pn&&r.sm&&esFilaP1(r));
+  if(!filas.length) filas=BOM_ACTIVO.filter(r=>r.pn&&r.sm);
+  const mapa={};
+  filas.forEach(r=>{const pn=String(r.pn).trim().toUpperCase(); if(!mapa[pn]) mapa[pn]={pn,modelo:String(r.sm).trim().toUpperCase(),desc:r.desc||'',origen:'BOM'};});
+  CATALOGO_P1.forEach(c=>{mapa[c.pn]={pn:c.pn,modelo:c.desc,desc:c.desc,origen:'CAT'};});   // el catálogo manda
+  return Object.values(mapa);
+}
 function buildModelosDL(){
   const opts='<option value="">— Seleccionar modelo —</option>'+MODELOS_LIST.map(m=>`<option value="${m}">${m}</option>`).join("");
   const cmBueno=document.getElementById("cm-bueno");
   if(cmBueno)cmBueno.innerHTML=opts;
+  const dl=document.getElementById("dl-ip-modelos");
+  if(dl){
+    const mods=[...new Set(partesP1().map(p=>p.modelo).filter(Boolean))].sort();
+    dl.innerHTML=mods.map(m=>`<option value="${m}">`).join("");
+  }
 }
 function buildPartesDL(modelo){
-  const selParte=document.getElementById("ip-parte");
-  if(!selParte) return;
-  let partes;
-  if(modelo){
-    partes=[...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
-  }else{
-    partes=[...new Set(BOM_ACTIVO.filter(b=>b.pn).map(b=>b.pn.trim().toUpperCase()))].sort();
-  }
-  if(!partes.length){
-    selParte.innerHTML='<option value="">⚠️ Sin partes en el BOM para este modelo</option>';
-    return;
-  }
-  selParte.innerHTML='<option value="">— Seleccionar N° Parte —</option>'+partes.map(p=>`<option value="${p}">${p}</option>`).join("");
+  const dl=document.getElementById("dl-ip-partes"); if(!dl) return;
+  let lista=partesP1();
+  if(modelo) lista=lista.filter(p=>p.modelo===modelo);
+  dl.innerHTML=lista.sort((a,b)=>a.pn.localeCompare(b.pn)).map(p=>`<option value="${p.pn}">${(p.desc||p.modelo||'').toString().replace(/"/g,'')}</option>`).join("");
 }
 window.onModeloChange=function(){
   const modelo=document.getElementById("ip-modelo").value.trim().toUpperCase();
   buildPartesDL(modelo);
+};
+// Al escribir/elegir un N° de parte conocido, el modelo se llena solo (si está vacío)
+function autollenarModelo(){
+  const pn=(document.getElementById("ip-parte").value||'').trim().toUpperCase();
+  const ipm=document.getElementById("ip-modelo");
+  if(!pn||!ipm||ipm.value.trim()) return;
+  const p=partesP1().find(x=>x.pn===pn);
+  if(p&&p.modelo) ipm.value=p.modelo;
+}
+document.addEventListener("input",(e)=>{
+  if(e.target&&e.target.id==="ip-parte") autollenarModelo();
+  if(e.target&&e.target.id==="ip-modelo") window.onModeloChange();
+});
+
+/* ══ ADMIN: catálogo de partes P1 ══ */
+const CAT_SEED=`GH69-46627A	SM7410
+GH69-46511A	SMS971
+GH69-46480A	SMS976
+GH69-46414A	SMS776
+GH69-46136A	S942
+GH69-46135A	S942
+GH69-46072A	S942
+GH69-46071A	S942
+GH69-46040A	M3 SEB
+GH69-46039A	M3
+GH69-46211A	All
+GH69-46261A	PIEZA CARTON
+GH69-46161A	A166
+GH69-45715A	S25 FE S731
+GH69-45713A	S731
+GH69-45712A	S731
+GH69-45823A	Q7 F966
+GH69-45822A	B766
+GH69-44413A	X828
+GH69-44907A	Q7 F966
+GH69-45495A	Q7 F966
+GH69-45496A	B7
+GH69-44906A	Q7 F966
+GH69-44921A	B7
+GH69-44921B	B7
+GH69-45241A	B7R F761
+GH69-43764A	F741
+GH69-44628A	S931`;
+const CAT_T={
+  es:{h:"📚 Catálogo de partes P1 (fuera del BOM)",pn:"N° de Parte",desc:"Descripción / Modelo",add:"➕ Agregar parte",bulk:"Pegar lista desde Excel (N° de Parte [Tab] Descripción, una por línea)",imp:"📥 Importar lista pegada",seed:"📦 Cargar lista inicial (28 partes)",search:"Buscar…",acc:"Acciones",del:"Eliminar",ok:"✅ Guardado",need:"Escribe N° de parte y descripción",conf:"¿Eliminar esta parte del catálogo?",imported:"✅ Partes importadas: ",note:"Estas partes aparecen en las listas del operador, Pallet ASSY y Pallet Medio de P1, junto con las del BOM de P1."},
+  en:{h:"📚 P1 parts catalog (outside the BOM)",pn:"Part No.",desc:"Description / Model",add:"➕ Add part",bulk:"Paste list from Excel (Part No. [Tab] Description, one per line)",imp:"📥 Import pasted list",seed:"📦 Load initial list (28 parts)",search:"Search…",acc:"Actions",del:"Delete",ok:"✅ Saved",need:"Enter part number and description",conf:"Delete this part from the catalog?",imported:"✅ Parts imported: ",note:"These parts appear in the operator, ASSY Pallet and In-process Pallet lists of P1, together with the P1 BOM parts."},
+  ko:{h:"📚 P1 부품 카탈로그 (BOM 외)",pn:"부품 번호",desc:"설명 / 모델",add:"➕ 부품 추가",bulk:"엑셀에서 붙여넣기 (부품번호 [Tab] 설명, 한 줄에 하나)",imp:"📥 붙여넣은 목록 가져오기",seed:"📦 초기 목록 불러오기 (28개)",search:"검색…",acc:"작업",del:"삭제",ok:"✅ 저장됨",need:"부품 번호와 설명을 입력하세요",conf:"카탈로그에서 이 부품을 삭제할까요?",imported:"✅ 가져온 부품: ",note:"이 부품은 P1 BOM 부품과 함께 작업자, ASSY 팔레트, 공정 팔레트 목록에 표시됩니다."}
+};
+const ct=(k)=>((CAT_T[LANG]||CAT_T.es)[k]||CAT_T.es[k]);
+function catTexts(){
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  set("cat-h",ct("h")); set("cat-l-pn",ct("pn")); set("cat-l-desc",ct("desc")); set("cat-btn-add",ct("add"));
+  set("cat-l-bulk",ct("bulk")); set("cat-btn-imp",ct("imp")); set("cat-btn-seed",ct("seed")); set("cat-note",ct("note"));
+  set("cat-th-pn",ct("pn")); set("cat-th-desc",ct("desc")); set("cat-th-acc",ct("acc"));
+  const f=document.getElementById("cat-filter"); if(f) f.placeholder=ct("search");
+}
+async function loadCatalogo(){
+  try{
+    const snap=await getDocs(CAT_COL());
+    CATALOGO_P1=snap.docs.map(d=>({id:d.id,pn:String(d.data().parte||d.id).toUpperCase(),desc:String(d.data().descripcion||'').toUpperCase()}))
+      .sort((a,b)=>a.pn.localeCompare(b.pn));
+  }catch(e){ console.error("Catálogo P1:",e); CATALOGO_P1=[]; }
+  renderCatalogo(); buildModelosDL(); buildPartesDL(document.getElementById("ip-modelo")?.value.trim().toUpperCase()||'');
+}
+function renderCatalogo(){
+  catTexts();
+  const cnt=document.getElementById("cat-count"); if(cnt) cnt.textContent=CATALOGO_P1.length;
+  const tb=document.getElementById("cat-table"); if(!tb) return;
+  const q=(document.getElementById("cat-filter")?.value||'').trim().toUpperCase();
+  const lista=CATALOGO_P1.filter(c=>!q||c.pn.includes(q)||c.desc.includes(q));
+  tb.innerHTML=lista.map(c=>`<tr><td style="font-family:monospace">${c.pn}</td><td>${c.desc}</td><td><button class="abtn" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)" onclick="delCatalogoParte('${c.id}')">🗑 ${ct("del")}</button></td></tr>`).join("");
+}
+window.renderCatalogo=renderCatalogo;
+async function guardarParteCat(pn,desc){
+  pn=String(pn||'').trim().toUpperCase(); desc=String(desc||'').trim().toUpperCase();
+  if(!pn||!desc) return false;
+  const id=pn.replace(/\//g,'-');
+  await setDoc(doc(db,"catalogo_partes_p1",id),{parte:pn,descripcion:desc,activo:true,creadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||'',tsLocal:new Date().toISOString()},{merge:true});
+  return true;
+}
+window.addCatalogoParte=async()=>{
+  const pn=document.getElementById("cat-pn").value, d=document.getElementById("cat-desc").value;
+  if(!pn.trim()||!d.trim()){showToast(ct("need"),"var(--red)");return;}
+  try{ await guardarParteCat(pn,d); document.getElementById("cat-pn").value=""; document.getElementById("cat-desc").value="";
+    showToast(ct("ok"),"var(--green)"); await loadCatalogo(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+async function importarTexto(txt){
+  const lineas=String(txt||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
+  let n=0;
+  for(const l of lineas){
+    const partes=l.split(/\t|;|,(?=\s*\S)/); 
+    const pn=(partes[0]||'').trim(), d=partes.slice(1).join(' ').trim();
+    if(/^(n\.?º?\s*de\s*parte|item|part)/i.test(pn)) continue;   // encabezados
+    try{ if(await guardarParteCat(pn,d)) n++; }catch(e){ console.error(e); }
+  }
+  showToast(ct("imported")+n,"var(--green)");
+  await loadCatalogo();
+}
+window.importarCatalogoPegado=async()=>{ const ta=document.getElementById("cat-bulk"); await importarTexto(ta.value); ta.value=""; };
+window.cargarCatalogoInicial=async()=>{ await importarTexto(CAT_SEED); };
+window.delCatalogoParte=async(id)=>{
+  if(!confirm(ct("conf"))) return;
+  try{ await deleteDoc(doc(db,"catalogo_partes_p1",id)); await loadCatalogo(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
 const USERS_COL = () => collection(db, "usuarios_p1");
 
@@ -661,7 +775,7 @@ function showApp() {
   document.getElementById("login-view").style.display="none";
   document.getElementById("app").style.display="flex";
   document.getElementById("app").style.flexDirection="column";
-  applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos();});
+  applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos().then(loadCatalogo);});
   if(typeof applyTranslations==='function')applyTranslations();
 }
 function applyRoleUI() {
@@ -2197,6 +2311,8 @@ window.setLang = function(lang){
   const active = document.getElementById('lang-'+map[lang]);
   if(active) active.classList.add('active');
   applyTranslations();
+  if(typeof catTexts==='function')catTexts();
+  if(typeof renderCatalogo==='function')renderCatalogo();
 };
 
 function applyTranslations(){
@@ -2546,11 +2662,11 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="field"><label id="lbl-operador">👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label id="lbl-emp">🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
         <div class="field"><label id="lbl-modelo">📱 Modelo</label>
-          <input type="text" id="ip-modelo" placeholder="Escribe el modelo" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
-          <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div>
+          <input type="text" id="ip-modelo" list="dl-ip-modelos" placeholder="Escribe el modelo" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
+          <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div><datalist id="dl-ip-modelos"></datalist><datalist id="dl-ip-partes"></datalist>
         </div>
         <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label>
-          <input type="text" id="ip-parte" placeholder="Escribe el N° de parte" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
+          <input type="text" id="ip-parte" list="dl-ip-partes" placeholder="Escribe el N° de parte" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
         </div>
       </div>
       <div class="oc"><div class="oct" id="lbl-turno">⏰ Turno</div>
@@ -2756,6 +2872,23 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
     </div>
     <div class="acard"><h3><span id="adm-h-users">👥 Usuarios</span> (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
+    <div class="acard"><h3><span id="cat-h">📚 Catálogo de partes P1 (fuera del BOM)</span> (<span id="cat-count">0</span>)</h3>
+      <div id="cat-note" style="font-size:.85rem;color:var(--muted);margin-bottom:10px"></div>
+      <div class="form-row">
+        <div class="form-field"><label id="cat-l-pn">N° de Parte</label><input type="text" id="cat-pn" placeholder="GH69-46627A" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="form-field"><label id="cat-l-desc">Descripción / Modelo</label><input type="text" id="cat-desc" placeholder="SM7410" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
+      </div>
+      <button class="abtn abtn-add" id="cat-btn-add" onclick="addCatalogoParte()">➕ Agregar parte</button>
+      <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--muted);font-size:.85rem" id="cat-l-bulk">Pegar lista desde Excel</summary>
+        <textarea id="cat-bulk" rows="6" style="width:100%;margin-top:8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-family:monospace;font-size:.85rem;box-sizing:border-box" placeholder="GH69-46627A&#9;SM7410"></textarea>
+        <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
+          <button class="abtn abtn-add" id="cat-btn-imp" onclick="importarCatalogoPegado()">📥 Importar lista pegada</button>
+          <button class="abtn" id="cat-btn-seed" onclick="cargarCatalogoInicial()" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4)">📦 Cargar lista inicial (28 partes)</button>
+        </div>
+      </details>
+      <input type="text" id="cat-filter" oninput="renderCatalogo()" placeholder="Buscar…" style="width:100%;margin:12px 0 8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box">
+      <table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Descripción</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table>
+    </div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
       <h3 id="adm-h-maquinas">🖥️ Estado de Máquinas</h3>

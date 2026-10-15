@@ -114,7 +114,7 @@
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, signInWithEmailAndPassword, signOut, onAuthStateChanged, sendPasswordResetEmail }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, addDoc, getDocs, query, where, serverTimestamp }
+import { getFirestore, collection, doc, addDoc, getDoc, getDocs, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -250,16 +250,44 @@ function refrescarCorte(){
 }
 setInterval(refrescarCorte,60000);
 
+
+/* ───────── Partes P1: BOM (filas P1) + catálogo propio ───────── */
+let PARTES_P1 = [];
+async function cargarPartesP1(){
+  const mapa = {};
+  try {
+    const b = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
+    if (b.exists()){
+      const bom = JSON.parse(b.data().bom || '[]');
+      let filas = bom.filter(r=>r.pn && r.sm && /P-?1\b|PLANTA\s*1/i.test(String(r.planta||'')));
+      if (!filas.length) filas = bom.filter(r=>r.pn && r.sm);
+      filas.forEach(r=>{ const pn=String(r.pn).trim().toUpperCase(); if(!mapa[pn]) mapa[pn]={pn, modelo:String(r.sm).trim().toUpperCase(), desc:r.desc||''}; });
+    }
+  } catch(e){ console.warn('BOM:', e); }
+  try {
+    const c = await getDocs(collection(db,'catalogo_partes_p1'));
+    c.docs.forEach(d=>{ const x=d.data(); const pn=String(x.parte||d.id).toUpperCase(); const ds=String(x.descripcion||'').toUpperCase(); mapa[pn]={pn, modelo:ds, desc:ds}; });
+  } catch(e){ console.warn('Catálogo P1:', e); }
+  PARTES_P1 = Object.values(mapa).sort((a,b)=>a.pn.localeCompare(b.pn));
+  const dlP = document.getElementById('dl-partes'), dlM = document.getElementById('dl-modelos');
+  if (dlP) dlP.innerHTML = PARTES_P1.map(p=>`<option value="${p.pn}">${String(p.modelo||'').replace(/"/g,'')}</option>`).join('');
+  if (dlM) dlM.innerHTML = [...new Set(PARTES_P1.map(p=>p.modelo).filter(Boolean))].sort().map(m=>`<option value="${m}">`).join('');
+}
+
+document.addEventListener('input',(e)=>{
+  if(e.target && e.target.id==='ip-parte'){
+    const pn=e.target.value.trim().toUpperCase(), m=document.getElementById('ip-modelo');
+    const p=PARTES_P1.find(x=>x.pn===pn);
+    if(p && m && !m.value.trim()) m.value=p.modelo;
+  }
+});
 async function cargarHistorial(){
   try{
     const snap=await getDocs(query(REGS_COL(),where("fecha","==",hoyStr()),where("maqIdx","==",MAQUINA.idx)));
     const todos=snap.docs.map(d=>d.data());
     misPallets=todos.filter(r=>r.corte===corteHoy&&r.origen==="pallet_assy");
     // sugerencias de modelo/parte según lo ya registrado hoy en TC
-    const mods=[...new Set(todos.map(r=>r.modelo).filter(Boolean))];
-    const pts=[...new Set(todos.map(r=>r.parte).filter(Boolean))];
-    document.getElementById('dl-modelos').innerHTML=mods.map(m=>`<option value="${esc(m)}">`).join('');
-    document.getElementById('dl-partes').innerHTML=pts.map(m=>`<option value="${esc(m)}">`).join('');
+    await cargarPartesP1();
   }catch(e){ console.warn(e); misPallets=[]; }
   renderHistorial();
 }

@@ -116,9 +116,9 @@ details.card[open]>summary{margin-bottom:8px;color:var(--text)}
 
   <details class="card">
     <summary id="px-manual"></summary>
-    <label class="lbl" for="inModelo" id="l-model"></label><input type="text" id="inModelo" autocomplete="off" style="text-transform:uppercase">
-    <label class="lbl" for="inParte" id="l-part"></label><input type="text" id="inParte" autocomplete="off" style="text-transform:uppercase">
-    <label class="lbl" for="inDesc" id="l-desc"></label><input type="text" id="inDesc" autocomplete="off">
+    <label class="lbl" for="inModelo" id="l-model"></label><input type="text" id="inModelo" list="dl-modelos" autocomplete="off" style="text-transform:uppercase">
+    <label class="lbl" for="inParte" id="l-part"></label><input type="text" id="inParte" list="dl-partes" autocomplete="off" style="text-transform:uppercase">
+    <label class="lbl" for="inDesc" id="l-desc"></label><input type="text" id="inDesc" autocomplete="off"><datalist id="dl-modelos"></datalist><datalist id="dl-partes"></datalist>
     <div class="note" id="sinPal"></div>
     <label class="lbl" for="qty" id="l-qty"></label><input class="qty" id="qty" type="number" min="1" inputmode="numeric">
     <label class="lbl" for="selDest" id="l-dest"></label>
@@ -426,6 +426,39 @@ function mostrarHoja(p){
 }
 window.cerrarModal = () => $('modal').classList.add('hide');
 
+
+/* ───────── Partes P1: BOM (filas P1) + catálogo propio ───────── */
+let PARTES_P1 = [];
+async function cargarPartesP1(){
+  const mapa = {};
+  try {
+    const b = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
+    if (b.exists()){
+      const bom = JSON.parse(b.data().bom || '[]');
+      let filas = bom.filter(r=>r.pn && r.sm && /P-?1\b|PLANTA\s*1/i.test(String(r.planta||'')));
+      if (!filas.length) filas = bom.filter(r=>r.pn && r.sm);
+      filas.forEach(r=>{ const pn=String(r.pn).trim().toUpperCase(); if(!mapa[pn]) mapa[pn]={pn, modelo:String(r.sm).trim().toUpperCase(), desc:r.desc||''}; });
+    }
+  } catch(e){ console.warn('BOM:', e); }
+  try {
+    const c = await getDocs(collection(db,'catalogo_partes_p1'));
+    c.docs.forEach(d=>{ const x=d.data(); const pn=String(x.parte||d.id).toUpperCase(); const ds=String(x.descripcion||'').toUpperCase(); mapa[pn]={pn, modelo:ds, desc:ds}; });
+  } catch(e){ console.warn('Catálogo P1:', e); }
+  PARTES_P1 = Object.values(mapa).sort((a,b)=>a.pn.localeCompare(b.pn));
+  const dlP = document.getElementById('dl-partes'), dlM = document.getElementById('dl-modelos');
+  if (dlP) dlP.innerHTML = PARTES_P1.map(p=>`<option value="${p.pn}">${String(p.modelo||'').replace(/"/g,'')}</option>`).join('');
+  if (dlM) dlM.innerHTML = [...new Set(PARTES_P1.map(p=>p.modelo).filter(Boolean))].sort().map(m=>`<option value="${m}">`).join('');
+}
+
+document.addEventListener('input',(e)=>{
+  if(e.target && e.target.id==='inParte'){
+    const pn=e.target.value.trim().toUpperCase();
+    const p=PARTES_P1.find(x=>x.pn===pn); if(!p) return;
+    const mo=document.getElementById('inModelo'), de=document.getElementById('inDesc');
+    if(mo && !mo.value.trim()) mo.value=p.modelo;
+    if(de && !de.value.trim()) de.value=p.desc||p.modelo;
+  }
+});
 /* ───────── Arranque ───────── */
 async function iniciar(fireUser){
   try {
@@ -433,6 +466,7 @@ async function iniciar(fireUser){
     USER = us.empty ? {uid:fireUser.uid, nombre:fireUser.email} : {uid:fireUser.uid, ...us.docs[0].data()};
   } catch(e){ USER = {uid:fireUser.uid, nombre:fireUser.email}; }
   $('fecha').value = hoyISO();
+  cargarPartesP1();
   escucharFecha(); escucharRango();
   pintarTextos(); pintarTodo();
   $('gate').classList.add('hide'); $('app').classList.remove('hide');
