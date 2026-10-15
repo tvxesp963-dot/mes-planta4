@@ -571,6 +571,33 @@ document.addEventListener("input",(e)=>{
   if(e.target&&e.target.id==="ip-modelo") window.onModeloChange();
 });
 
+/* ══ ADMIN: tarjetas colapsables (se recuerda lo que abres) ══ */
+function initColapsables(){
+  const root=document.getElementById("view-admin"); if(!root) return;
+  if(!document.getElementById("col-style")){
+    const st=document.createElement("style"); st.id="col-style";
+    st.textContent=".acard>h3.cx{cursor:pointer;user-select:none}.acard>h3.cx::after{content:'▶';float:right;color:var(--muted);font-size:.8em}.acard>h3.cx.open::after{content:'▼'}#cat-table-wrap{max-height:340px;overflow:auto;border:1px solid var(--border);border-radius:8px}";
+    document.head.appendChild(st);
+  }
+  let guardado={}; try{guardado=JSON.parse(localStorage.getItem("p1-admin-col")||"{}");}catch(e){}
+  root.querySelectorAll(".acard").forEach((card)=>{
+    const h=card.querySelector(":scope > h3"); if(!h||card.dataset.col) return;
+    card.dataset.col="1";
+    const cuerpo=document.createElement("div");
+    [...card.childNodes].forEach(n=>{ if(n!==h) cuerpo.appendChild(n); });
+    card.appendChild(cuerpo);
+    const clave=h.id||(h.querySelector("[id]")||{}).id||h.textContent.trim().slice(0,24);
+    const poner=(abierto)=>{ cuerpo.style.display=abierto?"":"none"; h.classList.toggle("open",abierto); };
+    h.classList.add("cx");
+    poner(clave in guardado ? !!guardado[clave] : false);          // por defecto: colapsado
+    h.addEventListener("click",()=>{
+      const ab=cuerpo.style.display==="none"; poner(ab);
+      guardado[clave]=ab; try{localStorage.setItem("p1-admin-col",JSON.stringify(guardado));}catch(e){}
+    });
+  });
+}
+initColapsables();
+
 /* ══ ADMIN: catálogo de partes P1 ══ */
 const CAT_SEED=`GH69-46627A	SM7410
 GH69-46511A	SMS971
@@ -2926,7 +2953,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
       </details>
       <input type="text" id="cat-filter" oninput="renderCatalogo()" placeholder="Buscar…" style="width:100%;margin:12px 0 8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box">
-      <table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Descripción</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table>
+      <div id="cat-table-wrap"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Descripción</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
     </div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
