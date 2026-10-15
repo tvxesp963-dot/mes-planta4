@@ -252,19 +252,10 @@ function refrescarCorte(){
 setInterval(refrescarCorte,60000);
 
 
-/* ───────── Partes P1: BOM (filas P1) + catálogo propio ───────── */
+/* ───────── Salida de Pallet: SOLO las partes del catálogo (cross pad) ───────── */
 let PARTES_P1 = [];
 async function cargarPartesP1(){
   const mapa = {};
-  try {
-    const b = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
-    if (b.exists()){
-      const bom = JSON.parse(b.data().bom || '[]');
-      let filas = bom.filter(r=>r.pn && r.sm && /P-?1\b|PLANTA\s*1/i.test(String(r.planta||'')));
-      if (!filas.length) filas = bom.filter(r=>r.pn && r.sm);
-      filas.forEach(r=>{ const pn=String(r.pn).trim().toUpperCase(); if(!mapa[pn]) mapa[pn]={pn, modelo:String(r.sm).trim().toUpperCase(), desc:r.desc||''}; });
-    }
-  } catch(e){ console.warn('BOM:', e); }
   try {
     const c = await getDocs(collection(db,'catalogo_partes_p1'));
     c.docs.forEach(d=>{ const x=d.data(); const pn=String(x.parte||d.id).toUpperCase(); const ds=String(x.descripcion||'').toUpperCase(); mapa[pn]={pn, modelo:ds, desc:ds}; });
@@ -310,7 +301,6 @@ window.guardarPallet=async()=>{
   if(!modelo){ errEl.textContent=t('errModel'); errEl.style.display="block"; return; }
   if(!parte){ errEl.textContent=t('errPart'); errEl.style.display="block"; return; }
   if(qty<=0){ errEl.textContent=t('errQty'); errEl.style.display="block"; return; }
-  if(!esRemplazo && !parte.startsWith("GH90")){ if(!window.confirm(t('warnGH'))) return; }
 
   refrescarCorte();
   const target=MAQUINA.cortes[corteHoy]||MAQUINA.target;
@@ -365,12 +355,12 @@ function montarSelectores(cfg){
   const modelos = () => [...new Set(lista().map(p=>p.modelo).filter(Boolean))].sort();
   const partesDe = m => lista().filter(p=>!m || p.modelo===m).sort((a,b)=>a.pn.localeCompare(b.pn));
   function poblarModelos(sel){
-    sm.innerHTML = `<option value="">${tx("selM")}</option>` + modelos().map(m=>`<option value="${m}">${m}</option>`).join("") + `<option value="${OT}">${tx("otro")}</option>`;
+    sm.innerHTML = `<option value="">${tx("selM")}</option>` + modelos().map(m=>`<option value="${m}">${m}</option>`).join("") + (cfg.otro===false ? "" : `<option value="${OT}">${tx("otro")}</option>`);
     sm.value = sel || "";
   }
   function poblarPartes(m, sel){
     const l = partesDe(m);
-    sp.innerHTML = `<option value="">${tx("selP")}</option>` + l.map(p=>`<option value="${p.pn}">${p.pn} · ${p.modelo||""}</option>`).join("") + `<option value="${OT}">${tx("otro")}</option>`;
+    sp.innerHTML = `<option value="">${tx("selP")}</option>` + l.map(p=>`<option value="${p.pn}">${p.pn} · ${p.modelo||""}</option>`).join("") + (cfg.otro===false ? "" : `<option value="${OT}">${tx("otro")}</option>`);
     sp.value = sel || "";
     nota.textContent = m ? `${l.length} ${tx("info")}` : `${lista().length} ${tx("total")}`;
   }
@@ -432,7 +422,7 @@ function montarSelectores(cfg){
 }
 
 montarSelectores({modelo:document.getElementById('ip-modelo'), parte:document.getElementById('ip-parte'),
-  partes:()=>PARTES_P1, lang:()=>lang});
+  partes:()=>PARTES_P1, lang:()=>lang, otro:false});
 aplicarIdioma();
 </script>
 </body>
