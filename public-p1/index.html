@@ -601,15 +601,15 @@ GH69-45241A	B7R F761
 GH69-43764A	F741
 GH69-44628A	S931`;
 const CAT_T={
-  es:{h:"📚 Catálogo de partes P1 (fuera del BOM)",pn:"N° de Parte",desc:"Descripción / Modelo",add:"➕ Agregar parte",bulk:"Pegar lista desde Excel (N° de Parte [Tab] Descripción, una por línea)",imp:"📥 Importar lista pegada",seed:"📦 Cargar lista inicial (28 partes)",search:"Buscar…",acc:"Acciones",del:"Eliminar",ok:"✅ Guardado",need:"Escribe N° de parte y descripción",conf:"¿Eliminar esta parte del catálogo?",imported:"✅ Partes importadas: ",note:"Estas partes aparecen en las listas del operador, Pallet ASSY y Pallet Medio de P1, junto con las del BOM de P1."},
-  en:{h:"📚 P1 parts catalog (outside the BOM)",pn:"Part No.",desc:"Description / Model",add:"➕ Add part",bulk:"Paste list from Excel (Part No. [Tab] Description, one per line)",imp:"📥 Import pasted list",seed:"📦 Load initial list (28 parts)",search:"Search…",acc:"Actions",del:"Delete",ok:"✅ Saved",need:"Enter part number and description",conf:"Delete this part from the catalog?",imported:"✅ Parts imported: ",note:"These parts appear in the operator, ASSY Pallet and In-process Pallet lists of P1, together with the P1 BOM parts."},
-  ko:{h:"📚 P1 부품 카탈로그 (BOM 외)",pn:"부품 번호",desc:"설명 / 모델",add:"➕ 부품 추가",bulk:"엑셀에서 붙여넣기 (부품번호 [Tab] 설명, 한 줄에 하나)",imp:"📥 붙여넣은 목록 가져오기",seed:"📦 초기 목록 불러오기 (28개)",search:"검색…",acc:"작업",del:"삭제",ok:"✅ 저장됨",need:"부품 번호와 설명을 입력하세요",conf:"카탈로그에서 이 부품을 삭제할까요?",imported:"✅ 가져온 부품: ",note:"이 부품은 P1 BOM 부품과 함께 작업자, ASSY 팔레트, 공정 팔레트 목록에 표시됩니다."}
+  es:{file:"Subir Excel (.xlsx / .csv) con N° de Parte y Descripción",upl:"📤 Subir Excel",reading:"Leyendo archivo…",none:"No se encontraron partes en el archivo (busco códigos tipo GH69-46627A y la descripción en la celda de al lado)",done:"✅ Partes cargadas desde el Excel: ",h:"📚 Catálogo de partes P1 (fuera del BOM)",pn:"N° de Parte",desc:"Descripción / Modelo",add:"➕ Agregar parte",bulk:"Pegar lista desde Excel (N° de Parte [Tab] Descripción, una por línea)",imp:"📥 Importar lista pegada",seed:"📦 Cargar lista inicial (28 partes)",search:"Buscar…",acc:"Acciones",del:"Eliminar",ok:"✅ Guardado",need:"Escribe N° de parte y descripción",conf:"¿Eliminar esta parte del catálogo?",imported:"✅ Partes importadas: ",note:"Estas partes aparecen en las listas del operador, Pallet ASSY y Pallet Medio de P1, junto con las del BOM de P1."},
+  en:{file:"Upload Excel (.xlsx / .csv) with Part No. and Description",upl:"📤 Upload Excel",reading:"Reading file…",none:"No parts found in the file (I look for codes like GH69-46627A and the description in the next cell)",done:"✅ Parts loaded from Excel: ",h:"📚 P1 parts catalog (outside the BOM)",pn:"Part No.",desc:"Description / Model",add:"➕ Add part",bulk:"Paste list from Excel (Part No. [Tab] Description, one per line)",imp:"📥 Import pasted list",seed:"📦 Load initial list (28 parts)",search:"Search…",acc:"Actions",del:"Delete",ok:"✅ Saved",need:"Enter part number and description",conf:"Delete this part from the catalog?",imported:"✅ Parts imported: ",note:"These parts appear in the operator, ASSY Pallet and In-process Pallet lists of P1, together with the P1 BOM parts."},
+  ko:{file:"엑셀(.xlsx / .csv) 업로드 (부품번호와 설명)",upl:"📤 엑셀 업로드",reading:"파일 읽는 중…",none:"파일에서 부품을 찾지 못했습니다 (GH69-46627A 형식 코드와 옆 셀의 설명을 찾습니다)",done:"✅ 엑셀에서 불러온 부품: ",h:"📚 P1 부품 카탈로그 (BOM 외)",pn:"부품 번호",desc:"설명 / 모델",add:"➕ 부품 추가",bulk:"엑셀에서 붙여넣기 (부품번호 [Tab] 설명, 한 줄에 하나)",imp:"📥 붙여넣은 목록 가져오기",seed:"📦 초기 목록 불러오기 (28개)",search:"검색…",acc:"작업",del:"삭제",ok:"✅ 저장됨",need:"부품 번호와 설명을 입력하세요",conf:"카탈로그에서 이 부품을 삭제할까요?",imported:"✅ 가져온 부품: ",note:"이 부품은 P1 BOM 부품과 함께 작업자, ASSY 팔레트, 공정 팔레트 목록에 표시됩니다."}
 };
 const ct=(k)=>((CAT_T[LANG]||CAT_T.es)[k]||CAT_T.es[k]);
 function catTexts(){
   const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
   set("cat-h",ct("h")); set("cat-l-pn",ct("pn")); set("cat-l-desc",ct("desc")); set("cat-btn-add",ct("add"));
-  set("cat-l-bulk",ct("bulk")); set("cat-btn-imp",ct("imp")); set("cat-btn-seed",ct("seed")); set("cat-note",ct("note"));
+  set("cat-l-bulk",ct("bulk")); set("cat-l-file",ct("file")); set("cat-btn-file",ct("upl")); set("cat-btn-seed2",ct("seed")); set("cat-btn-imp",ct("imp")); set("cat-btn-seed",ct("seed")); set("cat-note",ct("note"));
   set("cat-th-pn",ct("pn")); set("cat-th-desc",ct("desc")); set("cat-th-acc",ct("acc"));
   const f=document.getElementById("cat-filter"); if(f) f.placeholder=ct("search");
 }
@@ -658,6 +658,36 @@ async function importarTexto(txt){
 }
 window.importarCatalogoPegado=async()=>{ const ta=document.getElementById("cat-bulk"); await importarTexto(ta.value); ta.value=""; };
 window.cargarCatalogoInicial=async()=>{ await importarTexto(CAT_SEED); };
+window.subirExcelCatalogo=async(inp)=>{
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const msg=document.getElementById("cat-file-msg"); msg.style.color="var(--muted)"; msg.textContent=ct("reading");
+  try{
+    const buf=await f.arrayBuffer();
+    const wb=XLSX.read(buf,{type:"array"});
+    const mapa={};
+    wb.SheetNames.forEach(nombre=>{
+      const filas=XLSX.utils.sheet_to_json(wb.Sheets[nombre],{header:1,defval:""});
+      filas.forEach(fila=>{
+        const celdas=fila.map(c=>String(c==null?"":c).trim());
+        const i=celdas.findIndex(c=>/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/i.test(c));   // ej. GH69-46627A
+        if(i<0) return;
+        const desc=celdas.slice(i+1).find(c=>c);
+        if(desc) mapa[celdas[i].toUpperCase()]=desc.toUpperCase();
+      });
+    });
+    const lista=Object.entries(mapa);
+    if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=ct("none"); inp.value=""; return; }
+    let n=0;
+    for(let k=0;k<lista.length;k+=20){
+      const lote=lista.slice(k,k+20);
+      const r=await Promise.all(lote.map(([pn,d])=>guardarParteCat(pn,d).then(()=>1).catch(()=>0)));
+      n+=r.reduce((a,b)=>a+b,0);
+    }
+    msg.style.color="var(--green)"; msg.textContent=ct("done")+n;
+    await loadCatalogo();
+  }catch(e){ msg.style.color="var(--red)"; msg.textContent="Error: "+e.message; }
+  inp.value="";
+};
 window.delCatalogoParte=async(id)=>{
   if(!confirm(ct("conf"))) return;
   try{ await deleteDoc(doc(db,"catalogo_partes_p1",id)); await loadCatalogo(); }
@@ -2879,6 +2909,15 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="form-field"><label id="cat-l-desc">Descripción / Modelo</label><input type="text" id="cat-desc" placeholder="SM7410" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
       </div>
       <button class="abtn abtn-add" id="cat-btn-add" onclick="addCatalogoParte()">➕ Agregar parte</button>
+      <div style="margin-top:14px;padding:12px;border:2px dashed var(--border);border-radius:10px;background:var(--card2)">
+        <div style="font-size:.85rem;color:var(--muted);margin-bottom:8px" id="cat-l-file">Subir Excel (.xlsx / .csv) con N° de Parte y Descripción</div>
+        <input type="file" id="cat-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="subirExcelCatalogo(this)">
+        <div style="display:flex;gap:8px;flex-wrap:wrap">
+          <button class="abtn abtn-add" id="cat-btn-file" onclick="document.getElementById('cat-file').click()">📤 Subir Excel</button>
+          <button class="abtn" id="cat-btn-seed2" onclick="cargarCatalogoInicial()" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4)">📦 Cargar lista inicial (28 partes)</button>
+        </div>
+        <div id="cat-file-msg" style="font-size:.85rem;margin-top:8px"></div>
+      </div>
       <details style="margin-top:12px"><summary style="cursor:pointer;color:var(--muted);font-size:.85rem" id="cat-l-bulk">Pegar lista desde Excel</summary>
         <textarea id="cat-bulk" rows="6" style="width:100%;margin-top:8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-family:monospace;font-size:.85rem;box-sizing:border-box" placeholder="GH69-46627A&#9;SM7410"></textarea>
         <div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">
