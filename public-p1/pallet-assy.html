@@ -173,6 +173,7 @@ function pintarBanderas(){
 window.setLang=(l)=>{ lang=l; try{localStorage.setItem('mes-lang',l);}catch(e){} aplicarIdioma(); };
 function aplicarIdioma(){
   document.documentElement.lang=lang;
+  if(window._selRefresh) window._selRefresh();
   document.title=t('title')+' · TC';
   document.querySelectorAll('[data-i18n]').forEach(el=>{ el.textContent=t(el.dataset.i18n); });
   pintarBanderas(); renderHistorial();
@@ -269,18 +270,13 @@ async function cargarPartesP1(){
     c.docs.forEach(d=>{ const x=d.data(); const pn=String(x.parte||d.id).toUpperCase(); const ds=String(x.descripcion||'').toUpperCase(); mapa[pn]={pn, modelo:ds, desc:ds}; });
   } catch(e){ console.warn('Catálogo P1:', e); }
   PARTES_P1 = Object.values(mapa).sort((a,b)=>a.pn.localeCompare(b.pn));
+  if(window._selRefresh) window._selRefresh();
   const dlP = document.getElementById('dl-partes'), dlM = document.getElementById('dl-modelos');
   if (dlP) dlP.innerHTML = PARTES_P1.map(p=>`<option value="${p.pn}">${String(p.modelo||'').replace(/"/g,'')}</option>`).join('');
   if (dlM) dlM.innerHTML = [...new Set(PARTES_P1.map(p=>p.modelo).filter(Boolean))].sort().map(m=>`<option value="${m}">`).join('');
 }
 
-document.addEventListener('input',(e)=>{
-  if(e.target && e.target.id==='ip-parte'){
-    const pn=e.target.value.trim().toUpperCase(), m=document.getElementById('ip-modelo');
-    const p=PARTES_P1.find(x=>x.pn===pn);
-    if(p && m && !m.value.trim()) m.value=p.modelo;
-  }
-});
+
 async function cargarHistorial(){
   try{
     const snap=await getDocs(query(REGS_COL(),where("fecha","==",hoyStr()),where("maqIdx","==",MAQUINA.idx)));
@@ -341,6 +337,102 @@ window.guardarPallet=async()=>{
   btn.disabled=false; btn.textContent=t('save');
 };
 
+
+/* ───────── Listas desplegables Modelo / N° de Parte (con opción "Otro") ───────── */
+const T_SEL = {
+  es:{selM:"— Seleccionar modelo —", selP:"— Seleccionar N° de parte —", otro:"✏️ Otro (escribir manual)", info:"parte(s) para este modelo", total:"partes disponibles"},
+  en:{selM:"— Select model —", selP:"— Select part No. —", otro:"✏️ Other (type manually)", info:"part(s) for this model", total:"parts available"},
+  ko:{selM:"— 모델 선택 —", selP:"— 부품 번호 선택 —", otro:"✏️ 기타 (직접 입력)", info:"이 모델의 부품", total:"사용 가능한 부품"}
+};
+function montarSelectores(cfg){
+  const mi = cfg.modelo, pi = cfg.parte, di = cfg.desc || null;
+  if (!mi || !pi || mi._sel) return;
+  const OT = "__otro__";
+  const tx = k => (T_SEL[cfg.lang()] || T_SEL.es)[k];
+  const sm = document.createElement("select"), sp = document.createElement("select");
+  [[sm,mi],[sp,pi]].forEach(([s,i])=>{ s.className = i.className; s.style.cssText = i.style.cssText; s.style.textTransform = "none"; });
+  const nota = document.createElement("div");
+  nota.style.cssText = "font-size:.75rem;color:var(--muted);margin-top:4px";
+  mi.parentNode.insertBefore(sm, mi); pi.parentNode.insertBefore(sp, pi); pi.parentNode.insertBefore(nota, pi.nextSibling);
+  mi._sel = sm; pi._sel = sp;
+  const dispMI = mi.style.display, dispPI = pi.style.display;
+  mi.style.display = "none"; pi.style.display = "none";
+  let busy = false;
+  const raw = Object.getOwnPropertyDescriptor(HTMLInputElement.prototype, "value");
+  const setRaw = (el,v) => raw.set.call(el, v);
+  const norm = v => String(v||"").trim().toUpperCase();
+  const lista = () => (cfg.partes() || []).slice();
+  const modelos = () => [...new Set(lista().map(p=>p.modelo).filter(Boolean))].sort();
+  const partesDe = m => lista().filter(p=>!m || p.modelo===m).sort((a,b)=>a.pn.localeCompare(b.pn));
+  function poblarModelos(sel){
+    sm.innerHTML = `<option value="">${tx("selM")}</option>` + modelos().map(m=>`<option value="${m}">${m}</option>`).join("") + `<option value="${OT}">${tx("otro")}</option>`;
+    sm.value = sel || "";
+  }
+  function poblarPartes(m, sel){
+    const l = partesDe(m);
+    sp.innerHTML = `<option value="">${tx("selP")}</option>` + l.map(p=>`<option value="${p.pn}">${p.pn} · ${p.modelo||""}</option>`).join("") + `<option value="${OT}">${tx("otro")}</option>`;
+    sp.value = sel || "";
+    nota.textContent = m ? `${l.length} ${tx("info")}` : `${lista().length} ${tx("total")}`;
+  }
+  function mostrar(){
+    const om = sm.value === OT, op = sp.value === OT;
+    mi.style.display = om ? dispMI : "none"; pi.style.display = op ? dispPI : "none";
+    if (om) mi.style.marginTop = "8px"; if (op) pi.style.marginTop = "8px";
+  }
+  function desdeInputs(){
+    if (busy) return;
+    const ae = document.activeElement;
+    if (ae === mi || ae === pi) return;                 // no estorbar mientras se escribe en "Otro"
+    busy = true;
+    const mv = norm(raw.get.call(mi)), pv = norm(raw.get.call(pi));
+    const ms = modelos();
+    const mSel = !mv ? "" : (ms.includes(mv) ? mv : OT);
+    poblarModelos(mSel);
+    const base = (mSel && mSel !== OT) ? mSel : "";
+    poblarPartes(base, "");
+    const enLista = partesDe(base).some(p=>p.pn===pv);
+    sp.value = !pv ? "" : (enLista ? pv : OT);
+    mostrar(); busy = false;
+  }
+  function avisar(el){ el.dispatchEvent(new Event("input", {bubbles:true})); }
+  sm.addEventListener("change", () => {
+    busy = true;
+    if (sm.value === OT){ setRaw(mi,""); mostrar(); mi.focus(); }
+    else {
+      setRaw(mi, sm.value); avisar(mi);
+      poblarPartes(sm.value, "");
+      const l = partesDe(sm.value);
+      if (l.length === 1){ sp.value = l[0].pn; setRaw(pi, l[0].pn); avisar(pi); }
+      else { setRaw(pi, ""); avisar(pi); }
+      mostrar();
+    }
+    busy = false;
+  });
+  sp.addEventListener("change", () => {
+    busy = true;
+    if (sp.value === OT){ setRaw(pi,""); mostrar(); pi.focus(); }
+    else if (sp.value === ""){ setRaw(pi,""); avisar(pi); mostrar(); }
+    else {
+      const p = lista().find(x=>x.pn===sp.value);
+      setRaw(pi, sp.value); avisar(pi);
+      if (p && p.modelo){                               // la parte llena el modelo
+        poblarModelos(p.modelo); setRaw(mi, p.modelo); avisar(mi);
+        const v = sp.value; poblarPartes(p.modelo, v);
+      }
+      if (p && di) setRaw(di, p.desc || p.modelo || "");
+      mostrar();
+    }
+    busy = false;
+  });
+  // Si otro código cambia .value (limpiar formulario, confirmar plan…), las listas se sincronizan
+  [mi,pi].forEach(el=>Object.defineProperty(el,"value",{configurable:true,get(){return raw.get.call(el);},set(v){raw.set.call(el,v); desdeInputs();}}));
+  [mi,pi].forEach(el=>el.addEventListener("blur", desdeInputs));
+  window._selRefresh = desdeInputs;
+  poblarModelos(""); poblarPartes("",""); mostrar();
+}
+
+montarSelectores({modelo:document.getElementById('ip-modelo'), parte:document.getElementById('ip-parte'),
+  partes:()=>PARTES_P1, lang:()=>lang});
 aplicarIdioma();
 </script>
 </body>
