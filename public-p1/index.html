@@ -1635,11 +1635,12 @@ function renderShipqr(){
   const assyRango=REGISTROS.filter(r=>{
     const fecha=r.fecha||"";
     const esTC=(r.maqNombre||"").toUpperCase()==="TC";
-    const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
+    const pu=(r.parte||"").toUpperCase();
+    const esGH90=pu.startsWith("GH90")||pu.startsWith("GH69");
     return esTC && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción TC con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción TC con PN GH90/GH69 entre ${desde} y ${hasta}.</td></tr>`;
     window._shipqrExportRows=[];
     return;
   }
@@ -2208,7 +2209,7 @@ const TRANSLATIONS = {
     adm_calcular:  '📊 Calcular descuentos',
     adm_sim:       '🧪 Modo simulación (NO toca Firebase)',
     // Table headers
-    ch_shipqr:     '📦 Material listo para SHIPQR · P4 → P3',
+    ch_shipqr:     '📦 Material listo para SHIPQR · P1 → P3',
     lbl_desde:     'Desde',
     lbl_hasta:     'Hasta',
     lbl_aplicar:   '🔍 Aplicar',
@@ -2335,7 +2336,7 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 Save',
     adm_calcular:  '📊 Calculate deductions',
     adm_sim:       '🧪 Simulation mode (NO Firebase)',
-    ch_shipqr:     '📦 Material ready for SHIPQR · P4 → P3',
+    ch_shipqr:     '📦 Material ready for SHIPQR · P1 → P3',
     lbl_desde:     'From',
     lbl_hasta:     'To',
     lbl_aplicar:   '🔍 Apply',
@@ -2462,7 +2463,7 @@ const TRANSLATIONS = {
     adm_guardar:   '💾 저장',
     adm_calcular:  '📊 차감 계산',
     adm_sim:       '🧪 시뮬레이션 모드 (Firebase 미적용)',
-    ch_shipqr:     '📦 SHIPQR 출하 준비 · P4 → P3',
+    ch_shipqr:     '📦 SHIPQR 출하 준비 · P1 → P3',
     lbl_desde:     '시작일',
     lbl_hasta:     '종료일',
     lbl_aplicar:   '🔍 적용',
@@ -2930,7 +2931,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="dc"><h3 id="ch-downtime">Downtime detail</h3><table><thead><tr><th id="th-machine2">Machine</th><th id="th-cause2">Cause</th><th style="text-align:right" id="th-min2">Min</th><th style="text-align:right" id="th-shift2">% shift</th><th style="text-align:right" id="th-status2">Status</th></tr></thead><tbody id="tb-dt"></tbody></table></div>
       </div>
       <div class="dc"><h3 id="ch-summary">Production summary · model &amp; parts</h3><div class="tbl-parts-wrap"><table><thead><tr><th id="th-machine3">Machine</th><th id="th-model3">Model</th><th id="th-type3">Type</th><th id="th-part3">Part No.</th><th id="th-shift3">Shift</th><th id="th-qty3">Qty</th><th id="th-defects3">Defects</th><th id="th-scrap3">Scrap</th><th>%</th></tr></thead><tbody id="tb-parts"></tbody></table></div></div>
-      <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P4 → P3</h3>
+      <div class="dc"><h3 id="ch-shipqr">📦 Material listo para SHIPQR · P1 → P3</h3>
         <div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:10px 12px;margin-bottom:10px;display:flex;gap:10px;align-items:end;flex-wrap:wrap">
           <div>
             <label style="font-size:12px;color:var(--muted);display:block;margin-bottom:4px" id="lbl-desde">Desde</label>
