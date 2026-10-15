@@ -914,8 +914,15 @@ const HOY = (()=>{const d=new Date();return `${d.getFullYear()}-${String(d.getMo
 onAuthStateChanged(auth, async (fireUser) => {
   if (fireUser) {
     const snap = await getDocs(query(USERS_COL(), where("uid","==",fireUser.uid)));
-    if (snap.empty) { await signOut(auth); return; }
-    CURRENT_USER = { uid:fireUser.uid, email:fireUser.email, ...snap.docs[0].data(), docId:snap.docs[0].id };
+    let snapU=snap;
+    if (snapU.empty) {
+      // Cuenta compartida con otras plantas: buscar perfil P1 por correo
+      const sn2 = await getDocs(query(USERS_COL(), where("email","==",(fireUser.email||"").toLowerCase())));
+      if (sn2.empty) { await signOut(auth); return; }
+      snapU = sn2;
+      try{ await updateDoc(doc(db,"usuarios_p1",sn2.docs[0].id),{uid:fireUser.uid}); }catch(e){}
+    }
+    CURRENT_USER = { uid:fireUser.uid, email:fireUser.email, ...snapU.docs[0].data(), docId:snapU.docs[0].id };
     showApp();
   } else { showLogin(); }
 });
@@ -1007,8 +1014,19 @@ window.addUser = async () => {
     ["nu-user","nu-nombre","nu-pass","nu-emp-num"].forEach(id=>document.getElementById(id).value="");
     loadUsuarios();
   } catch(e){
-    const msg=e.code==="auth/email-already-in-use"?"Ese correo ya existe en el sistema":e.message;
-    showToast("Error: "+msg,"var(--red)");
+    if(e.code==="auth/email-already-in-use"){
+      // El correo ya tiene cuenta (otra planta): solo darlo de alta en P1
+      try{
+        const ya=(await getDocs(USERS_COL())).docs.some(d=>(d.data().email||"").toLowerCase()===email.toLowerCase());
+        if(ya){showToast("Ese correo ya está dado de alta en P1","var(--red)");return;}
+        await addDoc(USERS_COL(),{email:email.toLowerCase(),nombre,rol,empleado:emp,activo:true,uid:"",createdAt:serverTimestamp()});
+        showToast(`✅ "${nombre}" dado de alta en P1. Entra con su contraseña actual.`,"var(--green)");
+        ["nu-user","nu-nombre","nu-pass","nu-emp-num"].forEach(id=>document.getElementById(id).value="");
+        loadUsuarios();
+      }catch(e2){showToast("Error: "+e2.message,"var(--red)");}
+      return;
+    }
+    showToast("Error: "+e.message,"var(--red)");
   }
 };
 window.toggleUser = async (docId,activo) => {
