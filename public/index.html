@@ -477,9 +477,48 @@ window.ejecutarCorregirModelo = ejecutarCorregirModelo;
 // El descuento SIEMPRE sale de ALMACÉN. Si hay otro registro con el mismo PN+descripción en otra
 // ubicación (ej. Línea S1), se ignora; solo se usa si no existe registro en Almacén.
 const esAlmacenIMS = x => { const u = String((x && x.ubicacion) || '').trim().toUpperCase(); return u === '' || u === 'ALMACEN' || u === 'ALMACÉN'; };
-const DESC_DESCUENTO_ENVIO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE',
-  'CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD',
-  'BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)','GALLETA'];
+const DESC_DESCUENTO_ENVIO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','PULP TRAY','SET PAD','BACK STICKER','GALLETA'];
+
+
+/* Vista previa del descuento del envio a ShipQR (no modifica nada). */
+async function planDescuentoEnvio(modelo, cantidad) {
+  const r = {lineas: [], intactos: [], problemas: []};
+  const nU = x => String(x || '').trim().toUpperCase();
+  const bomDoc = await getDoc(doc(db, 'bom_simulator_p4', 'bom_activo'));
+  if (!bomDoc.exists()) { r.problemas.push('No hay BOM activo: NO se descontará ningún material.'); return r; }
+  const BOM = JSON.parse(bomDoc.data().bom || '[]');
+  const filas = BOM.filter(b => b.pn && b.sm && String(b.sm).trim() === modelo);
+  const comps = filas.filter(b => DESC_DESCUENTO_ENVIO.includes(nU(b.desc)));
+  r.intactos = filas.filter(b => ['SHEET TOP BOX','CHIP BOARD TOP (RANURADO)','SHEET LOWER BOX (BOTTOM)','CHIP BOARD BOTTOM (RANURADO)'].includes(nU(b.desc)));
+  if (!comps.length) { r.problemas.push('El BOM del modelo ' + modelo + ' no tiene materiales a descontar.'); return r; }
+  const snap = await getDocs(collection(db, 'planta4_inventario'));
+  const porClave = {}, porPn = {};
+  snap.forEach(d => {
+    const x = d.data(); if (!x.pn) return;
+    const p = nU(x.pn), ds = nU(x.desc || x.descripcion || x.nombre);
+    const k = p + '|||' + ds, prev = porClave[k];
+    if (!prev || esAlmacenIMS(x) || !esAlmacenIMS(prev)) porClave[k] = x;
+    (porPn[p] = porPn[p] || []).push(x);
+  });
+  comps.forEach(c => {
+    const p = nU(c.pn), ds = nU(c.desc);
+    const x = porClave[p + '|||' + ds] || (porPn[p] && porPn[p].length === 1 ? porPn[p][0] : null);
+    if (!x) { r.problemas.push(c.pn + ' · ' + c.desc + ': no existe (o está duplicado) en el IMS, NO se descontará.'); return; }
+    const a = Number(x.actual) || 0;
+    r.lineas.push({pn: c.pn, desc: c.desc, antes: a, despues: Math.max(0, a - cantidad)});
+    if (a < cantidad) r.problemas.push(c.pn + ' · ' + c.desc + ': solo hay ' + a.toLocaleString() + ' y se necesitan ' + cantidad.toLocaleString() + ' (quedará en 0).');
+  });
+  return r;
+}
+function textoPlanEnvio(modelo, cantidad, r) {
+  let t = '🚚 ENVÍO A SHIPQR · ' + modelo + ' · ' + cantidad.toLocaleString() + ' pzas\n\n➖ SE DESCUENTA DEL IMS:\n';
+  if (!r.lineas.length) t += '   (nada)\n';
+  r.lineas.forEach(l => { t += '   ' + l.pn + ' · ' + l.desc + '   -' + cantidad.toLocaleString() + '   (' + l.antes.toLocaleString() + ' → ' + l.despues.toLocaleString() + ')\n'; });
+  if (r.intactos.length) t += '\n✋ NO SE TOCA (ya se descontaron al recibir el medio proceso):\n' + r.intactos.map(b => '   ' + b.pn + ' · ' + b.desc).join('\n') + '\n';
+  if (r.problemas.length) t += '\n⚠️ AVISOS:\n - ' + r.problemas.join('\n - ') + '\n';
+  t += '\n¿Confirmar el envío?';
+  return t;
+}
 
 async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario) {
   try {
@@ -490,7 +529,7 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
     if (!yaDesc.empty) { console.warn('Descuento ya aplicado para', refDocId); return; }
 
     const bomDoc = await getDoc(doc(db, 'bom_simulator_p4', 'bom_activo'));
-    if (!bomDoc.exists()) { console.error('Sin BOM activo, no se pudo descontar material del envío'); return; }
+    if (!bomDoc.exists()) { console.error('Sin BOM activo'); alert('⚠️ El envío se registró pero NO se descontó material (no hay BOM activo). Corrige con un AJUSTE en IMS.'); return; }
     const BOM = JSON.parse(bomDoc.data().bom || '[]');
     const compsModelo = BOM.filter(b => b.pn && b.sm && b.sm.trim() === modelo &&
       DESC_DESCUENTO_ENVIO.includes((b.desc || '').trim().toUpperCase()));
@@ -514,7 +553,7 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
     const fechaISO = new Date().toISOString();
     for (const c of compsModelo) {
       const imsDoc = buscarIMS(c.pn, c.desc);
-      if (!imsDoc) { console.error(`Sin registro IMS único para ${c.pn} (${c.desc}), no se descontó`); continue; }
+      if (!imsDoc) { console.error(`Sin registro IMS único para ${c.pn} (${c.desc}), no se descontó`); alert(`⚠️ NO se descontó ${c.pn} · ${c.desc} (no existe o está duplicado en el IMS). Corrige con un AJUSTE en IMS.`); continue; }
 
       const invAnterior = Number(imsDoc.actual) || 0;
       const salidasAnt = Number(imsDoc.salidas) || 0;
@@ -539,7 +578,7 @@ async function descontarMaterialEnvioShipqr(modelo, cantidad, refDocId, usuario)
       if (faltante > 0) console.warn(`⚠️ Faltante de ${c.pn} (${c.desc}) al enviar a ShipQR: ${faltante}`);
     }
   } catch (e) {
-    console.error('Error descontando material por envío a ShipQR:', e);
+    console.error('Error descontando material por envío a ShipQR:', e); alert('⚠️ El envío se registró pero el descuento de material FALLÓ: ' + e.message + '\nCorrige con un AJUSTE en IMS.');
     // No se relanza el error: si el descuento falla, el envío a ShipQR ya se
     // guardó y no debe bloquearse por esto. Revisar planta4_movimientos si aparece.
   }
@@ -613,13 +652,15 @@ async function calcularCierreJornada() {
     // 2. Leer registros ASSY1 del día
     const snap = await getDocs(collection(db,'registros'));
     const assy1Regs = [];
+    const semiRegs = [];
     snap.forEach(d => {
       const r = d.data();
       const fechaReg = r.fecha || (r.ts ? new Date(r.ts.seconds*1000).toISOString().slice(0,10) : '');
       const esASSY1 = r.maquina === 'ASSY1' || r.tipo === 'ASSY' || r.maqNombre === 'ASSY1' || r.maqTipo === 'ASSY';
       if (fechaReg === fecha && esASSY1) assy1Regs.push({id:d.id,...r});
+      else if (fechaReg === fecha && ['S1','S2','S3','S4','S5','ZHONGKE'].includes(String(r.maquina||r.maqNombre||'').trim().toUpperCase())) semiRegs.push({id:d.id,...r});
     });
-    if (!assy1Regs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
+    if (!assy1Regs.length && !semiRegs.length) { div.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros de ASSY1 para esa fecha</div>'; return; }
 
     // 3. Leer BOM ACTIVO (no plan_produccion)
     const bomDoc = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
@@ -670,7 +711,7 @@ async function calcularCierreJornada() {
       const consumo = defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','CHIP BOARD TOP (RANURADO)','CHIP BOARD BOTTOM (RANURADO)','PULP TRAY','SET PAD','BACK STICKER','SHEET TOP BOX','SHEET LOWER BOX (BOTTOM)','GALLETA'];
+      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','PULP TRAY','SET PAD','BACK STICKER','GALLETA'];
       const compsModelo = BOM.filter(b => {
         if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
         const desc = (b.desc||'').trim().toUpperCase();
@@ -683,6 +724,31 @@ async function calcularCierreJornada() {
         if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
         descuentos[key].total += consumo;
         descuentos[key].detalle.push({modelo, qty, defectos, scrap, consumo});
+      });
+    });
+
+    // 5b. Scrap/defectos de S1-S5/Zhongke: se perdio Sheet + Chip Board (el medio proceso nunca llego a un pallet)
+    const COMP_SEMI = {'GIFT BOX (TOP)':['SHEET TOP BOX','CHIP BOARD TOP (RANURADO)'], 'LOWER BOX (BOTTOM)':['SHEET LOWER BOX (BOTTOM)','CHIP BOARD BOTTOM (RANURADO)']};
+    const semiAvisos = [];
+    const nUs = x => String(x||'').trim().toUpperCase();
+    semiRegs.forEach(r => {
+      const modelo = (r.modelo||'').trim();
+      const defectos = Number(r.defectos ?? r.def)||0;
+      const scrap = Number(r.scrap)||0;
+      const consumo = defectos + scrap;
+      if (!consumo) return;
+      const maq = r.maquina || r.maqNombre || '';
+      const medio = BOM.find(b => b.pn && b.sm && b.sm.trim() === modelo && nUs(b.pn) === nUs(r.parte) && COMP_SEMI[nUs(b.desc)]);
+      if (!medio) { semiAvisos.push(maq + ' · ' + modelo + ' · parte ' + (r.parte||'—') + ': ' + consumo.toLocaleString() + ' pzas de scrap/defecto NO se descuentan (no se identificó Gift Box/Lower Box en el BOM).'); return; }
+      totalPiezasConsumo += consumo;
+      const comps = COMP_SEMI[nUs(medio.desc)];
+      comps.forEach(dsc => {
+        const c = BOM.find(b => b.pn && b.sm && b.sm.trim() === modelo && nUs(b.desc) === dsc);
+        if (!c) { semiAvisos.push(maq + ' · ' + modelo + ': ' + dsc + ' no está en el BOM, NO se descuenta.'); return; }
+        const key = nUs(c.pn) + '|||' + nUs(c.desc);
+        if (!descuentos[key]) descuentos[key] = {pn:c.pn, desc:c.desc||'', familia:c.familia||'', total:0, detalle:[]};
+        descuentos[key].total += consumo;
+        descuentos[key].detalle.push({modelo: modelo + ' (' + maq + ' · medio proceso)', qty: 0, defectos, scrap, consumo});
       });
     });
 
@@ -701,6 +767,7 @@ async function calcularCierreJornada() {
     }
 
     let conFaltante = 0;
+    if (semiAvisos.length) html += '<div style="margin-bottom:.5rem;padding:.5rem .75rem;background:rgba(255,186,0,.08);border:1px solid rgba(255,186,0,.3);border-radius:8px;color:var(--amber);font-size:12px">⚠️ ' + semiAvisos.join('<br>⚠️ ') + '</div>';
     html += `<div style="font-size:12px;color:var(--muted);margin-bottom:.4rem;font-weight:600">MATERIALES A DESCONTAR (${descList.length})</div>`;
     html += `<div style="max-height:300px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table style="width:100%;border-collapse:collapse;font-size:12px"><tr style="font-size:12px;color:var(--muted);background:var(--card2);position:sticky;top:0"><th style="text-align:left;padding:6px">N° Parte</th><th style="text-align:left;padding:6px">Descripción</th><th style="text-align:right;padding:6px">Inv. Act.</th><th style="text-align:right;padding:6px">Descuento</th><th style="text-align:right;padding:6px">Nuevo</th></tr>`;
     descList.sort((a,b)=>a.pn.localeCompare(b.pn)).forEach((d,i) => {
@@ -1736,6 +1803,12 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemp
     const seleccion=await mostrarModalMotivoEnvio();
     if(!seleccion) return; // canceló de verdad, nada se guarda
     motivo=seleccion.motivo; shipqrWin=seleccion.win;
+  }
+  let _planEnv = null;
+  try { _planEnv = await planDescuentoEnvio(modelo, cantidad); } catch(e) { _planEnv = {lineas:[], intactos:[], problemas:['No se pudo calcular la vista previa: ' + e.message]}; }
+  if (!confirm(textoPlanEnvio(modelo, cantidad, _planEnv))) {
+    if (shipqrWin && !shipqrWin.closed) shipqrWin.close();
+    return;
   }
   const docId=key+'||'+Date.now();
   const registro={
