@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="es"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Corrección envío duplicado</title>
+<style>
+body{font-family:Segoe UI,Arial,sans-serif;background:#0f1117;color:#e8eaf0;margin:0;padding:20px}
+.box{max-width:900px;margin:auto}
+h1{font-size:20px} table{width:100%;border-collapse:collapse;margin:14px 0;font-size:13px}
+th,td{border-bottom:1px solid #2a2f3d;padding:7px;text-align:left} th{color:#9aa3b8}
+button{background:#2f7d4f;color:#fff;border:0;padding:12px 20px;border-radius:8px;font-size:15px;cursor:pointer}
+button:disabled{background:#444;cursor:not-allowed}
+.msg{padding:10px;border-radius:8px;background:#1b2030;margin:10px 0}
+.ok{color:#5fd38d}.err{color:#ff7b7b}
+</style></head><body><div class="box">
+<h1>Corrección: envío duplicado a ShipQR (12/10/2026 08:48)</h1>
+<div class="msg">Regresa al inventario IMS P4 todo el material (según BOM) que se descontó de más en el envío de las 08:48 (1,584 pzas) que no generó lote en ShipQR.</div>
+<div id="estado" class="msg">Cargando… (debes tener la sesión del MES abierta en este navegador)</div>
+<table id="tabla" style="display:none"><thead><tr><th>PN</th><th>Descripción</th><th>Descontado</th><th>Faltante</th><th>Se regresa</th></tr></thead><tbody></tbody></table>
+<button id="btn" disabled>Regresar material al IMS</button>
+</div>
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, addDoc, getDocs, query, where, updateDoc } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+const app=initializeApp({apiKey:"AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",authDomain:"mes-production-esp.firebaseapp.com",projectId:"mes-production-esp",storageBucket:"mes-production-esp.firebasestorage.app",messagingSenderId:"165168379582",appId:"1:165168379582:web:9707579b363156208cd0ef"});
+const auth=getAuth(app), db=getFirestore(app);
+const SUFIJO='||1791820099392';           // envío de las 08:48 (sin lote en ShipQR)
+const $=id=>document.getElementById(id);
+let movs=[], refDocId='', usuario='';
+function estado(t,c){const e=$('estado');e.textContent=t;e.className='msg '+(c||'');}
+onAuthStateChanged(auth,async u=>{
+  if(!u){estado('No hay sesión. Abre primero el MES (mes-production-esp.web.app), inicia sesión y vuelve a abrir esta página.','err');return;}
+  usuario=u.email||'Corrección manual';
+  try{
+    const s=await getDocs(query(collection(db,'planta4_movimientos'),where('origen','==','ENVIO_SHIPQR')));
+    movs=s.docs.filter(d=>(d.data().referencia||'').endsWith(SUFIJO));
+    if(!movs.length){estado('No encontré el descuento de las 08:48.','err');return;}
+    refDocId=movs[0].data().referencia.replace('Envío a ShipQR - ','');
+    const rev=await getDocs(query(collection(db,'planta4_movimientos'),where('referencia','==','Reversa envío a ShipQR - '+refDocId)));
+    const tb=$('tabla').querySelector('tbody');
+    movs.forEach(m=>{const d=m.data();const r=Math.max(0,(+d.cantidad||0)-(+d.faltante||0));
+      tb.insertAdjacentHTML('beforeend',`<tr><td>${d.pn}</td><td>${d.desc||''}</td><td>${d.cantidad}</td><td>${d.faltante||0}</td><td>${r}</td></tr>`);});
+    $('tabla').style.display='';
+    if(!rev.empty){estado('Esta corrección YA se aplicó antes. No se hace nada más.','ok');return;}
+    estado(movs.length+' materiales encontrados. Revisa la tabla y presiona el botón.');
+    $('btn').disabled=false;
+  }catch(e){estado('Error: '+e.message,'err');}
+});
+$('btn').onclick=async()=>{
+  $('btn').disabled=true;
+  try{
+    const refRev='Reversa envío a ShipQR - '+refDocId;
+    const rev=await getDocs(query(collection(db,'planta4_movimientos'),where('referencia','==',refRev)));
+    if(!rev.empty){estado('Ya estaba aplicada.','ok');return;}
+    const inv=await getDocs(collection(db,'planta4_inventario'));
+    const mapa={},porPn={};
+    inv.forEach(d=>{const x=d.data();if(!x.pn)return;const p=x.pn.trim().toUpperCase(),s=(x.desc||x.descripcion||x.nombre||'').trim().toUpperCase();
+      mapa[p+'|||'+s]={...x,_id:d.id};(porPn[p]=porPn[p]||[]).push({...x,_id:d.id});});
+    const buscar=(pn,desc)=>{const p=(pn||'').trim().toUpperCase(),s=(desc||'').trim().toUpperCase();return mapa[p+'|||'+s]||(porPn[p]?.length===1?porPn[p][0]:null);};
+    // validar todo antes de escribir
+    const plan=movs.map(m=>{const d=m.data();const x=buscar(d.pn,d.desc);if(!x)throw new Error('No encontré '+d.pn+' en el IMS');return {d,x};});
+    const f=new Date().toISOString();let n=0;
+    for(const {d,x} of plan){
+      const cant=+d.cantidad||0, r=Math.max(0,cant-(+d.faltante||0));
+      const hist=(Array.isArray(x.historial)?x.historial:[]).concat([{tipo:'IN',fecha:f,qty:r,loc:x.ubicacion||'Almacén',user:usuario,ref:'Corrección envío duplicado 08:48 – sin lote en ShipQR'}]);
+      await updateDoc(doc(db,'planta4_inventario',x._id),{actual:(+x.actual||0)+r,salidas:Math.max(0,(+x.salidas||0)-cant),historial:hist,ultimaModificacion:f});
+      await addDoc(collection(db,'planta4_movimientos'),{tipo:'IN',pn:d.pn,desc:d.desc||'',familia:d.familia||'',cantidad:r,faltante:0,fecha:f,fechaProduccion:f.slice(0,10),ubicacion:x.ubicacion||'Almacén',usuario,referencia:refRev,origen:'REVERSA_ENVIO_SHIPQR'});
+      n++;
+    }
+    estado('✅ Listo: se regresaron '+n+' materiales al IMS P4.','ok');
+  }catch(e){estado('Error: '+e.message+' (no se aplicó nada incompleto si fue antes de escribir)','err');$('btn').disabled=false;}
+};
+</script></body></html>

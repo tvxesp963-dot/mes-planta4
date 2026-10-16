@@ -2878,5 +2878,23 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
   </div>
   </div></div>
 </div>
+<script>
+(function () {
+  var T = {es:["Mostrar contraseña","Ocultar contraseña"],en:["Show password","Hide password"],ko:["비밀번호 표시","비밀번호 숨기기"]};
+  function lang(){var l="es";try{l=(localStorage.getItem("mes-lang")||document.documentElement.lang||"es").slice(0,2).toLowerCase();}catch(e){}return T[l]?l:"es";}
+  function addEye(inp){
+    if(inp.dataset.eye)return; inp.dataset.eye="1";
+    var w=document.createElement("span"); w.style.cssText="position:relative;display:block;width:100%";
+    inp.parentNode.insertBefore(w,inp); w.appendChild(inp);
+    inp.style.boxSizing="border-box"; inp.style.width="100%"; inp.style.paddingRight="40px";
+    var b=document.createElement("button"); b.type="button"; b.textContent="👁"; b.title=T[lang()][0];
+    b.style.cssText="position:absolute;right:8px;top:50%;transform:translateY(-50%);background:none;border:none;cursor:pointer;font-size:18px;padding:0;color:#888";
+    b.onclick=function(){var show=inp.type==="password";inp.type=show?"text":"password";b.title=T[lang()][show?1:0];b.style.opacity=show?"0.5":"1";};
+    w.appendChild(b);
+  }
+  function scan(){document.querySelectorAll('input[type="password"]').forEach(addEye);}
+  scan(); new MutationObserver(scan).observe(document.body,{childList:true,subtree:true});
+})();
+</script>
 </body>
 </html>
