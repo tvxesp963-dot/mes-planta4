@@ -776,11 +776,11 @@ const PTT_COL=()=>collection(db,"pallets_tipo_p1");
 let PALLET_TIPOS=[], CP_PESO=0.2;
 const PTT_T={
   es:{h:"📏 Tipos de pallet y peso Cross Pad",cp:"Peso de cada pieza Cross Pad (lb)",save:"💾 Guardar",dim:"Medida del pallet (L × W, in)",peso:"Peso del pallet (lb)",add:"➕ Agregar pallet",seed:"📦 Cargar pallets de referencia (5)",acc:"Acciones",ok:"✅ Guardado",conf:"¿Eliminar este pallet?",bad:"Escribe medida y peso (lb) válidos",empty:"Sin pallets. Agrega el primero.",note:"Peso total del pallet = peso Cross Pad × cantidad + peso del pallet",
-     sel:"Tipo de pallet (L × W)",selPh:"— Seleccionar pallet —",needPallet:"Selecciona el tipo de pallet",cpW:"Peso Cross Pad",palletW:"Peso del pallet",totW:"Peso total del pallet",lb:"lb",pcs:"pz"},
+     sel:"Tipo de pallet (L × W)",selPh:"— Seleccionar pallet —",needPallet:"Selecciona el tipo de pallet",src:"Dato configurado en Admin → Tipos de pallet y peso Cross Pad",cpW:"Peso Cross Pad",palletW:"Peso del pallet",totW:"Peso total del pallet",lb:"lb",pcs:"pz"},
   en:{h:"📏 Pallet types & Cross Pad weight",cp:"Weight of each Cross Pad piece (lb)",save:"💾 Save",dim:"Pallet size (L × W, in)",peso:"Pallet weight (lb)",add:"➕ Add pallet",seed:"📦 Load reference pallets (5)",acc:"Actions",ok:"✅ Saved",conf:"Delete this pallet?",bad:"Enter a valid size and weight (lb)",empty:"No pallets. Add the first one.",note:"Total pallet weight = Cross Pad weight × quantity + pallet weight",
-     sel:"Pallet type (L × W)",selPh:"— Select pallet —",needPallet:"Select the pallet type",cpW:"Cross Pad weight",palletW:"Pallet weight",totW:"Total pallet weight",lb:"lb",pcs:"pcs"},
+     sel:"Pallet type (L × W)",selPh:"— Select pallet —",needPallet:"Select the pallet type",src:"Value set in Admin → Pallet types & Cross Pad weight",cpW:"Cross Pad weight",palletW:"Pallet weight",totW:"Total pallet weight",lb:"lb",pcs:"pcs"},
   ko:{h:"📏 팔레트 종류 및 크로스패드 무게",cp:"크로스패드 1개 무게 (lb)",save:"💾 저장",dim:"팔레트 크기 (L × W, in)",peso:"팔레트 무게 (lb)",add:"➕ 팔레트 추가",seed:"📦 기준 팔레트 불러오기 (5)",acc:"작업",ok:"✅ 저장됨",conf:"이 팔레트를 삭제할까요?",bad:"올바른 크기와 무게(lb)를 입력하세요",empty:"팔레트가 없습니다. 첫 번째를 추가하세요.",note:"팔레트 총 무게 = 크로스패드 무게 × 수량 + 팔레트 무게",
-     sel:"팔레트 종류 (L × W)",selPh:"— 팔레트 선택 —",needPallet:"팔레트 종류를 선택하세요",cpW:"크로스패드 무게",palletW:"팔레트 무게",totW:"팔레트 총 무게",lb:"lb",pcs:"개"}
+     sel:"팔레트 종류 (L × W)",selPh:"— 팔레트 선택 —",needPallet:"팔레트 종류를 선택하세요",src:"관리자 → 팔레트 종류 및 크로스패드 무게에서 설정된 값",cpW:"크로스패드 무게",palletW:"팔레트 무게",totW:"팔레트 총 무게",lb:"lb",pcs:"개"}
 };
 const ptt=(k)=>((PTT_T[LANG]||PTT_T.es)[k]||PTT_T.es[k]);
 const ptEsc=(x)=>String(x==null?'':x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
@@ -879,10 +879,10 @@ function calcPesoOp(){
     if(m) sel.value=m.id;
   }
   const p=palletSelOp(), qty=parseFloat(document.getElementById("ip-prod")?.value)||0;
-  if(!esCrossPadOp()||!p){ box.style.display=esCrossPadOp()?"block":"none"; box.innerHTML=`${ptt("cpW")}: ${CP_PESO} ${ptt("lb")} / ${ptt("pcs")}`; return; }
+  if(!esCrossPadOp()||!p){ box.style.display=esCrossPadOp()?"block":"none"; box.innerHTML=`${ptt("cpW")}: ${CP_PESO} ${ptt("lb")} / ${ptt("pcs")}<div style="font-size:.72rem;color:var(--muted);margin-top:4px;opacity:.8">ℹ️ ${ptt("src")}</div>`; return; }
   const cp=+(CP_PESO*qty).toFixed(2), tot=+(CP_PESO*qty+p.peso).toFixed(2);
   box.style.display="block";
-  box.innerHTML=`${ptt("cpW")}: ${CP_PESO} × ${qty.toLocaleString()} = <b>${cp.toLocaleString()} ${ptt("lb")}</b><br>${ptt("palletW")}: <b>${p.peso} ${ptt("lb")}</b><br>${ptt("totW")}: <b style="color:var(--green);font-size:1rem">${tot.toLocaleString()} ${ptt("lb")}</b>`;
+  box.innerHTML=`${ptt("cpW")}: ${CP_PESO} × ${qty.toLocaleString()} = <b>${cp.toLocaleString()} ${ptt("lb")}</b><br>${ptt("palletW")}: <b>${p.peso} ${ptt("lb")}</b><br>${ptt("totW")}: <b style="color:var(--green);font-size:1rem">${tot.toLocaleString()} ${ptt("lb")}</b><div style="font-size:.72rem;color:var(--muted);margin-top:4px;opacity:.8">ℹ️ ${ptt("src")}</div>`;
 }
 function pesoPalletCampos(){
   const p=palletSelOp(); if(!esCrossPadOp()||!p) return {};
@@ -1738,12 +1738,17 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemp
   const sel=await mostrarModalEnvioShipqr({modelo,parte,prod:Number(prod),pendiente,esRemplazoForzado,dim:(filaDim&&filaDim.dim)||''});
   if(!sel) return; // canceló, nada se guarda
   const cantidad=sel.cantidad, motivo=sel.motivo, shipqrWin=sel.win, dimPallet=sel.dim;
+  // Cross Pad: peso total del pallet = peso Cross Pad × cantidad + peso del pallet (lo capturó el operador) · descripción del material desde el catálogo
+  const pesoTotal=(filaDim&&filaDim.palletPeso!=null)?+((filaDim.cpPeso||0)*cantidad+filaDim.palletPeso).toFixed(2):0;
+  const catP=(typeof CATALOGO_P1!=='undefined')?CATALOGO_P1.find(x=>x.pn===String(parte).toUpperCase()):null;
+  const descMat=catP?(catP.descMat||catP.desc||''):'';
   const docId=key+'||'+Date.now();
   const registro={
     key, modelo, parte, fecha, turno, horaCaptura,
     prod: Number(prod),
     cantidad_enviada: cantidad,
     dim: dimPallet,
+    peso_total_lb: pesoTotal,
     motivo,
     enviado_por: CURRENT_USER?.nombre || 'Desconocido',
     fecha_envio: new Date().toISOString()
@@ -1760,7 +1765,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemp
     if(shipqrWin && !shipqrWin.closed) shipqrWin.close();
     return;
   }
-  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}&dim=${encodeURIComponent(dimPallet)}&planta=P1`;
+  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}&dim=${encodeURIComponent(dimPallet)}${pesoTotal>0?`&peso=${pesoTotal}`:''}${descMat?`&desc=${encodeURIComponent(descMat)}`:''}&planta=P1`;
   mostrarAvisoAbrirShipqr(url); // enlace de respaldo siempre visible (clic real = nunca se bloquea)
   if(shipqrWin){
     shipqrWin.location=url;
@@ -2071,6 +2076,7 @@ function renderShipqr(){
     const key=modelo+"||"+parte+"||"+fecha+"||"+turno+"||"+horaCaptura;
     if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0,dim:''};}
     if(!modPnMap[key].dim && r.palletDim) modPnMap[key].dim=r.palletDim;
+    if(modPnMap[key].palletPeso==null && r.palletPesoLb!=null){ modPnMap[key].palletPeso=Number(r.palletPesoLb)||0; modPnMap[key].cpPeso=Number(r.pesoCrossPadLb)||0; }
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
   });
   const rows=Object.values(modPnMap).sort((a,b)=>(a.fecha+a.modelo).localeCompare(b.fecha+b.modelo));
