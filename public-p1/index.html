@@ -159,7 +159,7 @@ async function editarRegistro(id) {
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
     const opcTipo = ['Printing','Folding','Cutting','Finished','DieCut','Stitching','Label','GlueLine'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
-    const opcCorte = [{id:'C1',label:'Break (7:00–8:45 AM)'},{id:'C2',label:'Lunch (9:00–12:30 PM)'},{id:'C3',label:'Home (1:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
+    const opcCorte = [{id:'C2',label:'Lunch (6:54–11:15 AM)'},{id:'C3',label:'Home (12:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
     modal.innerHTML = `<div style="background:var(--card);border-radius:12px;padding:20px;width:340px;border:1px solid var(--border);max-height:90vh;overflow-y:auto">
@@ -256,9 +256,8 @@ window.abrirNuevoRegistro = function() {
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcTipo = ['Printing','Folding','Cutting','Finished','DieCut','Stitching','Label','GlueLine'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcCorte = [
-    {id:'C1',label:'Break (7:00–8:45 AM)'},
-    {id:'C2',label:'Lunch (9:00–12:30 PM)'},
-    {id:'C3',label:'Home (1:00–4:30 PM)'},
+    {id:'C2',label:'Lunch (6:54–11:15 AM)'},
+    {id:'C3',label:'Home (12:00–4:30 PM)'},
     {id:'OT',label:'OT (4:45–6:25 PM)'}
   ].map(c=>`<option value="${c.id}">${c.label}</option>`).join('');
   const modal = document.createElement('div');
@@ -426,10 +425,9 @@ async function loadTargetsFromDB(){
       MAQUINAS[idx].target=t;
       // Recalcular cortes proporcional
       const m=MAQUINAS[idx];
-      const pcts={C1:0.2,C2:0.4,C3:0.4};
+      const pcts={C2:0.6,C3:0.4};
       const otFixed=data.OT||m.cortes.OT;
       m.cortes={
-        C1:Math.round(t*pcts.C1),
         C2:Math.round(t*pcts.C2),
         C3:Math.round(t*pcts.C3),
         OT:otFixed
@@ -442,11 +440,10 @@ async function loadTargetsFromDB(){
 
 async function saveTargetToDB(maqIdx, targetVal){
   const m=MAQUINAS[maqIdx];
-  const pcts={C1:0.2,C2:0.4,C3:0.4};
+  const pcts={C2:0.6,C3:0.4};
   const data={
     nombre:m.nombre,
     target:targetVal,
-    C1:Math.round(targetVal*pcts.C1),
     C2:Math.round(targetVal*pcts.C2),
     C3:Math.round(targetVal*pcts.C3),
     OT:m.cortes.OT,
@@ -461,7 +458,7 @@ async function saveTargetToDB(maqIdx, targetVal){
     }
     // Actualizar en memoria
     MAQUINAS[maqIdx].target=targetVal;
-    MAQUINAS[maqIdx].cortes={C1:data.C1,C2:data.C2,C3:data.C3,OT:data.OT};
+    MAQUINAS[maqIdx].cortes={C2:data.C2,C3:data.C3,OT:data.OT};
     showToast("Target guardado ✓","var(--green)");
     renderAdminTargets();
   }catch(e){showToast("Error al guardar target","var(--red)");console.error(e);}
@@ -479,7 +476,7 @@ function renderAdminTargets(){
       <input type="number" id="tgt-inp-${i}" value="${m.target}"
         style="width:100%;background:var(--bg);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:7px 10px;font-size:.85rem;font-family:'IBM Plex Mono',monospace;text-align:right;outline:none;">
       <div style="display:grid;grid-template-columns:1fr 1fr;gap:4px;margin-top:8px;">
-        ${Object.entries({Break:"C1",Lunch:"C2",Home:"C3",OT:"OT"}).map(([lbl,k])=>`
+        ${Object.entries({Lunch:"C2",Home:"C3",OT:"OT"}).map(([lbl,k])=>`
           <div style="background:var(--bg);border:1px solid var(--border);border-radius:5px;padding:4px 7px;font-size:.75rem;">
             <span style="color:var(--muted)">${lbl}</span>
             <strong style="color:var(--accent);float:right">${(m.cortes[k]||0).toLocaleString()}</strong>
@@ -535,7 +532,7 @@ function partesP1(){
   if(!filas.length) filas=BOM_ACTIVO.filter(r=>r.pn&&r.sm);
   const mapa={};
   filas.forEach(r=>{const pn=String(r.pn).trim().toUpperCase(); if(!mapa[pn]) mapa[pn]={pn,modelo:String(r.sm).trim().toUpperCase(),desc:r.desc||'',origen:'BOM'};});
-  CATALOGO_P1.forEach(c=>{mapa[c.pn]={pn:c.pn,modelo:c.desc,desc:c.desc,origen:'CAT'};});   // el catálogo manda
+  CATALOGO_P1.forEach(c=>{mapa[c.pn]={pn:c.pn,modelo:c.desc,desc:c.descMat||c.desc,origen:'CAT'};});   // el catálogo manda
   return Object.values(mapa);
 }
 function buildModelosDL(){
@@ -694,70 +691,104 @@ function initColapsables(){
 initColapsables();
 
 /* ══ ADMIN: catálogo de partes P1 ══ */
-const CAT_SEED=`GH69-46627A	SM7410
-GH69-46511A	SMS971
-GH69-46480A	SMS976
-GH69-46414A	SMS776
-GH69-46136A	S942
-GH69-46135A	S942
-GH69-46072A	S942
-GH69-46071A	S942
-GH69-46040A	M3 SEB
-GH69-46039A	M3
-GH69-46211A	All
-GH69-46261A	PIEZA CARTON
-GH69-46161A	A166
-GH69-45715A	S25 FE S731
-GH69-45713A	S731
-GH69-45712A	S731
-GH69-45823A	Q7 F966
-GH69-45822A	B766
-GH69-44413A	X828
-GH69-44907A	Q7 F966
-GH69-45495A	Q7 F966
-GH69-45496A	B7
-GH69-44906A	Q7 F966
-GH69-44921A	B7
-GH69-44921B	B7
-GH69-45241A	B7R F761
-GH69-43764A	F741
-GH69-44628A	S931`;
+const CAT_SEED=`GH69-46627A	SM7410	CROSS PAD
+GH69-46511A	SMS971	CROSS PAD
+GH69-46480A	SMS976	CROSS PAD
+GH69-46414A	SMS776	CROSS PAD
+GH69-46136A	S942	CROSS PAD
+GH69-46135A	S942	CROSS PAD
+GH69-46072A	S942	CROSS PAD
+GH69-46071A	S942	CROSS PAD
+GH69-46040A	M3 SEB	CROSS PAD
+GH69-46039A	M3	CROSS PAD
+GH69-46211A	All	CROSS PAD
+GH69-46261A	PIEZA CARTON	CROSS PAD
+GH69-46161A	A166	CROSS PAD
+GH69-45715A	S25 FE S731	CROSS PAD
+GH69-45713A	S731	CROSS PAD
+GH69-45712A	S731	CROSS PAD
+GH69-45823A	Q7 F966	CROSS PAD
+GH69-45822A	B766	CROSS PAD
+GH69-44413A	X828	CROSS PAD
+GH69-44907A	Q7 F966	CROSS PAD
+GH69-45495A	Q7 F966	CROSS PAD
+GH69-45496A	B7	CROSS PAD
+GH69-44906A	Q7 F966	CROSS PAD
+GH69-44921A	B7	CROSS PAD
+GH69-44921B	B7	CROSS PAD
+GH69-45241A	B7R F761	CROSS PAD
+GH69-43764A	F741	CROSS PAD
+GH69-44628A	S931	CROSS PAD`;
 const CAT_T={
-  es:{sq:"📥 Descargar plantilla ShipQR (Excel)",sqNone:"Primero carga las partes en el catálogo",sqAll:"✅ Todas las partes del catálogo ya tienen datos en ShipQR",sqOk:"✅ Plantilla generada. Partes a llenar: ",sqYa:" · ya estaban en ShipQR: ",sqNoLee:" · (no pude leer ShipQR, se incluyeron todos)",sqHelp:"Llena Pcs/caja (piezas por pallet), Peso y Dimensión y súbela en ShipQR → Admin → Empaque por modelo → Cargar desde Excel.",file:"Subir Excel (.xlsx / .csv) con N° de Parte y Descripción",upl:"📤 Subir Excel",reading:"Leyendo archivo…",none:"No se encontraron partes en el archivo (busco códigos tipo GH69-46627A y la descripción en la celda de al lado)",done:"✅ Partes cargadas desde el Excel: ",h:"📚 Catálogo de partes P1 (fuera del BOM)",pn:"N° de Parte",desc:"Descripción / Modelo",add:"➕ Agregar parte",bulk:"Pegar lista desde Excel (N° de Parte [Tab] Descripción, una por línea)",imp:"📥 Importar lista pegada",seed:"📦 Cargar lista inicial (28 partes)",search:"Buscar…",acc:"Acciones",del:"Eliminar",ok:"✅ Guardado",need:"Escribe N° de parte y descripción",conf:"¿Eliminar esta parte del catálogo?",imported:"✅ Partes importadas: ",note:"Estas partes aparecen en las listas del operador, Pallet ASSY y Pallet Medio de P1, junto con las del BOM de P1."},
-  en:{sq:"📥 Download ShipQR template (Excel)",sqNone:"Load the parts in the catalog first",sqAll:"✅ All catalog parts already have data in ShipQR",sqOk:"✅ Template generated. Parts to fill: ",sqYa:" · already in ShipQR: ",sqNoLee:" · (could not read ShipQR, all were included)",sqHelp:"Fill pc/box (pieces per pallet), Weight and Dimension, then upload it in ShipQR → Admin → Empaque por modelo → Load from Excel.",file:"Upload Excel (.xlsx / .csv) with Part No. and Description",upl:"📤 Upload Excel",reading:"Reading file…",none:"No parts found in the file (I look for codes like GH69-46627A and the description in the next cell)",done:"✅ Parts loaded from Excel: ",h:"📚 P1 parts catalog (outside the BOM)",pn:"Part No.",desc:"Description / Model",add:"➕ Add part",bulk:"Paste list from Excel (Part No. [Tab] Description, one per line)",imp:"📥 Import pasted list",seed:"📦 Load initial list (28 parts)",search:"Search…",acc:"Actions",del:"Delete",ok:"✅ Saved",need:"Enter part number and description",conf:"Delete this part from the catalog?",imported:"✅ Parts imported: ",note:"These parts appear in the operator, ASSY Pallet and In-process Pallet lists of P1, together with the P1 BOM parts."},
-  ko:{sq:"📥 ShipQR 템플릿 다운로드 (Excel)",sqNone:"먼저 카탈로그에 부품을 불러오세요",sqAll:"✅ 카탈로그의 모든 부품이 이미 ShipQR에 있습니다",sqOk:"✅ 템플릿 생성됨. 입력할 부품: ",sqYa:" · 이미 ShipQR에 있음: ",sqNoLee:" · (ShipQR을 읽을 수 없어 모두 포함)",sqHelp:"박스당 수량(팔레트당 수량), 무게, 치수를 입력한 후 ShipQR → Admin → Empaque por modelo → 엑셀 업로드로 올리세요.",file:"엑셀(.xlsx / .csv) 업로드 (부품번호와 설명)",upl:"📤 엑셀 업로드",reading:"파일 읽는 중…",none:"파일에서 부품을 찾지 못했습니다 (GH69-46627A 형식 코드와 옆 셀의 설명을 찾습니다)",done:"✅ 엑셀에서 불러온 부품: ",h:"📚 P1 부품 카탈로그 (BOM 외)",pn:"부품 번호",desc:"설명 / 모델",add:"➕ 부품 추가",bulk:"엑셀에서 붙여넣기 (부품번호 [Tab] 설명, 한 줄에 하나)",imp:"📥 붙여넣은 목록 가져오기",seed:"📦 초기 목록 불러오기 (28개)",search:"검색…",acc:"작업",del:"삭제",ok:"✅ 저장됨",need:"부품 번호와 설명을 입력하세요",conf:"카탈로그에서 이 부품을 삭제할까요?",imported:"✅ 가져온 부품: ",note:"이 부품은 P1 BOM 부품과 함께 작업자, ASSY 팔레트, 공정 팔레트 목록에 표시됩니다."}
+  es:{sq:"📥 Descargar plantilla ShipQR (Excel)",sqNone:"Primero carga las partes en el catálogo",sqAll:"✅ Todas las partes del catálogo ya tienen datos en ShipQR",sqOk:"✅ Plantilla generada. Partes a llenar: ",sqYa:" · ya estaban en ShipQR: ",sqNoLee:" · (no pude leer ShipQR, se incluyeron todos)",sqHelp:"Llena Pcs/caja (piezas por pallet), Peso y Dimensión y súbela en ShipQR → Admin → Empaque por modelo → Cargar desde Excel.",file:"Subir Excel (.xlsx / .csv) con 3 columnas: N° de Parte, Modelo y Descripción del material",upl:"📤 Subir Excel",reading:"Leyendo archivo…",none:"No se encontraron partes en el archivo (busco códigos tipo GH69-46627A y la descripción en la celda de al lado)",done:"✅ Partes cargadas desde el Excel: ",h:"📚 Catálogo de partes P1 (fuera del BOM)",pn:"N° de Parte",desc:"Modelo",mat:"Descripción del material",add:"➕ Agregar parte",bulk:"Pegar lista desde Excel (N° de Parte [Tab] Modelo [Tab] Descripción del material, una por línea)",imp:"📥 Importar lista pegada",seed:"📦 Cargar lista inicial (28 partes)",search:"Buscar…",acc:"Acciones",del:"Eliminar",ok:"✅ Guardado",need:"Escribe N° de parte y modelo",conf:"¿Eliminar esta parte del catálogo?",imported:"✅ Partes importadas: ",note:"Estas partes aparecen en las listas del operador, Pallet ASSY y Pallet Medio de P1, junto con las del BOM de P1."},
+  en:{sq:"📥 Download ShipQR template (Excel)",sqNone:"Load the parts in the catalog first",sqAll:"✅ All catalog parts already have data in ShipQR",sqOk:"✅ Template generated. Parts to fill: ",sqYa:" · already in ShipQR: ",sqNoLee:" · (could not read ShipQR, all were included)",sqHelp:"Fill pc/box (pieces per pallet), Weight and Dimension, then upload it in ShipQR → Admin → Empaque por modelo → Load from Excel.",file:"Upload Excel (.xlsx / .csv) with 3 columns: Part No., Model and Material description",upl:"📤 Upload Excel",reading:"Reading file…",none:"No parts found in the file (I look for codes like GH69-46627A and the description in the next cell)",done:"✅ Parts loaded from Excel: ",h:"📚 P1 parts catalog (outside the BOM)",pn:"Part No.",desc:"Model",mat:"Material description",add:"➕ Add part",bulk:"Paste list from Excel (Part No. [Tab] Model [Tab] Material description, one per line)",imp:"📥 Import pasted list",seed:"📦 Load initial list (28 parts)",search:"Search…",acc:"Actions",del:"Delete",ok:"✅ Saved",need:"Enter part number and model",conf:"Delete this part from the catalog?",imported:"✅ Parts imported: ",note:"These parts appear in the operator, ASSY Pallet and In-process Pallet lists of P1, together with the P1 BOM parts."},
+  ko:{sq:"📥 ShipQR 템플릿 다운로드 (Excel)",sqNone:"먼저 카탈로그에 부품을 불러오세요",sqAll:"✅ 카탈로그의 모든 부품이 이미 ShipQR에 있습니다",sqOk:"✅ 템플릿 생성됨. 입력할 부품: ",sqYa:" · 이미 ShipQR에 있음: ",sqNoLee:" · (ShipQR을 읽을 수 없어 모두 포함)",sqHelp:"박스당 수량(팔레트당 수량), 무게, 치수를 입력한 후 ShipQR → Admin → Empaque por modelo → 엑셀 업로드로 올리세요.",file:"엑셀(.xlsx / .csv) 업로드 (3열: 부품번호, 모델, 자재 설명)",upl:"📤 엑셀 업로드",reading:"파일 읽는 중…",none:"파일에서 부품을 찾지 못했습니다 (GH69-46627A 형식 코드와 옆 셀의 설명을 찾습니다)",done:"✅ 엑셀에서 불러온 부품: ",h:"📚 P1 부품 카탈로그 (BOM 외)",pn:"부품 번호",desc:"모델",mat:"자재 설명",add:"➕ 부품 추가",bulk:"엑셀에서 붙여넣기 (부품번호 [Tab] 모델 [Tab] 자재 설명, 한 줄에 하나)",imp:"📥 붙여넣은 목록 가져오기",seed:"📦 초기 목록 불러오기 (28개)",search:"검색…",acc:"작업",del:"삭제",ok:"✅ 저장됨",need:"부품 번호와 모델을 입력하세요",conf:"카탈로그에서 이 부품을 삭제할까요?",imported:"✅ 가져온 부품: ",note:"이 부품은 P1 BOM 부품과 함께 작업자, ASSY 팔레트, 공정 팔레트 목록에 표시됩니다."}
 };
 const ct=(k)=>((CAT_T[LANG]||CAT_T.es)[k]||CAT_T.es[k]);
+const PLT={
+  es:{tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"Pzas/pallet",peso:"Peso pallet (lbs) · manual",cpp:"Cajas/pallet",dim:"Dimensión pallet (in) LxWxH",
+      sync:"🔄 Enviar datos PL al maestro de ShipQR",syncOk:"✅ Partes actualizadas en ShipQR: ",syncNone:"No hay partes en el catálogo",syncErr:"No pude escribir en ShipQR (usa la plantilla Excel). ",
+      plHelp:"Cross Pad: las piezas van apiladas en el pallet (sin cajas); cada pallet lleva lo producido en la máquina. El peso del pallet es manual por ahora. Datos del Packing List: se usan en la etiqueta y el PL de ShipQR. Para corregir una parte usa ✏️, cambia el dato y presiona «Agregar parte».",
+      edit:"✏️",dimBad:"Dimensión inválida. Usa el formato 48x40x50",
+      pallet:"📦 Pallet · dimensión (pulgadas)",palletHint:"Largo × Ancho × Alto del pallet. Se usa para cuadrar el contenedor en ShipQR.",thpallet:"Pallet (in)",
+      needDim:"Captura la dimensión del pallet (L, W y H)",modalDim:"Dimensión del pallet (L×W×H in)",modalDimBad:"Captura la dimensión del pallet, ej. 48x40x50"},
+  en:{tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"Pcs/pallet",peso:"Pallet weight (lbs) · manual",cpp:"Boxes/pallet",dim:"Pallet dimension (in) LxWxH",
+      sync:"🔄 Send PL data to ShipQR master",syncOk:"✅ Parts updated in ShipQR: ",syncNone:"There are no parts in the catalog",syncErr:"Could not write to ShipQR (use the Excel template). ",
+      plHelp:"Cross Pad: pieces are stacked on the pallet (no boxes); each pallet carries what the machine produced. Pallet weight is manual for now. Packing List data: used on the ShipQR label and PL. To fix a part use ✏️, change the value and press «Add part».",
+      edit:"✏️",dimBad:"Invalid dimension. Use the format 48x40x50",
+      pallet:"📦 Pallet · dimension (inches)",palletHint:"Pallet Length × Width × Height. Used to match the container load in ShipQR.",thpallet:"Pallet (in)",
+      needDim:"Enter the pallet dimension (L, W and H)",modalDim:"Pallet dimension (L×W×H in)",modalDimBad:"Enter the pallet dimension, e.g. 48x40x50"},
+  ko:{tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"팔레트당 수량",peso:"팔레트 무게 (lbs) · 수동",cpp:"팔레트당 박스",dim:"팔레트 치수 (in) LxWxH",
+      sync:"🔄 PL 데이터를 ShipQR 마스터로 전송",syncOk:"✅ ShipQR에서 업데이트된 부품: ",syncNone:"카탈로그에 부품이 없습니다",syncErr:"ShipQR에 쓸 수 없습니다 (엑셀 템플릿을 사용하세요). ",
+      plHelp:"Cross Pad: 박스 없이 팔레트 위에 적재되며, 각 팔레트는 기계에서 생산된 수량입니다. 팔레트 무게는 현재 수동입니다. 패킹리스트 데이터: ShipQR 라벨과 PL에 사용됩니다. 수정하려면 ✏️를 누르고 값을 바꾼 뒤 «부품 추가»를 누르세요.",
+      edit:"✏️",dimBad:"치수가 잘못되었습니다. 48x40x50 형식으로 입력하세요",
+      pallet:"📦 팔레트 · 치수 (인치)",palletHint:"팔레트 길이 × 너비 × 높이. ShipQR 컨테이너 적재 계산에 사용됩니다.",thpallet:"팔레트 (in)",
+      needDim:"팔레트 치수(L, W, H)를 입력하세요",modalDim:"팔레트 치수 (L×W×H in)",modalDimBad:"팔레트 치수를 입력하세요. 예: 48x40x50"}
+};
+const pt=(k)=>((PLT[LANG]||PLT.es)[k]||PLT.es[k]);
+// "48 x 40 × 50" -> "48x40x50"  ("" si no es válida)
+function normDimTxt(sv){
+  const m=String(sv==null?'':sv).trim().replace(/,/g,'.').match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)$/i);
+  return m?`${+m[1]}x${+m[2]}x${+m[3]}`:'';
+}
+const PL_COLS=[["tipo","tipo"],["fsc","fsc"],["rev","rev"],["pcs","pcs"],["peso","peso"],["cpp","cpp"],["dim","dim"]];
 function catTexts(){
   const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
   set("cat-h",ct("h")); set("cat-l-pn",ct("pn")); set("cat-l-desc",ct("desc")); set("cat-btn-add",ct("add"));
   set("cat-l-bulk",ct("bulk")); set("cat-l-file",ct("file")); set("cat-btn-file",ct("upl")); set("cat-btn-sq",ct("sq")); set("cat-sq-help",ct("sqHelp")); set("cat-btn-seed2",ct("seed")); set("cat-btn-imp",ct("imp")); set("cat-btn-seed",ct("seed")); set("cat-note",ct("note"));
-  set("cat-th-pn",ct("pn")); set("cat-th-desc",ct("desc")); set("cat-th-acc",ct("acc"));
+  set("cat-l-mat",ct("mat")); set("cat-th-mat",ct("mat")); set("cat-th-pn",ct("pn")); set("cat-th-desc",ct("desc")); set("cat-th-acc",ct("acc"));
   const f=document.getElementById("cat-filter"); if(f) f.placeholder=ct("search");
+  PL_COLS.forEach(([id,k])=>{ set("cat-l-"+id,pt(k)); set("cat-th-"+id,pt(k)); });
+  set("cat-btn-sync",pt("sync")); set("cat-pl-help",pt("plHelp"));
 }
 async function loadCatalogo(){
   try{
     const snap=await getDocs(CAT_COL());
-    CATALOGO_P1=snap.docs.map(d=>({id:d.id,pn:String(d.data().parte||d.id).toUpperCase(),desc:String(d.data().descripcion||'').toUpperCase()}))
+    CATALOGO_P1=snap.docs.map(d=>({id:d.id,pn:String(d.data().parte||d.id).toUpperCase(),desc:String(d.data().descripcion||'').toUpperCase(),descMat:String(d.data().descripcionMaterial||'').toUpperCase(),tipo:String(d.data().tipo||''),fsc:String(d.data().fscType||''),rev:String(d.data().rev==null?'':d.data().rev),pcs:Number(d.data().pcsPorCaja)||0,peso:Number(d.data().pesoCaja)||0,cpp:Number(d.data().cajasPorPallet)||0,dim:String(d.data().dimension||'')}))
       .sort((a,b)=>a.pn.localeCompare(b.pn));
   }catch(e){ console.error("Catálogo P1:",e); CATALOGO_P1=[]; }
   renderCatalogo(); buildModelosDL(); buildPartesDL(document.getElementById("ip-modelo")?.value.trim().toUpperCase()||'');
   loadPalletTipos();
 }
 
-/* ══ Tipos de pallet (dimensión + peso) y peso de Cross Pad — editables en Admin ══ */
-const PT_COL=()=>collection(db,"pallets_tipo_p1");
+/* ══ Tipos de pallet (dimensión + peso) y peso Cross Pad — editables en Admin ══ */
+const PTT_COL=()=>collection(db,"pallets_tipo_p1");
 let PALLET_TIPOS=[], CP_PESO=0.2;
-const PT_T={
-  es:{seed:"📦 Cargar pallets de referencia (5)",h:"📏 Tipos de pallet y peso Cross Pad",cp:"Peso de cada pieza Cross Pad (lb)",save:"💾 Guardar",dim:"Dimensión del pallet",peso:"Peso del pallet (lb)",add:"➕ Agregar pallet",acc:"Acciones",ok:"✅ Guardado",conf:"¿Eliminar este pallet?",bad:"Escribe dimensión y peso (lb) válidos",empty:"Sin pallets. Agrega el primero.",note:"Peso total del pallet = peso Cross Pad × cantidad + peso del pallet"},
-  en:{seed:"📦 Load reference pallets (5)",h:"📏 Pallet types & Cross Pad weight",cp:"Weight of each Cross Pad piece (lb)",save:"💾 Save",dim:"Pallet dimension",peso:"Pallet weight (lb)",add:"➕ Add pallet",acc:"Actions",ok:"✅ Saved",conf:"Delete this pallet?",bad:"Enter a valid dimension and weight (lb)",empty:"No pallets. Add the first one.",note:"Total pallet weight = Cross Pad weight × quantity + pallet weight"},
-  ko:{seed:"📦 기준 팔레트 불러오기 (5)",h:"📏 팔레트 종류 및 크로스패드 무게",cp:"크로스패드 1개 무게 (lb)",save:"💾 저장",dim:"팔레트 규격",peso:"팔레트 무게 (lb)",add:"➕ 팔레트 추가",acc:"작업",ok:"✅ 저장됨",conf:"이 팔레트를 삭제할까요?",bad:"올바른 규격과 무게(lb)를 입력하세요",empty:"팔레트가 없습니다. 첫 번째를 추가하세요.",note:"팔레트 총 무게 = 크로스패드 무게 × 수량 + 팔레트 무게"}
+const PTT_T={
+  es:{h:"📏 Tipos de pallet y peso Cross Pad",cp:"Peso de cada pieza Cross Pad (lb)",save:"💾 Guardar",dim:"Medida del pallet (L × W, in)",peso:"Peso del pallet (lb)",add:"➕ Agregar pallet",seed:"📦 Cargar pallets de referencia (5)",acc:"Acciones",ok:"✅ Guardado",conf:"¿Eliminar este pallet?",bad:"Escribe medida y peso (lb) válidos",empty:"Sin pallets. Agrega el primero.",note:"Peso total del pallet = peso Cross Pad × cantidad + peso del pallet",
+     sel:"Tipo de pallet (L × W)",selPh:"— Seleccionar pallet —",needPallet:"Selecciona el tipo de pallet",cpW:"Peso Cross Pad",palletW:"Peso del pallet",totW:"Peso total del pallet",lb:"lb",pcs:"pz"},
+  en:{h:"📏 Pallet types & Cross Pad weight",cp:"Weight of each Cross Pad piece (lb)",save:"💾 Save",dim:"Pallet size (L × W, in)",peso:"Pallet weight (lb)",add:"➕ Add pallet",seed:"📦 Load reference pallets (5)",acc:"Actions",ok:"✅ Saved",conf:"Delete this pallet?",bad:"Enter a valid size and weight (lb)",empty:"No pallets. Add the first one.",note:"Total pallet weight = Cross Pad weight × quantity + pallet weight",
+     sel:"Pallet type (L × W)",selPh:"— Select pallet —",needPallet:"Select the pallet type",cpW:"Cross Pad weight",palletW:"Pallet weight",totW:"Total pallet weight",lb:"lb",pcs:"pcs"},
+  ko:{h:"📏 팔레트 종류 및 크로스패드 무게",cp:"크로스패드 1개 무게 (lb)",save:"💾 저장",dim:"팔레트 크기 (L × W, in)",peso:"팔레트 무게 (lb)",add:"➕ 팔레트 추가",seed:"📦 기준 팔레트 불러오기 (5)",acc:"작업",ok:"✅ 저장됨",conf:"이 팔레트를 삭제할까요?",bad:"올바른 크기와 무게(lb)를 입력하세요",empty:"팔레트가 없습니다. 첫 번째를 추가하세요.",note:"팔레트 총 무게 = 크로스패드 무게 × 수량 + 팔레트 무게",
+     sel:"팔레트 종류 (L × W)",selPh:"— 팔레트 선택 —",needPallet:"팔레트 종류를 선택하세요",cpW:"크로스패드 무게",palletW:"팔레트 무게",totW:"팔레트 총 무게",lb:"lb",pcs:"개"}
 };
-const pt=(k)=>((PT_T[LANG]||PT_T.es)[k]||PT_T.es[k]);
+const ptt=(k)=>((PTT_T[LANG]||PTT_T.es)[k]||PTT_T.es[k]);
 const ptEsc=(x)=>String(x==null?'':x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+const ptNorm=(x)=>String(x||"").replace(/\s+/g,"").replace(/[×*]/g,"x").toLowerCase();
+function ptLW(dim){ const m=ptNorm(dim).split("x").map(parseFloat); return {l:m[0]||0,w:m[1]||0}; }
 async function loadPalletTipos(){
   try{
-    const snap=await getDocs(PT_COL());
+    const snap=await getDocs(PTT_COL());
     PALLET_TIPOS=[]; CP_PESO=0.2;
     snap.forEach(d=>{
       const x=d.data();
@@ -770,76 +801,140 @@ async function loadPalletTipos(){
 }
 function renderPalletTipos(){
   const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
-  set("pt-h",pt("h")); set("pt-l-cp",pt("cp")); set("pt-btn-cp",pt("save")); set("pt-btn-add",pt("add")); set("pt-btn-seed",pt("seed")); set("pt-note",pt("note"));
-  set("pt-th-dim",pt("dim")); set("pt-th-peso",pt("peso")); set("pt-th-acc",pt("acc"));
-  const ni=document.getElementById("pt-new-dim"); if(ni) ni.placeholder=pt("dim");
-  const np=document.getElementById("pt-new-peso"); if(np) np.placeholder=pt("peso");
+  set("pt-h",ptt("h")); set("pt-l-cp",ptt("cp")); set("pt-btn-cp",ptt("save")); set("pt-btn-add",ptt("add")); set("pt-btn-seed",ptt("seed")); set("pt-note",ptt("note"));
+  set("pt-th-dim",ptt("dim")); set("pt-th-peso",ptt("peso")); set("pt-th-acc",ptt("acc"));
+  const ni=document.getElementById("pt-new-dim"); if(ni) ni.placeholder=ptt("dim");
+  const np=document.getElementById("pt-new-peso"); if(np) np.placeholder=ptt("peso");
   const cp=document.getElementById("pt-cp"); if(cp && document.activeElement!==cp) cp.value=CP_PESO;
-  const tb=document.getElementById("pt-table"); if(!tb) return;
-  tb.innerHTML=PALLET_TIPOS.length?PALLET_TIPOS.map(p=>`<tr>
+  const tb=document.getElementById("pt-table");
+  if(tb) tb.innerHTML=PALLET_TIPOS.length?PALLET_TIPOS.map(p=>`<tr>
     <td><input id="pt-d-${p.id}" value="${ptEsc(p.dim)}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;box-sizing:border-box"></td>
     <td><input id="pt-p-${p.id}" type="number" step="0.01" min="0" value="${p.peso}" style="width:100px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px"></td>
     <td style="white-space:nowrap"><button class="abtn abtn-add" onclick="savePalletTipo('${p.id}')">💾</button> <button class="abtn" onclick="delPalletTipo('${p.id}')" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)">🗑</button></td></tr>`).join('')
-    :`<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:10px">${pt("empty")}</td></tr>`;
+    :`<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:10px">${ptt("empty")}</td></tr>`;
+  pintarPalletsOp();
 }
 window.saveCpPeso=async()=>{
   const v=parseFloat(document.getElementById("pt-cp").value);
-  if(!(v>0)){ showToast(pt("bad"),"var(--red)"); return; }
-  try{ await setDoc(doc(db,"pallets_tipo_p1","_config"),{pesoCrossPad:v,actualizadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()}); CP_PESO=v; showToast(pt("ok"),"var(--green)"); }
+  if(!(v>0)){ showToast(ptt("bad"),"var(--red)"); return; }
+  try{ await setDoc(doc(db,"pallets_tipo_p1","_config"),{pesoCrossPad:v,actualizadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()}); CP_PESO=v; showToast(ptt("ok"),"var(--green)"); calcPesoOp(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
 window.addPalletTipo=async()=>{
   const dim=document.getElementById("pt-new-dim").value.trim();
   const peso=parseFloat(document.getElementById("pt-new-peso").value);
-  if(!dim||!(peso>=0)||isNaN(peso)){ showToast(pt("bad"),"var(--red)"); return; }
-  try{ await addDoc(PT_COL(),{dimension:dim,pesoLb:peso,activo:true,creadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()});
+  const lw=ptLW(dim);
+  if(!(lw.l>0&&lw.w>0)||isNaN(peso)||peso<0){ showToast(ptt("bad"),"var(--red)"); return; }
+  try{ await addDoc(PTT_COL(),{dimension:dim,pesoLb:peso,activo:true,creadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()});
     document.getElementById("pt-new-dim").value=""; document.getElementById("pt-new-peso").value="";
-    showToast(pt("ok"),"var(--green)"); await loadPalletTipos(); }
+    showToast(ptt("ok"),"var(--green)"); await loadPalletTipos(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
 window.cargarPalletsRef=async()=>{
   const REF=[["38 × 24",18],["31 × 22",15],["39 × 31",24],["32 × 28",18],["28 × 21",13]];
-  const norm=x=>String(x).replace(/\s+/g,"").replace(/x/gi,"×").toLowerCase();
-  const ya=new Set(PALLET_TIPOS.map(p=>norm(p.dim)));
+  const ya=new Set(PALLET_TIPOS.map(p=>ptNorm(p.dim)));
   try{
-    for(const [dim,peso] of REF){ if(ya.has(norm(dim))) continue;
-      await addDoc(PT_COL(),{dimension:dim,pesoLb:peso,activo:true,creadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()}); }
-    showToast(pt("ok"),"var(--green)"); await loadPalletTipos();
+    for(const [dim,peso] of REF){ if(ya.has(ptNorm(dim))) continue;
+      await addDoc(PTT_COL(),{dimension:dim,pesoLb:peso,activo:true,creadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()}); }
+    showToast(ptt("ok"),"var(--green)"); await loadPalletTipos();
   }catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
 window.savePalletTipo=async(id)=>{
   const dim=document.getElementById("pt-d-"+id).value.trim();
   const peso=parseFloat(document.getElementById("pt-p-"+id).value);
-  if(!dim||isNaN(peso)||peso<0){ showToast(pt("bad"),"var(--red)"); return; }
-  try{ await updateDoc(doc(db,"pallets_tipo_p1",id),{dimension:dim,pesoLb:peso,tsLocal:new Date().toISOString()}); showToast(pt("ok"),"var(--green)"); await loadPalletTipos(); }
+  const lw=ptLW(dim);
+  if(!(lw.l>0&&lw.w>0)||isNaN(peso)||peso<0){ showToast(ptt("bad"),"var(--red)"); return; }
+  try{ await updateDoc(doc(db,"pallets_tipo_p1",id),{dimension:dim,pesoLb:peso,tsLocal:new Date().toISOString()}); showToast(ptt("ok"),"var(--green)"); await loadPalletTipos(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
 window.delPalletTipo=async(id)=>{
-  if(!confirm(pt("conf"))) return;
+  if(!confirm(ptt("conf"))) return;
   try{ await deleteDoc(doc(db,"pallets_tipo_p1",id)); await loadPalletTipos(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
+
+/* ── Operador: selector de pallet + peso total (solo partes GH69 / Cross Pad) ── */
+function pintarPalletsOp(){
+  const sel=document.getElementById("ip-pallet"); if(!sel) return;
+  const cur=sel.value;
+  sel.innerHTML=`<option value="">${ptt("selPh")}</option>`+PALLET_TIPOS.map(p=>`<option value="${ptEsc(p.id)}">${ptEsc(p.dim)} in · ${p.peso} ${ptt("lb")}</option>`).join('');
+  if(cur && PALLET_TIPOS.some(p=>p.id===cur)) sel.value=cur;
+  const lb=document.getElementById("lbl-ip-pallet"); if(lb) lb.textContent=ptt("sel");
+  calcPesoOp();
+}
+function esCrossPadOp(){ return /^GH69/.test((document.getElementById("ip-parte")?.value||"").trim().toUpperCase()); }
+function palletSelOp(){ return PALLET_TIPOS.find(x=>x.id===document.getElementById("ip-pallet")?.value)||null; }
+window.onPalletOp=()=>{
+  const p=palletSelOp();
+  if(p){ const lw=ptLW(p.dim); document.getElementById("ip-dl").value=lw.l; document.getElementById("ip-dw").value=lw.w; }
+  calcPesoOp();
+};
+function calcPesoOp(){
+  const box=document.getElementById("peso-box-op"); if(!box) return;
+  const sel=document.getElementById("ip-pallet");
+  // si L y W ya coinciden con un pallet de la lista (por ejemplo, vienen del catálogo), lo selecciona solo
+  if(sel && !sel.value){
+    const l=parseFloat(document.getElementById("ip-dl")?.value)||0, w=parseFloat(document.getElementById("ip-dw")?.value)||0;
+    const m=l>0&&w>0 ? PALLET_TIPOS.find(p=>{const x=ptLW(p.dim); return (x.l===l&&x.w===w)||(x.l===w&&x.w===l);}) : null;
+    if(m) sel.value=m.id;
+  }
+  const p=palletSelOp(), qty=parseFloat(document.getElementById("ip-prod")?.value)||0;
+  if(!esCrossPadOp()||!p){ box.style.display=esCrossPadOp()?"block":"none"; box.innerHTML=`${ptt("cpW")}: ${CP_PESO} ${ptt("lb")} / ${ptt("pcs")}`; return; }
+  const cp=+(CP_PESO*qty).toFixed(2), tot=+(CP_PESO*qty+p.peso).toFixed(2);
+  box.style.display="block";
+  box.innerHTML=`${ptt("cpW")}: ${CP_PESO} × ${qty.toLocaleString()} = <b>${cp.toLocaleString()} ${ptt("lb")}</b><br>${ptt("palletW")}: <b>${p.peso} ${ptt("lb")}</b><br>${ptt("totW")}: <b style="color:var(--green);font-size:1rem">${tot.toLocaleString()} ${ptt("lb")}</b>`;
+}
+function pesoPalletCampos(){
+  const p=palletSelOp(); if(!esCrossPadOp()||!p) return {};
+  const qty=parseFloat(document.getElementById("ip-prod")?.value)||0;
+  return {palletTipoId:p.id,palletMedida:p.dim,palletPesoLb:p.peso,pesoCrossPadLb:CP_PESO,pesoTotalLb:+(CP_PESO*qty+p.peso).toFixed(2)};
+}
+
+setTimeout(()=>{ ["ip-parte","ip-prod","ip-dl","ip-dw"].forEach(id=>document.getElementById(id)?.addEventListener("input",()=>{try{calcPesoOp();}catch(e){}})); },0);
 
 function renderCatalogo(){
   catTexts();
   const cnt=document.getElementById("cat-count"); if(cnt) cnt.textContent=CATALOGO_P1.length;
   const tb=document.getElementById("cat-table"); if(!tb) return;
   const q=(document.getElementById("cat-filter")?.value||'').trim().toUpperCase();
-  const lista=CATALOGO_P1.filter(c=>!q||c.pn.includes(q)||c.desc.includes(q));
-  tb.innerHTML=lista.map(c=>`<tr><td style="font-family:monospace">${c.pn}</td><td>${c.desc}</td><td><button class="abtn" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)" onclick="delCatalogoParte('${c.id}')">🗑 ${ct("del")}</button></td></tr>`).join("");
+  const lista=CATALOGO_P1.filter(c=>!q||c.pn.includes(q)||c.desc.includes(q)||c.descMat.includes(q));
+  tb.innerHTML=lista.map(c=>`<tr><td style="font-family:monospace">${c.pn}</td><td>${c.desc}</td><td>${c.descMat||'<span style="color:#f1c40f">—</span>'}</td><td>${c.tipo||'—'}</td><td>${c.fsc||'—'}</td><td>${c.rev||'—'}</td><td>${c.peso||'<span style="color:#f1c40f">—</span>'}</td><td style="font-family:monospace">${c.dim||'<span style="color:#f1c40f">—</span>'}</td><td style="white-space:nowrap"><button class="abtn" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);margin-right:4px" onclick="editarParteCat('${c.id}')">${pt("edit")}</button><button class="abtn" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)" onclick="delCatalogoParte('${c.id}')">🗑 ${ct("del")}</button></td></tr>`).join("");
 }
 window.renderCatalogo=renderCatalogo;
-async function guardarParteCat(pn,desc){
-  pn=String(pn||'').trim().toUpperCase(); desc=String(desc||'').trim().toUpperCase();
+async function guardarParteCat(pn,desc,mat,pl){
+  pn=String(pn||'').trim().toUpperCase(); desc=String(desc||'').trim().toUpperCase(); mat=String(mat||'').trim().toUpperCase();
   if(!pn||!desc) return false;
   const id=pn.replace(/\//g,'-');
-  await setDoc(doc(db,"catalogo_partes_p1",id),{parte:pn,descripcion:desc,activo:true,creadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||'',tsLocal:new Date().toISOString()},{merge:true});
+  const dato={parte:pn,descripcion:desc,activo:true,creadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||'',tsLocal:new Date().toISOString()};
+  if(mat) dato.descripcionMaterial=mat;   // solo se escribe si viene: no borra una descripción ya guardada
+  if(pl){   // datos del Packing List: solo se escriben los que vienen llenos
+    if(pl.tipo) dato.tipo=String(pl.tipo).trim();
+    if(pl.fsc) dato.fscType=String(pl.fsc).trim();
+    if(pl.rev!==''&&pl.rev!=null) dato.rev=String(pl.rev).trim();
+    if(Number(pl.pcs)>0) dato.pcsPorCaja=parseInt(pl.pcs);
+    if(Number(pl.peso)>0) dato.pesoCaja=parseFloat(pl.peso);
+    if(Number(pl.cpp)>0) dato.cajasPorPallet=parseInt(pl.cpp);
+    if(pl.dim) dato.dimension=pl.dim;
+  }
+  await setDoc(doc(db,"catalogo_partes_p1",id),dato,{merge:true});
   return true;
 }
+const PL_IDS=["cat-pn","cat-desc","cat-mat","cat-tipo","cat-fsc","cat-rev","cat-pcs","cat-peso","cat-cpp","cat-dim"];
+window.editarParteCat=(id)=>{
+  const c=CATALOGO_P1.find(x=>x.id===id); if(!c) return;
+  const set=(i,v)=>{ const el=document.getElementById(i); if(el) el.value=v||''; };
+  set("cat-pn",c.pn); set("cat-desc",c.desc); set("cat-mat",c.descMat); set("cat-tipo",c.tipo); set("cat-fsc",c.fsc); set("cat-rev",c.rev);
+  set("cat-pcs",c.pcs||''); set("cat-peso",c.peso||''); set("cat-cpp",c.cpp||''); set("cat-dim",c.dim);
+  document.getElementById("cat-pn").scrollIntoView({behavior:"smooth",block:"center"});
+};
 window.addCatalogoParte=async()=>{
-  const pn=document.getElementById("cat-pn").value, d=document.getElementById("cat-desc").value;
+  const pn=document.getElementById("cat-pn").value, d=document.getElementById("cat-desc").value, mat=document.getElementById("cat-mat").value;
   if(!pn.trim()||!d.trim()){showToast(ct("need"),"var(--red)");return;}
-  try{ await guardarParteCat(pn,d); document.getElementById("cat-pn").value=""; document.getElementById("cat-desc").value="";
+  const g=(i)=>document.getElementById(i).value.trim();
+  const dimRaw=g("cat-dim"), dimN=normDimTxt(dimRaw);
+  if(dimRaw&&!dimN){showToast(pt("dimBad"),"var(--red)");return;}
+  const pl={tipo:g("cat-tipo"),fsc:g("cat-fsc"),rev:g("cat-rev"),pcs:g("cat-pcs"),peso:g("cat-peso"),cpp:1,dim:dimN};
+  try{ await guardarParteCat(pn,d,mat,pl); PL_IDS.forEach(i=>{document.getElementById(i).value="";});
     showToast(ct("ok"),"var(--green)"); await loadCatalogo(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
@@ -847,10 +942,13 @@ async function importarTexto(txt){
   const lineas=String(txt||'').split(/\r?\n/).map(l=>l.trim()).filter(Boolean);
   let n=0;
   for(const l of lineas){
-    const partes=l.split(/\t|;|,(?=\s*\S)/); 
-    const pn=(partes[0]||'').trim(), d=partes.slice(1).join(' ').trim();
+    const partes=l.includes('\t') ? l.split('\t') : l.split(/;|,(?=\s*\S)/);
+    const pn=(partes[0]||'').trim(), d=(partes[1]||'').trim();
+    const conTab=l.includes('\t');
+    const mat=(conTab?(partes[2]||''):partes.slice(2).join(' ')).trim();
+    const pl=conTab?{tipo:(partes[3]||'').trim(),fsc:(partes[4]||'').trim(),rev:(partes[5]||'').trim(),pcs:(partes[6]||'').trim(),peso:(partes[7]||'').trim(),cpp:1,dim:normDimTxt(partes[9])}:null;
     if(/^(n\.?º?\s*de\s*parte|item|part)/i.test(pn)) continue;   // encabezados
-    try{ if(await guardarParteCat(pn,d)) n++; }catch(e){ console.error(e); }
+    try{ if(await guardarParteCat(pn,d,mat,pl)) n++; }catch(e){ console.error(e); }
   }
   showToast(ct("imported")+n,"var(--green)");
   await loadCatalogo();
@@ -864,14 +962,37 @@ window.subirExcelCatalogo=async(inp)=>{
     const buf=await f.arrayBuffer();
     const wb=XLSX.read(buf,{type:"array"});
     const mapa={};
+    const hdrKey=(x)=>{
+      x=String(x||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\s+/g,' ').trim();
+      if(/^(part no|n.{0,2} de parte|numero de parte|부품)/.test(x)) return 'pn';
+      if(/^(model|modelo|모델)$/.test(x)) return 'm';
+      if(/^(description|descripcion)/.test(x)) return 'mat';
+      if(/^(type|tipo)$/.test(x)) return 'tipo';
+      if(/^fsc/.test(x)) return 'fsc';
+      if(/^rev/.test(x)) return 'rev';
+      if(/^(pc\/box|pcs\/caja|pcs\/box|pcs por caja)/.test(x)) return 'pcs';
+      if(/^(weight|peso)/.test(x)) return 'peso';
+      if(/^(box\/pallet|cajas\/pallet|cajas por pallet)/.test(x)) return 'cpp';
+      if(/^dimension|^dimensi/.test(x)) return 'dim';
+      return '';
+    };
     wb.SheetNames.forEach(nombre=>{
       const filas=XLSX.utils.sheet_to_json(wb.Sheets[nombre],{header:1,defval:""});
+      let cols=null;
       filas.forEach(fila=>{
         const celdas=fila.map(c=>String(c==null?"":c).trim());
-        const i=celdas.findIndex(c=>/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/i.test(c));   // ej. GH69-46627A
+        const hk=celdas.map(hdrKey);
+        if(hk.includes('pn') && hk.filter(Boolean).length>=2){ cols={}; hk.forEach((k,ix)=>{ if(k && cols[k]==null) cols[k]=ix; }); return; }   // fila de encabezados
+        if(cols && cols.pn!=null && /^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/i.test(celdas[cols.pn]||'')){
+          const g=(k)=>cols[k]!=null?(celdas[cols[k]]||''):'';
+          const mm=g('m').toUpperCase(); if(!mm) return;
+          mapa[celdas[cols.pn].toUpperCase()]={m:mm, mat:g('mat').toUpperCase(), pl:{tipo:g('tipo'),fsc:g('fsc'),rev:g('rev'),pcs:g('pcs'),peso:g('peso'),cpp:1,dim:normDimTxt(g('dim'))}};
+          return;
+        }
+        const i=celdas.findIndex(c=>/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/i.test(c));   // ej. GH69-46627A (sin encabezados: PN, Modelo, Descripción)
         if(i<0) return;
-        const desc=celdas.slice(i+1).find(c=>c);
-        if(desc) mapa[celdas[i].toUpperCase()]=desc.toUpperCase();
+        const modeloC=(celdas[i+1]||'').trim(), matC=(celdas[i+2]||'').trim();
+        if(modeloC||matC) mapa[celdas[i].toUpperCase()]={m:(modeloC||matC).toUpperCase(), mat:modeloC?matC.toUpperCase():'', pl:null};
       });
     });
     const lista=Object.entries(mapa);
@@ -879,7 +1000,7 @@ window.subirExcelCatalogo=async(inp)=>{
     let n=0;
     for(let k=0;k<lista.length;k+=20){
       const lote=lista.slice(k,k+20);
-      const r=await Promise.all(lote.map(([pn,d])=>guardarParteCat(pn,d).then(()=>1).catch(()=>0)));
+      const r=await Promise.all(lote.map(([pn,v])=>guardarParteCat(pn,v.m,v.mat,v.pl).then(()=>1).catch(()=>0)));
       n+=r.reduce((a,b)=>a+b,0);
     }
     msg.style.color="var(--green)"; msg.textContent=ct("done")+n;
@@ -901,7 +1022,7 @@ window.descargarPlantillaShipQR=async()=>{
   const faltan=existentes ? todas.filter(c=>!existentes[c.desc+"__"+c.pn]) : todas;
   if(!faltan.length){ msg.style.color="var(--green)"; msg.textContent=ct("sqAll"); return; }
   const H=['Model','Part No.','Description','Type','FSC type','Rev','pc/box','weight (lbs)','box/pallet','Box No.','Dimension (in)\nLxWxH'];
-  const filas=faltan.map(c=>[c.desc, c.pn, c.desc+" CROSS PAD", "Cross Pad", "", "0", "", "", 1, "", ""]);
+  const filas=faltan.map(c=>[c.desc, c.pn, c.descMat||(c.desc+" CROSS PAD"), c.tipo||"Cross Pad", c.fsc||"", c.rev||"0", c.pcs||"", c.peso||"", 1, "", c.dim||""]);
   const ws=XLSX.utils.aoa_to_sheet([H,...filas]);
   ws["!cols"]=[{wch:16},{wch:16},{wch:24},{wch:12},{wch:12},{wch:6},{wch:10},{wch:14},{wch:11},{wch:10},{wch:24}];
   const wb=XLSX.utils.book_new();
@@ -909,6 +1030,30 @@ window.descargarPlantillaShipQR=async()=>{
   XLSX.writeFile(wb,`Plantilla_ShipQR_CrossPad_P1_${fechaLocal()}.xlsx`);
   msg.style.color="var(--green)";
   msg.textContent=ct("sqOk")+faltan.length+(existentes?(ct("sqYa")+(todas.length-faltan.length)):ct("sqNoLee"));
+};
+// Escribe los datos del PL del catálogo directamente en el maestro de empaque de ShipQR (clave MODELO__PARTE)
+window.sincronizarPLShipqr=async()=>{
+  const msg=document.getElementById("cat-file-msg");
+  const lista=CATALOGO_P1.filter(c=>c.desc);
+  if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=pt("syncNone"); return; }
+  msg.style.color="var(--muted)"; msg.textContent=ct("reading");
+  let n=0, err=null;
+  for(let k=0;k<lista.length;k+=15){
+    const lote=lista.slice(k,k+15);
+    const r=await Promise.all(lote.map(c=>setDoc(doc(db,"shipqr_empaque_master",c.desc+"__"+c.pn),{
+      modelo:c.desc, numeroParte:c.pn,
+      descripcionDallas:c.descMat||(c.desc+" CROSS PAD"),
+      tipo:c.tipo||"Cross Pad", fscType:c.fsc||"", rev:c.rev||"0",
+      pcsPorCaja:(/cross\s*pad/i.test(c.tipo||"Cross Pad")?0:(c.pcs||0)), palletUnico:/cross\s*pad/i.test(c.tipo||"Cross Pad"),   // Cross Pad: 1 pallet = lo producido, sin cajas
+      pesoCajaCompleta:c.peso||0, cajasPorPallet:1,
+      dimension:c.dim||"",
+      updated_by:CURRENT_USER?.nombre||CURRENT_USER?.email||"MES P1",
+      updated_at:new Date().toISOString()
+    },{merge:true}).then(()=>1).catch(e=>{ err=e; return 0; })));
+    n+=r.reduce((a,b)=>a+b,0);
+  }
+  if(err && !n){ msg.style.color="var(--red)"; msg.textContent=pt("syncErr")+err.message; return; }
+  msg.style.color="var(--green)"; msg.textContent=pt("syncOk")+n+(err?(" · "+pt("syncErr")):"");
 };
 window.delCatalogoParte=async(id)=>{
   if(!confirm(ct("conf"))) return;
@@ -944,43 +1089,43 @@ function buildCausasSelect(){
 }
 
 const CORTES = [
-  {id:"C1", label:"Break", hora:"7:00–8:45 AM",  icon:"🌅"},
-  {id:"C2", label:"Lunch", hora:"9:00–12:30 PM", icon:"☀️"},
-  {id:"C3", label:"Home", hora:"1:00–4:30 PM",  icon:"🌇"},
+  {id:"C2", label:"Lunch", hora:"6:54–11:15 AM", icon:"☀️"},
+  {id:"C3", label:"Home", hora:"12:00–4:30 PM",  icon:"🌇"},
   {id:"OT", label:"OT",hora:"4:45–6:25 PM",  icon:"⏰"},
 ];
 // Estado activo/inactivo se carga desde Firestore
 const MAQUINAS = [
-  {nombre:"ZP1", tipo:"Printing",  target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"ZP2", tipo:"Printing",  target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"ZP3", tipo:"Printing",  target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"ZP4", tipo:"Printing",  target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"ZP5", tipo:"Printing",  target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"ZP6", tipo:"Printing",  target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"DA",  tipo:"Folding",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"DE",  tipo:"Folding",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"DB",  tipo:"Folding",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"DF",  tipo:"Folding",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"DG",  tipo:"Folding",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"GA",  tipo:"Cutting",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"GB",  tipo:"Cutting",   target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"LAMI",  tipo:"Finished", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"LINER", tipo:"Finished", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"FOIL",  tipo:"Finished", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"UV",    tipo:"Finished", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"TA", tipo:"DieCut", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"TB", tipo:"DieCut", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"TC", tipo:"DieCut", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"E1", tipo:"Stitching", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"E2", tipo:"Stitching", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"A",  tipo:"Label", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"B",  tipo:"Label", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"P1", tipo:"GlueLine", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
-  {nombre:"P2", tipo:"GlueLine", target:8000, cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:"ZP1", tipo:"Printing",  target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"ZP2", tipo:"Printing",  target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"ZP3", tipo:"Printing",  target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"ZP4", tipo:"Printing",  target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"ZP5", tipo:"Printing",  target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"ZP6", tipo:"Printing",  target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"DA",  tipo:"Folding",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"DE",  tipo:"Folding",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"DB",  tipo:"Folding",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"DF",  tipo:"Folding",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"DG",  tipo:"Folding",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"GA",  tipo:"Cutting",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"GB",  tipo:"Cutting",   target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"LAMI",  tipo:"Finished", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"LINER", tipo:"Finished", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"FOIL",  tipo:"Finished", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"UV",    tipo:"Finished", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"TA", tipo:"DieCut", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"TB", tipo:"DieCut", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"TC", tipo:"DieCut", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"E1", tipo:"Stitching", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"E2", tipo:"Stitching", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"A",  tipo:"Label", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"B",  tipo:"Label", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"P1", tipo:"GlueLine", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"P2", tipo:"GlueLine", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
 ];
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
 let SHIPQR_ENVIADOS={};
+let SHIPQR_POR_KEY={}; // key(modelo||parte||fecha||turno||horaCaptura) -> [ {cantidad_enviada,...,_docId}, ... ] (soporta envíos parciales)
 let QR_MACHINE=(()=>{try{const p=new URLSearchParams(window.location.search);const m=p.get('m');return(m!==null&&!isNaN(m))?parseInt(m):null;}catch(e){return null;}})();
 let charts={}, ranges={maq:"diario",tend:"diario"};
 let opStep=0, opTurno=null, opCorte=null, opMaq=null, alertasVistas=new Set();
@@ -1164,6 +1309,8 @@ window.enviar = async () => {
     notas:document.getElementById("ip-notas").value.trim(),
     causaParo:document.getElementById("ip-causa").value||"",
     minParo:parseInt(document.getElementById("ip-paro").value)||0,
+    palletL:plDimOperador().l,palletW:plDimOperador().w,palletH:plDimOperador().h,palletDim:plDimOperador().txt,
+    ...pesoPalletCampos(),
     tsLocal:new Date().toISOString(),
   };
   try {
@@ -1478,10 +1625,23 @@ async function loadShipqrEnviados(){
   try{
     const snap=await getDocs(collection(db,'shipqr_envios_mes_p1'));
     SHIPQR_ENVIADOS={};
-    snap.forEach(d=>{ SHIPQR_ENVIADOS[d.id]=d.data(); });
+    SHIPQR_POR_KEY={};
+    snap.forEach(d=>{
+      const data=d.data();
+      SHIPQR_ENVIADOS[d.id]=data;
+      // Registros viejos: el ID del doc ES la key y no traen cantidad_enviada (se enviaba todo de una vez).
+      const k=data.key || d.id;
+      const cantidad=(data.cantidad_enviada!=null)?Number(data.cantidad_enviada):(Number(data.prod)||0);
+      if(!SHIPQR_POR_KEY[k]) SHIPQR_POR_KEY[k]=[];
+      SHIPQR_POR_KEY[k].push({...data, cantidad_enviada:cantidad, _docId:d.id});
+    });
     pintarHistorialShipqr();
     if(typeof renderShipqr==='function') renderShipqr();
-  }catch(err){ console.error('Error cargando shipqr_envios_mes:', err); }
+  }catch(err){ console.error('Error cargando shipqr_envios_mes_p1:', err); }
+}
+// Suma lo ya enviado a ShipQR para una key (soporta múltiples envíos parciales)
+function sumEnviadoShipqr(key){
+  return (SHIPQR_POR_KEY[key]||[]).reduce((s,e)=>s+(Number(e.cantidad_enviada)||0),0);
 }
 function pintarHistorialShipqr(){
   const el=document.getElementById('tb-shipqr-historial');
@@ -1493,31 +1653,166 @@ function pintarHistorialShipqr(){
   }
   el.innerHTML=envios.map(e=>`
     <div style="display:flex;justify-content:space-between;background:var(--card2);border-radius:6px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px">
-      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.prod||0).toLocaleString()} pzas</span>
+      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.cantidad_enviada!=null?e.cantidad_enviada:(e.prod||0)).toLocaleString()} pzas${e.dim?' · 📦 '+e.dim:''}${e.motivo==='REMPLAZO'?' · <span style="color:#e67e22;font-weight:700">⚠ REMPLAZO</span>':''}</span>
       <span style="color:var(--muted)">${e.enviado_por} · ${new Date(e.fecha_envio).toLocaleString('es-MX')}</span>
     </div>
   `).join('');
 }
-window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
+// Aviso con enlace de respaldo (clic real = nunca se bloquea)
+function mostrarAvisoAbrirShipqr(url){
+  const prev=document.getElementById('shipqr-open-banner'); if(prev) prev.remove();
+  const b=document.createElement('div');
+  b.id='shipqr-open-banner';
+  b.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:99998;background:var(--card,#151a2e);border:1px solid #5BA3FF;border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:92vw;flex-wrap:wrap;justify-content:center';
+  b.innerHTML='<span style="font-size:13px;color:var(--text,#eaeef7)">✅ Envío guardado. ¿No se abrió ShipQR para crear el label?</span>'
+    +'<a href="'+url+'" target="_blank" rel="noopener" style="background:rgba(77,166,255,.2);border:1px solid #5BA3FF;color:#5BA3FF;font-weight:700;font-size:13px;padding:8px 14px;border-radius:8px;text-decoration:none">🏷️ Abrir ShipQR y crear label</a>'
+    +'<button style="background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:8px;padding:8px 10px;cursor:pointer">✕</button>';
+  b.querySelector('button').onclick=()=>b.remove();
+  document.body.appendChild(b);
+  setTimeout(()=>{ if(b.parentNode) b.remove(); }, 120000);
+}
+
+// Modal único para enviar a ShipQR: cantidad + tipo (Plan/Remplazo).
+// La ventana de ShipQR se abre DENTRO del clic real del botón "Enviar" (así no la bloquea el navegador).
+function mostrarModalEnvioShipqr({modelo,parte,prod,pendiente,esRemplazoForzado,dim}){
+  return new Promise((resolve)=>{
+    let motivoActual=esRemplazoForzado?'REMPLAZO':'PLAN';
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+    overlay.innerHTML=`
+      <div style="background:var(--card,#151a2e);border:1px solid var(--border,#2a3050);border-radius:14px;padding:20px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text,#eaeef7)">🚚 Enviar a ShipQR</div>
+        <div style="font-size:12px;color:var(--muted,#7f8c9a);margin-bottom:12px"><span style="font-family:monospace;color:var(--accent,#4f8ef7)">${modelo}</span> · ${parte}<br>Producidas: ${prod.toLocaleString()} · Pendiente: ${pendiente.toLocaleString()}</div>
+        <label style="font-size:12px;color:var(--muted,#7f8c9a)">Cantidad a enviar</label>
+        <input id="se-qty" type="number" min="1" max="${pendiente}" value="${pendiente}" style="width:100%;box-sizing:border-box;margin:4px 0 12px;background:var(--card2,#22263a);border:1px solid var(--border,#2a3050);color:var(--text,#eaeef7);border-radius:8px;padding:10px;font-size:16px;text-align:center">
+        <label style="font-size:12px;color:var(--muted,#7f8c9a)">${pt("modalDim")}</label>
+        <input id="se-dim" type="text" value="${dim||''}" placeholder="48x40x50" autocomplete="off" style="width:100%;box-sizing:border-box;margin:4px 0 12px;background:var(--card2,#22263a);border:1px solid var(--border,#2a3050);color:var(--text,#eaeef7);border-radius:8px;padding:10px;font-size:16px;text-align:center;font-family:monospace">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="se-plan" style="flex:1;padding:10px 6px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer">📦 Producción normal</button>
+          <button id="se-remp" style="flex:1;padding:10px 6px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer">⚠️ Remplazo</button>
+        </div>
+        <div id="se-err" style="display:none;color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
+        <button id="se-enviar" style="width:100%;margin-bottom:8px;padding:12px;font-size:14px;font-weight:700;background:rgba(77,166,255,.15);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:10px;cursor:pointer">🚚 Enviar</button>
+        <button id="se-cancelar" style="width:100%;padding:10px;font-size:13px;background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:10px;cursor:pointer">Cancelar envío</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const $=(id)=>overlay.querySelector('#'+id);
+    const qtyEl=$('se-qty'), errEl=$('se-err');
+    const btnPlan=$('se-plan'), btnRemp=$('se-remp');
+    const pintar=()=>{
+      const esPlan=motivoActual==='PLAN';
+      btnPlan.style.background=esPlan?'rgba(46,204,113,.18)':'transparent';
+      btnPlan.style.border=esPlan?'2px solid #2ecc71':'2px solid var(--border,#2a3050)';
+      btnPlan.style.color=esPlan?'#2ecc71':'var(--muted,#7f8c9a)';
+      btnRemp.style.background=!esPlan?'rgba(230,126,34,.18)':'transparent';
+      btnRemp.style.border=!esPlan?'2px solid #e67e22':'2px solid var(--border,#2a3050)';
+      btnRemp.style.color=!esPlan?'#e67e22':'var(--muted,#7f8c9a)';
+    };
+    pintar();
+    if(esRemplazoForzado){ btnPlan.disabled=true; btnPlan.style.opacity='.4'; btnPlan.style.cursor='not-allowed'; }
+    else btnPlan.onclick=()=>{ motivoActual='PLAN'; pintar(); };
+    btnRemp.onclick=()=>{ motivoActual='REMPLAZO'; pintar(); };
+    const cerrar=(val)=>{ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(val); };
+    $('se-cancelar').onclick=()=>cerrar(null);
+    $('se-enviar').onclick=()=>{
+      const n=parseInt(qtyEl.value,10)||0;
+      if(n<=0){ errEl.textContent='Cantidad inválida.'; errEl.style.display='block'; return; }
+      if(n>pendiente){ errEl.textContent='Solo quedan '+pendiente.toLocaleString()+' pendientes.'; errEl.style.display='block'; return; }
+      const dimN=normDimTxt($('se-dim').value);
+      if(!dimN){ errEl.textContent=pt("modalDimBad"); errEl.style.display='block'; return; }
+      const win=window.open('','shipqr_'+Date.now()); // dentro del clic real: no se bloquea
+      cerrar({cantidad:n,motivo:motivoActual,win,dim:dimN});
+    };
+    setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); },50);
+  });
+}
+window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemplazoForzado)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
   const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(SHIPQR_ENVIADOS[key]){ return; }
+  const yaEnviado=sumEnviadoShipqr(key);
+  const pendiente=Math.max(0, Number(prod)-yaEnviado);
+  if(pendiente<=0){ alert('Este lote ya fue enviado por completo.'); return; }
+  // Todo el flujo (cantidad y tipo de envío) va en UN solo modal propio, sin prompt()/confirm() del navegador.
+  const filaDim=(window._shipqrExportRows||[]).find(x=>x.modelo===modelo&&x.parte===parte&&x.fecha===fecha&&String(x.turno)===String(turno)&&x.horaCaptura===horaCaptura);
+  const sel=await mostrarModalEnvioShipqr({modelo,parte,prod:Number(prod),pendiente,esRemplazoForzado,dim:(filaDim&&filaDim.dim)||''});
+  if(!sel) return; // canceló, nada se guarda
+  const cantidad=sel.cantidad, motivo=sel.motivo, shipqrWin=sel.win, dimPallet=sel.dim;
+  const docId=key+'||'+Date.now();
   const registro={
-    modelo, parte, prod,
+    key, modelo, parte, fecha, turno, horaCaptura,
+    prod: Number(prod),
+    cantidad_enviada: cantidad,
+    dim: dimPallet,
+    motivo,
     enviado_por: CURRENT_USER?.nombre || 'Desconocido',
     fecha_envio: new Date().toISOString()
   };
   try{
-    await setDoc(doc(db,'shipqr_envios_mes_p1',key), registro);
-    SHIPQR_ENVIADOS[key]=registro;
+    await setDoc(doc(db,'shipqr_envios_mes_p1',docId), registro);
+    SHIPQR_ENVIADOS[docId]=registro;
+    if(!SHIPQR_POR_KEY[key]) SHIPQR_POR_KEY[key]=[];
+    SHIPQR_POR_KEY[key].push({...registro,_docId:docId});
     pintarHistorialShipqr();
   }catch(err){
     console.error('Error registrando envío a ShipQR:', err);
+    alert('Error al registrar el envío: '+err.message);
+    if(shipqrWin && !shipqrWin.closed) shipqrWin.close();
+    return;
   }
-  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${prod}`;
-  window.open(url,'shipqr_window');
+  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}&dim=${encodeURIComponent(dimPallet)}&planta=P1`;
+  mostrarAvisoAbrirShipqr(url); // enlace de respaldo siempre visible (clic real = nunca se bloquea)
+  if(shipqrWin){
+    shipqrWin.location=url;
+  } else {
+    alert('⚠️ El navegador bloqueó la ventana de ShipQR.\n\nEl envío YA quedó guardado en el MES, pero el lote todavía NO se ha creado en ShipQR.\n\nAbre este link a mano para crearlo:\n'+url);
+  }
   if(typeof renderShipqr==='function') renderShipqr();
+};
+// Quita la marca de "ya enviado" para poder volver a mandarlo — útil cuando el registro se borró
+// del lado de ShipQR (por pruebas o limpieza) o nunca llegó, pero aquí el MES seguía marcándolo como enviado
+window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
+  const modelo=decodeURIComponent(modeloEnc);
+  const parte=decodeURIComponent(parteEnc);
+  const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
+  const envios=(SHIPQR_POR_KEY[key]||[]).slice().sort((a,b)=>new Date(b.fecha_envio)-new Date(a.fecha_envio));
+  if(!envios.length) return;
+  const ultimo=envios[0];
+  const cant=(ultimo.cantidad_enviada!=null?ultimo.cantidad_enviada:(ultimo.prod||0));
+
+  // Antes de reactivar: revisar si YA existe un pallet en ShipQR (shipqr_pallets) que coincida con este
+  // envío (mismo modelo + parte + cantidad, creado el mismo día). Si existe, reenviar crearía un SEGUNDO
+  // pallet y duplicaría el material. No se bloquea (puede ser falso positivo), pero se advierte.
+  let posibleDuplicado=false;
+  try{
+    const parteUp=parte.toUpperCase();
+    const envioTime=new Date(ultimo.fecha_envio).getTime();
+    const snapPallets=await getDocs(collection(db,'shipqr_pallets'));
+    snapPallets.forEach(docP=>{
+      const d=docP.data();
+      const pn=(d.part_number||'').trim().toUpperCase();
+      const mod=(d.modelo||'').trim();
+      const qty=Number(d.quantity)||0;
+      if(mod!==modelo||pn!==parteUp||qty!==cant) return;
+      const created=d.created_at?new Date(d.created_at.seconds*1000).getTime():null;
+      if(created && Math.abs(created-envioTime)<24*60*60*1000) posibleDuplicado=true;
+    });
+  }catch(e){ console.error('Error verificando posible duplicado en ShipQR:', e); }
+
+  const mensaje=posibleDuplicado
+    ? `⚠️ ATENCIÓN: encontré un pallet en ShipQR que coincide con este envío (${modelo} · ${parte} · ${cant.toLocaleString()} pzas, mismo día).\n\nSi ese pallet SIGUE existiendo en ShipQR y reenvías desde aquí, vas a DUPLICAR el material contado como Producido.\n\nSolo continúa si ya confirmaste que ese pallet fue borrado en ShipQR. ¿Reenviar de todos modos?`
+    : `¿Deshacer el último envío de ${modelo} · ${parte} (${cant.toLocaleString()} pzas, ${new Date(ultimo.fecha_envio).toLocaleString('es-MX')})?\nEsto lo regresa a pendiente para volver a enviarlo (útil si ya se borró en ShipQR o se mandó mal).`;
+  if(!confirm(mensaje)) return;
+  try{
+    await deleteDoc(doc(db,'shipqr_envios_mes_p1',ultimo._docId));
+    delete SHIPQR_ENVIADOS[ultimo._docId];
+    SHIPQR_POR_KEY[key]=(SHIPQR_POR_KEY[key]||[]).filter(e=>e._docId!==ultimo._docId);
+    pintarHistorialShipqr();
+    if(typeof renderShipqr==='function') renderShipqr();
+  }catch(err){
+    console.error('Error reactivando envío a ShipQR:', err);
+    alert('Error al reactivar: '+err.message);
+  }
 };
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Máquina","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
@@ -1538,14 +1833,41 @@ function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[o
 window.selM=(i)=>{opMaq=i;document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById(`mc${i}`).classList.add("sel");const m=MAQUINAS[i];const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;document.getElementById("mhdr").textContent=`${m.nombre} · ${m.tipo} — Target ${(t||m.target).toLocaleString()}`;document.getElementById("ktgt").textContent=(t||m.target).toLocaleString();document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t||m.target);updK();};
 function gv(id){return parseFloat(document.getElementById(id)?.value)||0;}
 window.adj=(f,d)=>{const id=f==="p"?"ip-prod":f==="d"?"ip-def":"ip-scr";const el=document.getElementById(id);el.value=Math.max(0,(parseFloat(el.value)||0)+d);updK();};
-window.updK=function updK(){if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
+window.updK=function updK(){try{calcPesoOp();}catch(e){} if(opMaq===null)return;const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),s=gv("ip-scr");const pct=tgt>0?(p/tgt*100):0,sc=p>0?(s/p*100):0;const pe=document.getElementById("kpct");pe.textContent=pct.toFixed(1)+"%";pe.className="v "+(pct>=95?"green":pct>=80?"yellow":"red");const se=document.getElementById("kscp");se.textContent=sc.toFixed(1)+"%";se.className="v "+(sc>5?"red":sc>2?"yellow":"green");const bar=document.getElementById("pbar");bar.style.width=Math.min(pct,100)+"%";bar.style.background=pct>=95?"#2ecc71":pct>=80?"#f1c40f":"#e74c3c";}
 function showStep(n){if(n===1){buildMaqGrid();if(QR_MACHINE!==null){const qm=QR_MACHINE;QR_MACHINE=null;setTimeout(()=>selM(qm),300);}}document.querySelectorAll(".screen").forEach((s,i)=>s.classList.toggle("active",i===n));document.querySelectorAll(".step").forEach((s,i)=>{s.classList.remove("active","done");if(i<n)s.classList.add("done");if(i===n)s.classList.add("active");});const nav=document.getElementById("botnav"),prev=document.getElementById("btnprev"),next=document.getElementById("btnnext");prev.style.display=(n===0||n===4)?"none":"";if(n===4){nav.style.display="none";return;}nav.style.display="flex";next.textContent=n===3?"📤 Enviar al Dashboard":"Siguiente →";next.className=n===3?"btn bsend":"btn bnext";opStep=n;}
+// ---- Dimensión del pallet (operador) ----
+function plDimOperador(){
+  const n=(i)=>parseFloat(document.getElementById(i).value)||0;
+  const l=n("ip-dl"),w=n("ip-dw"),h=n("ip-dh");
+  return {l,w,h,ok:l>0&&w>0&&h>0,alguna:l>0||w>0||h>0,txt:(l>0&&w>0&&h>0)?`${l}x${w}x${h}`:''};
+}
+function plValidarDim(){
+  const d=plDimOperador();
+  const m=MAQUINAS[opMaq];
+  const pu=(document.getElementById("ip-parte").value||'').trim().toUpperCase();
+  const exige=!!m && String(m.nombre).toUpperCase()==="TC" && /^(GH90|GH69)/.test(pu);   // las partes que van a ShipQR
+  if(exige && /^GH69/.test(pu) && !palletSelOp()){ showToast(ptt("needPallet"),"var(--red)"); document.getElementById("ip-pallet").focus(); return false; }
+  if((exige||d.alguna) && !d.ok){ showToast(pt("needDim"),"var(--red)"); document.getElementById(d.l>0?(d.w>0?"ip-dh":"ip-dw"):"ip-dl").focus(); return false; }
+  return true;
+}
+function plPrefillDim(){
+  if(plDimOperador().alguna) return;
+  const pn=(document.getElementById("ip-parte").value||'').trim().toUpperCase();
+  if(!pn) return;
+  const c=CATALOGO_P1.find(x=>x.pn===pn);
+  let d=c?normDimTxt(c.dim):'';
+  if(!d){ const r=REGISTROS.find(x=>(x.parte||'').toUpperCase()===pn && x.palletDim); if(r) d=normDimTxt(r.palletDim); }
+  if(!d) return;
+  const [l,w,h]=d.split('x');
+  document.getElementById("ip-dl").value=l; document.getElementById("ip-dw").value=w; document.getElementById("ip-dh").value=h;
+  try{calcPesoOp();}catch(e){}
+}
 window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim();
       if(!modVal){showToast("Escribe el modelo","var(--red)");document.getElementById("ip-modelo").focus();return;}
-      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("Escribe el N° de parte","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
+      document.getElementById("ip-modelo").value=modVal;var pv=document.getElementById("ip-parte").value.trim();if(!pv){showToast("Escribe el N° de parte","var(--red)");document.getElementById("ip-parte").focus();return;}if(!opTurno){showToast("Select a shift","var(--red)");return;}if(!opCorte){showToast("Select a cut","var(--red)");return;}}if(opStep===1){if(opMaq===null){showToast("Select a machine","var(--red)");return;}const parte=document.getElementById("ip-parte").value.trim().toUpperCase();const dup=REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===opMaq&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===(parte||""));if(dup){showToast(`⛔ ${MAQUINAS[opMaq].nombre} · ${opCorte} · ${parte||"same part"} already recorded today`,"var(--red)");return;}}if(opStep===2&&gv("ip-prod")===0){showToast("Enter production","var(--red)");return;}if(opStep===2&&!plValidarDim())return;if(opStep===1)plPrefillDim();if(opStep===2)buildRes();if(opStep===3){enviar();return;}showStep(opStep+1);};
 window.prev=()=>{if(opStep>0)showStep(opStep-1);};
-function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
-window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr"].forEach(id=>document.getElementById(id).value="");document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-parte").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
+function buildRes(){const m=MAQUINAS[opMaq];const tgt=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const p=gv("ip-prod"),d=gv("ip-def"),s=gv("ip-scr");const pct=(p/tgt*100).toFixed(1),cl=pct>=95?"green":pct>=80?"yellow":"red";const rows=[["📅 Fecha",document.getElementById("ip-fecha").value],["👷 Operador",document.getElementById("ip-op").value],["🔢 N° Empleado",document.getElementById("ip-emp").value||"—"],["📱 Modelo",document.getElementById("ip-modelo").value||"—"],["🔩 N° Parte",document.getElementById("ip-parte").value||"—"],["⏰ Turno","Turno "+opTurno],["🔧 Máquina",`${m.nombre} (${m.tipo})`],["🎯 Target",tgt.toLocaleString()],["⏱ Downtime",`${document.getElementById("ip-causa").value||"None"} ${parseInt(document.getElementById("ip-paro").value)||0>0?"("+document.getElementById("ip-paro").value+" min)":""}`.trim()],["✅ Producción",p.toLocaleString()],["⚠️ Defectos",d.toLocaleString()],["🗑 Scrap",s.toLocaleString()],["📦 Pallet (in)",plDimOperador().txt||"—"],["📊 Cumplimiento",`<span class="${cl}">${pct}%</span>`]];document.getElementById("res-body").innerHTML=rows.map(([l,v])=>`<div class="sr"><span style="color:var(--muted)">${l}</span><strong>${v}</strong></div>`).join("");const notas=document.getElementById("ip-notas").value.trim();const nc=document.getElementById("res-nc");if(notas){nc.style.display="block";document.getElementById("res-notas").textContent=notas;}else nc.style.display="none";}
+window.nuevaCap=()=>{["ip-prod","ip-def","ip-scr","ip-dl","ip-dw","ip-dh"].forEach(id=>document.getElementById(id).value="");{const sp=document.getElementById("ip-pallet"); if(sp) sp.value=""; try{calcPesoOp();}catch(e){}}document.getElementById("ip-notas").value="";document.getElementById("ip-modelo").value="";document.getElementById("ip-parte").value="";document.getElementById("ip-causa").value="";document.getElementById("ip-paro").value="";opMaq=null;opCorte=null;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`)&&document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.querySelectorAll(".mc").forEach(c=>c.classList.remove("sel"));document.getElementById("botnav").style.display="flex";document.getElementById("mis-reg").innerHTML="";showStep(0);};
 window.verMis=()=>{const op=document.getElementById("ip-op").value.trim();const mios=REGISTROS.filter(r=>r.fecha===HOY&&r.operador===op);const el=document.getElementById("mis-reg");if(!mios.length){el.innerHTML=`<div class="oc" style="text-align:center;color:var(--muted);font-size:.85rem">Sin registros hoy</div>`;return;}el.innerHTML=`<div class="oc"><div class="oct">📅 Mis registros de hoy</div>`+mios.map(r=>{const tCol={A:"#4f8ef7",B:"#2ecc71",C:"#e67e22"}[r.turno];const cl=r.pct>=95?"green":r.pct>=80?"yellow":"red";return`<div class="sr"><div><strong>${r.maqNombre}</strong> <span style="color:${tCol};font-size:.8rem">${r.turno}</span></div><div class="${cl}" style="font-weight:700">${r.pct}% · ${r.prod.toLocaleString()}pz</div></div>`;}).join("")+"</div>";};
 
 /* ══ DASHBOARD ══ */
@@ -1735,7 +2057,7 @@ function renderShipqr(){
     return esTC && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción TC con PN GH90/GH69 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción TC con PN GH90/GH69 entre ${desde} y ${hasta}.</td></tr>`;
     window._shipqrExportRows=[];
     return;
   }
@@ -1747,7 +2069,8 @@ function renderShipqr(){
     const turno=r.turno||"—";
     const horaCaptura = r.ts ? new Date(r.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : (r.tsLocal ? new Date(r.tsLocal).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—');
     const key=modelo+"||"+parte+"||"+fecha+"||"+turno+"||"+horaCaptura;
-    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0};}
+    if(!modPnMap[key]){modPnMap[key]={modelo,parte,fecha,turno,horaCaptura,prod:0,dim:''};}
+    if(!modPnMap[key].dim && r.palletDim) modPnMap[key].dim=r.palletDim;
     modPnMap[key].prod+=Number(r.prod)||Number(r.qty)||0;
   });
   const rows=Object.values(modPnMap).sort((a,b)=>(a.fecha+a.modelo).localeCompare(b.fecha+b.modelo));
@@ -1757,25 +2080,38 @@ function renderShipqr(){
   rows.forEach(m=>{
     totalShip+=m.prod;
     const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
-    const env=SHIPQR_ENVIADOS[key];
+    const enviado=sumEnviadoShipqr(key);
+    const pendiente=Math.max(0, m.prod-enviado);
+    const completo=pendiente<=0 && enviado>0;
+    const parcial=enviado>0 && pendiente>0;
     const tCol=turnoColor[m.turno]||'#7f8c9a';
+    let estadoHtml;
+    if(completo){
+      estadoHtml=`<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">✓ ENVIADO</span>`;
+    }else if(parcial){
+      estadoHtml=`<span style="background:rgba(230,126,34,.15);color:#e67e22;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">◐ PARCIAL · faltan ${pendiente.toLocaleString()}</span>`;
+    }else{
+      estadoHtml=`<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`;
+    }
     const tr=document.createElement("tr");
     tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
       <td style="color:var(--accent);font-family:monospace;font-size:.85rem;padding:10px 6px">${m.parte}</td>
       <td style="text-align:center;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.fecha}</td>
       <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.8rem;white-space:nowrap">${m.horaCaptura}</span></td>
-      <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
+      <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}${enviado>0?`<div style="font-weight:400;font-size:.7rem;color:var(--muted)">enviado: ${enviado.toLocaleString()}</div>`:''}</td>
+      <td style="text-align:center;font-family:monospace;font-size:.8rem;padding:10px 6px;white-space:nowrap">${m.dim||'<span style="color:#f1c40f">—</span>'}</td>
+      <td style="text-align:center;padding:10px 6px">${estadoHtml}</td>
       <td style="text-align:center;padding:10px 6px">
-        ${env
-          ? `<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">✓ ENVIADO</span>`
-          : `<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`}
-      </td>
-      <td style="text-align:center;padding:10px 6px">
-        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          ${env?'disabled':''}
-          style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
+        <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}',false)"
+          ${completo?'disabled':''}
+          style="background:${completo?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${completo?'var(--border)':'rgba(77,166,255,.4)'};color:${completo?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${completo?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
         </button>
+        ${enviado>0?`<button onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')"
+          title="Deshacer el último envío registrado de este lote"
+          style="margin-left:6px;background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:600;cursor:pointer;min-height:36px">
+          ↻
+        </button>`:''}
       </td>`;
     tbShipqr.appendChild(tr);
   });
@@ -1783,7 +2119,7 @@ function renderShipqr(){
   trTot.style.cssText="font-weight:700;background:var(--card2);border-top:1.5px solid var(--border)";
   trTot.innerHTML=`<td colspan="4" style="font-size:.9rem;padding:10px 6px">TOTAL</td>
     <td class="blue" style="text-align:right;font-size:.95rem;padding:10px 6px">${totalShip.toLocaleString()}</td>
-    <td></td><td></td>`;
+    <td></td><td></td><td></td>`;
   tbShipqr.appendChild(trTot);
 }
 window.renderShipqr=renderShipqr;
@@ -1794,18 +2130,21 @@ function exportarShipqrExcel(){
   if(!rows.length){ alert('No hay datos para exportar. Aplica un rango de fechas con producción primero.'); return; }
   const desde=document.getElementById("shipqr-desde")?.value||"";
   const hasta=document.getElementById("shipqr-hasta")?.value||"";
-  const headers=['Modelo SM','Part Number','Fecha','Turno','Hora Captura','Producción','Estado'];
+  const headers=['Modelo SM','Part Number','Fecha','Turno','Hora Captura','Producción','Pallet (in)','Enviado','Pendiente','Estado'];
   const data=[headers];
-  let totalShip=0;
+  let totalShip=0, totalEnv=0, totalPend=0;
   rows.forEach(m=>{
     totalShip+=m.prod;
     const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
-    const estado=SHIPQR_ENVIADOS[key]?'ENVIADO':'PENDIENTE';
-    data.push([m.modelo,m.parte,m.fecha,m.turno,m.horaCaptura,m.prod,estado]);
+    const enviado=sumEnviadoShipqr(key);
+    const pendiente=Math.max(0, m.prod-enviado);
+    totalEnv+=enviado; totalPend+=pendiente;
+    const estado=(pendiente<=0&&enviado>0)?'ENVIADO':(enviado>0?'PARCIAL':'PENDIENTE');
+    data.push([m.modelo,m.parte,m.fecha,m.turno,m.horaCaptura,m.prod,m.dim||'',enviado,pendiente,estado]);
   });
-  data.push(['','','','','TOTAL',totalShip,'']);
+  data.push(['','','','','TOTAL',totalShip,'',totalEnv,totalPend,'']);
   const ws=XLSX.utils.aoa_to_sheet(data);
-  ws['!cols']=[{wch:16},{wch:16},{wch:12},{wch:8},{wch:12},{wch:12},{wch:12}];
+  ws['!cols']=[{wch:16},{wch:16},{wch:12},{wch:8},{wch:12},{wch:12},{wch:14},{wch:12},{wch:12},{wch:12}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,'ShipQR P4-P3');
   const nombreArchivo=`ShipQR_P4_a_P3_${desde}_a_${hasta}.xlsx`;
@@ -1892,8 +2231,7 @@ function chkAlertas(){
   const nowMin=hh*60+mm;
 
   const cutDeadlines=[
-    {id:"C1", label:"Break", endH:8,  endM:45},
-    {id:"C2", label:"Lunch", endH:12, endM:30},
+    {id:"C2", label:"Lunch", endH:11, endM:15},
     {id:"C3", label:"Home", endH:16, endM:30},
     {id:"OT", label:"OT",endH:18, endM:25},
   ];
@@ -2617,6 +2955,9 @@ function applyTranslations(){
     'lbl-scrap-lbl':t('lbl_scrap_lbl'),
     'lbl-downtime': t('lbl_downtime'),
     'lbl-notes':    t('lbl_notes'),
+    'lbl-pallet': pt('pallet'),
+    'lbl-pallet-hint': pt('palletHint'),
+    'th-pallet': pt('thpallet'),
     'lbl-confirm':  t('lbl_confirm'),
     'btn-nueva':    t('btn_nueva'),
     'btn-ver-reg':  t('btn_ver_reg'),
@@ -2922,7 +3263,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <h1><img src="logo.jpg" style="height:28px;border-radius:4px;vertical-align:middle;">Manufacturing MES P1 · Production System</h1>
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn active" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
   </div>
-  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a><a class="mbtn" id="mb-pallet" href="pallet-assy.html" target="_blank" style="text-decoration:none;display:none">📦 Pallet ASSY</a><a class="mbtn" id="mb-palletmedio" href="pallet-medio.html" target="_blank" style="text-decoration:none">🏷️ Pallet Medio</a></div>
+  <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a><a class="mbtn" id="mb-pallet" href="pallet-assy-p1.html" target="_blank" style="text-decoration:none;display:none">📦 Pallet ASSY</a><a class="mbtn" id="mb-palletmedio" href="pallet-medio-p1.html" target="_blank" style="text-decoration:none">🏷️ Pallet Medio</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
@@ -2948,10 +3289,9 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
           <div class="tc" id="tc-C" onclick="selT('C')"><div class="ticon">📅</div><div class="tlbl">Saturday OT</div><div class="tsub">7:00 AM–1:00 PM</div></div>
         </div>
         <div class="oct" style="margin-top:12px" id="lbl-cut">⏱ Production Cut</div>
-        <div class="tgrid" style="grid-template-columns:repeat(2,1fr)">
-          <div class="tc" id="cc-C1" onclick="selCorte('C1')"><div class="ticon">🌅</div><div class="tlbl">Break</div><div class="tsub">7:00–8:45 AM</div></div>
-          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Lunch</div><div class="tsub">9:00–12:30 PM</div></div>
-          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">🌇</div><div class="tlbl">Home</div><div class="tsub">1:00–4:30 PM</div></div>
+        <div class="tgrid" style="grid-template-columns:repeat(3,1fr)">
+          <div class="tc" id="cc-C2" onclick="selCorte('C2')"><div class="ticon">☀️</div><div class="tlbl">Lunch</div><div class="tsub">6:54–11:15 AM</div></div>
+          <div class="tc" id="cc-C3" onclick="selCorte('C3')"><div class="ticon">🌇</div><div class="tlbl">Home</div><div class="tsub">12:00–4:30 PM</div></div>
           <div class="tc" id="cc-OT" onclick="selCorte('OT')"><div class="ticon">⏰</div><div class="tlbl">OT</div><div class="tsub">4:45–6:25 PM</div></div>
         </div>
       </div>
@@ -2966,6 +3306,18 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="nf"><label id="lbl-prod">✅ Producción</label><div class="nw"><button class="nb" onclick="adj('p',-100)">−</button><input type="number" id="ip-prod" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('p',100)">+</button></div></div>
         <div class="nf"><label id="lbl-def">⚠️ Defectos</label><div class="nw"><button class="nb" onclick="adj('d',-10)">−</button><input type="number" id="ip-def" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('d',10)">+</button></div></div>
         <div class="nf"><label id="lbl-scrap-lbl">🗑 Scrap</label><div class="nw"><button class="nb" onclick="adj('s',-10)">−</button><input type="number" id="ip-scr" min="0" placeholder="0" oninput="updK()"><button class="nb" onclick="adj('s',10)">+</button></div></div>
+      </div>
+      <div class="oc">
+        <div class="oct" id="lbl-pallet">📦 Pallet · dimensión (pulgadas)</div>
+        <div id="lbl-ip-pallet" style="font-size:.78rem;color:var(--muted);margin-bottom:4px">Tipo de pallet (L × W)</div>
+        <select id="ip-pallet" onchange="onPalletOp()" style="width:100%;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px;font-size:1rem;margin-bottom:8px"></select>
+        <div id="peso-box-op" style="display:none;margin-bottom:8px;padding:10px 12px;border:1px solid var(--border);border-radius:10px;font-size:.85rem;color:var(--muted);line-height:1.6"></div>
+        <div style="display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:8px">
+          <input type="number" id="ip-dl" min="0" step="any" placeholder="L" inputmode="decimal" style="width:100%;min-width:0;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px;font-size:1rem;outline:none;text-align:center">
+          <input type="number" id="ip-dw" min="0" step="any" placeholder="W" inputmode="decimal" style="width:100%;min-width:0;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px;font-size:1rem;outline:none;text-align:center">
+          <input type="number" id="ip-dh" min="0" step="any" placeholder="H" inputmode="decimal" style="width:100%;min-width:0;box-sizing:border-box;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:12px;font-size:1rem;outline:none;text-align:center">
+        </div>
+        <div id="lbl-pallet-hint" style="font-size:.78rem;color:var(--muted);margin-top:6px">Largo × Ancho × Alto</div>
       </div>
       <div class="oc">
         <div class="oct" id="lbl-downtime">⏱ Downtime</div>
@@ -3043,7 +3395,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
             📊 Excel
           </button>
         </div>
-        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px" id="th-modelosm">Modelo SM</th><th style="padding:10px 6px" id="th-partnum">Part Number</th><th style="text-align:center;padding:10px 6px" id="th-fecha">Fecha</th><th style="text-align:center;padding:10px 6px" id="th-turno">Turno</th><th style="text-align:right;padding:10px 6px" id="th-produccion">Producción</th><th style="text-align:center;padding:10px 6px" id="th-estado">Estado</th><th style="text-align:center;padding:10px 6px" id="th-accion">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
+        <div class="tbl-parts-wrap"><table style="font-size:13px"><thead><tr style="font-size:13px"><th style="padding:10px 6px" id="th-modelosm">Modelo SM</th><th style="padding:10px 6px" id="th-partnum">Part Number</th><th style="text-align:center;padding:10px 6px" id="th-fecha">Fecha</th><th style="text-align:center;padding:10px 6px" id="th-turno">Turno</th><th style="text-align:right;padding:10px 6px" id="th-produccion">Producción</th><th style="text-align:center;padding:10px 6px" id="th-pallet">Pallet (in)</th><th style="text-align:center;padding:10px 6px" id="th-estado">Estado</th><th style="text-align:center;padding:10px 6px" id="th-accion">Acción</th></tr></thead><tbody id="tb-shipqr"></tbody></table></div>
         <div style="margin-top:16px;padding-top:12px;border-top:1px solid var(--border)">
           <div style="font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;margin-bottom:8px">Historial de envíos a ShipQR</div>
           <div id="tb-shipqr-historial" style="display:flex;flex-direction:column;gap:6px;max-height:240px;overflow-y:auto"></div>
@@ -3148,8 +3500,19 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div id="cat-note" style="font-size:.85rem;color:var(--muted);margin-bottom:10px"></div>
       <div class="form-row">
         <div class="form-field"><label id="cat-l-pn">N° de Parte</label><input type="text" id="cat-pn" placeholder="GH69-46627A" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
-        <div class="form-field"><label id="cat-l-desc">Descripción / Modelo</label><input type="text" id="cat-desc" placeholder="SM7410" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="form-field"><label id="cat-l-desc">Modelo</label><input type="text" id="cat-desc" placeholder="SM7410" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
+        <div class="form-field"><label id="cat-l-mat">Descripción del material</label><input type="text" id="cat-mat" placeholder="SM7410 CROSS PAD" autocomplete="off" oninput="this.value=this.value.toUpperCase()"></div>
       </div>
+      <div class="form-row">
+        <div class="form-field"><label id="cat-l-tipo">TYPE</label><input type="text" id="cat-tipo" placeholder="Cross Pad" autocomplete="off"></div>
+        <div class="form-field"><label id="cat-l-fsc">FSC type</label><input type="text" id="cat-fsc" placeholder="FSC Mix" autocomplete="off"></div>
+        <div class="form-field"><label id="cat-l-rev">Rev</label><input type="text" id="cat-rev" placeholder="0" autocomplete="off"></div>
+        <div class="form-field" style="display:none"><label id="cat-l-pcs">Pcs/caja</label><input type="number" id="cat-pcs" min="0" placeholder="0"></div>
+        <div class="form-field"><label id="cat-l-peso">Peso caja (lbs)</label><input type="number" id="cat-peso" min="0" step="any" placeholder="0"></div>
+        <div class="form-field" style="display:none"><label id="cat-l-cpp">Cajas/pallet</label><input type="number" id="cat-cpp" min="0" placeholder="1"></div>
+        <div class="form-field"><label id="cat-l-dim">Dimensión pallet (in) LxWxH</label><input type="text" id="cat-dim" placeholder="48x40x50" autocomplete="off"></div>
+      </div>
+      <div id="cat-pl-help" style="font-size:.8rem;color:var(--muted);margin-bottom:8px"></div>
       <button class="abtn abtn-add" id="cat-btn-add" onclick="addCatalogoParte()">➕ Agregar parte</button>
       <div style="margin-top:14px;padding:12px;border:2px dashed var(--border);border-radius:10px;background:var(--card2)">
         <div style="font-size:.85rem;color:var(--muted);margin-bottom:8px" id="cat-l-file">Subir Excel (.xlsx / .csv) con N° de Parte y Descripción</div>
@@ -3157,6 +3520,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div style="display:flex;gap:8px;flex-wrap:wrap">
           <button class="abtn abtn-add" id="cat-btn-file" onclick="document.getElementById('cat-file').click()">📤 Subir Excel</button>
           <button class="abtn" id="cat-btn-sq" onclick="descargarPlantillaShipQR()" style="background:rgba(255,186,0,.12);color:#FFBA00;border:1px solid rgba(255,186,0,.4)">📥 Descargar plantilla ShipQR (Excel)</button>
+          <button class="abtn" id="cat-btn-sync" onclick="sincronizarPLShipqr()" style="background:rgba(46,204,113,.15);color:#2ecc71;border:1px solid rgba(46,204,113,.4)">🔄</button>
           <button class="abtn" id="cat-btn-seed2" onclick="cargarCatalogoInicial()" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4)">📦 Cargar lista inicial (28 partes)</button>
         </div>
         <div id="cat-sq-help" style="font-size:.8rem;color:var(--muted);margin-top:8px"></div>
@@ -3170,7 +3534,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
       </details>
       <input type="text" id="cat-filter" oninput="renderCatalogo()" placeholder="Buscar…" style="width:100%;margin:12px 0 8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box">
-      <div id="cat-table-wrap"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Descripción</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
+      <div id="cat-table-wrap" style="overflow-x:auto"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Modelo</th><th id="cat-th-mat">Descripción del material</th><th id="cat-th-tipo">TYPE</th><th id="cat-th-fsc">FSC type</th><th id="cat-th-rev">Rev</th><th id="cat-th-pcs" style="display:none">Pcs/caja</th><th id="cat-th-peso">Peso</th><th id="cat-th-cpp" style="display:none">Cajas/pallet</th><th id="cat-th-dim">Dim</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
     </div>
     <div class="acard">
       <h3 id="pt-h">📏 Tipos de pallet y peso Cross Pad</h3>
@@ -3181,12 +3545,12 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </div>
       <div id="pt-note" style="font-size:.8rem;color:var(--muted);margin-bottom:12px"></div>
       <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
-        <input id="pt-new-dim" placeholder="Dimensión del pallet" style="flex:2;min-width:160px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px">
+        <input id="pt-new-dim" placeholder="Medida del pallet (L × W, in)" style="flex:2;min-width:160px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px">
         <input id="pt-new-peso" type="number" step="0.01" min="0" placeholder="Peso del pallet (lb)" style="flex:1;min-width:120px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px">
         <button class="abtn abtn-add" id="pt-btn-add" onclick="addPalletTipo()">➕ Agregar pallet</button>
         <button class="abtn" id="pt-btn-seed" onclick="cargarPalletsRef()" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4)">📦 Cargar pallets de referencia (5)</button>
       </div>
-      <table><thead><tr><th id="pt-th-dim">Dimensión del pallet</th><th id="pt-th-peso">Peso del pallet (lb)</th><th id="pt-th-acc">Acciones</th></tr></thead><tbody id="pt-table"></tbody></table>
+      <table><thead><tr><th id="pt-th-dim">Medida del pallet (L × W, in)</th><th id="pt-th-peso">Peso del pallet (lb)</th><th id="pt-th-acc">Acciones</th></tr></thead><tbody id="pt-table"></tbody></table>
     </div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
