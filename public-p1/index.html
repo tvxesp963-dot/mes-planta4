@@ -1859,7 +1859,7 @@ function plPrefillDim(){
   if(!d){ const r=REGISTROS.find(x=>(x.parte||'').toUpperCase()===pn && x.palletDim); if(r) d=normDimTxt(r.palletDim); }
   if(!d) return;
   const [l,w,h]=d.split('x');
-  document.getElementById("ip-dl").value=l; document.getElementById("ip-dw").value=w; document.getElementById("ip-dh").value=h;
+  document.getElementById("ip-dl").value=l; document.getElementById("ip-dw").value=w; /* la altura (H) la captura el operador: se deja en blanco */
   try{calcPesoOp();}catch(e){}
 }
 window.next=async()=>{if(opStep===0){if(!document.getElementById("ip-op").value.trim()){showToast("Enter your name","var(--red)");return;}if(!document.getElementById("ip-emp").value.trim()){showToast("N° Empleado es obligatorio","var(--red)");document.getElementById("ip-emp").focus();return;}const modVal=document.getElementById("ip-modelo").value.trim();
