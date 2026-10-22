@@ -742,7 +742,84 @@ async function loadCatalogo(){
       .sort((a,b)=>a.pn.localeCompare(b.pn));
   }catch(e){ console.error("Catálogo P1:",e); CATALOGO_P1=[]; }
   renderCatalogo(); buildModelosDL(); buildPartesDL(document.getElementById("ip-modelo")?.value.trim().toUpperCase()||'');
+  loadPalletTipos();
 }
+
+/* ══ Tipos de pallet (dimensión + peso) y peso de Cross Pad — editables en Admin ══ */
+const PT_COL=()=>collection(db,"pallets_tipo_p1");
+let PALLET_TIPOS=[], CP_PESO=0.2;
+const PT_T={
+  es:{seed:"📦 Cargar pallets de referencia (5)",h:"📏 Tipos de pallet y peso Cross Pad",cp:"Peso de cada pieza Cross Pad (lb)",save:"💾 Guardar",dim:"Dimensión del pallet",peso:"Peso del pallet (lb)",add:"➕ Agregar pallet",acc:"Acciones",ok:"✅ Guardado",conf:"¿Eliminar este pallet?",bad:"Escribe dimensión y peso (lb) válidos",empty:"Sin pallets. Agrega el primero.",note:"Peso total del pallet = peso Cross Pad × cantidad + peso del pallet"},
+  en:{seed:"📦 Load reference pallets (5)",h:"📏 Pallet types & Cross Pad weight",cp:"Weight of each Cross Pad piece (lb)",save:"💾 Save",dim:"Pallet dimension",peso:"Pallet weight (lb)",add:"➕ Add pallet",acc:"Actions",ok:"✅ Saved",conf:"Delete this pallet?",bad:"Enter a valid dimension and weight (lb)",empty:"No pallets. Add the first one.",note:"Total pallet weight = Cross Pad weight × quantity + pallet weight"},
+  ko:{seed:"📦 기준 팔레트 불러오기 (5)",h:"📏 팔레트 종류 및 크로스패드 무게",cp:"크로스패드 1개 무게 (lb)",save:"💾 저장",dim:"팔레트 규격",peso:"팔레트 무게 (lb)",add:"➕ 팔레트 추가",acc:"작업",ok:"✅ 저장됨",conf:"이 팔레트를 삭제할까요?",bad:"올바른 규격과 무게(lb)를 입력하세요",empty:"팔레트가 없습니다. 첫 번째를 추가하세요.",note:"팔레트 총 무게 = 크로스패드 무게 × 수량 + 팔레트 무게"}
+};
+const pt=(k)=>((PT_T[LANG]||PT_T.es)[k]||PT_T.es[k]);
+const ptEsc=(x)=>String(x==null?'':x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+async function loadPalletTipos(){
+  try{
+    const snap=await getDocs(PT_COL());
+    PALLET_TIPOS=[]; CP_PESO=0.2;
+    snap.forEach(d=>{
+      const x=d.data();
+      if(d.id==="_config"){ const v=Number(x.pesoCrossPad); if(v>0) CP_PESO=v; return; }
+      PALLET_TIPOS.push({id:d.id,dim:String(x.dimension||""),peso:Number(x.pesoLb)||0});
+    });
+    PALLET_TIPOS.sort((a,b)=>a.dim.localeCompare(b.dim,undefined,{numeric:true}));
+  }catch(e){ console.error("Pallets tipo:",e); }
+  renderPalletTipos();
+}
+function renderPalletTipos(){
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  set("pt-h",pt("h")); set("pt-l-cp",pt("cp")); set("pt-btn-cp",pt("save")); set("pt-btn-add",pt("add")); set("pt-btn-seed",pt("seed")); set("pt-note",pt("note"));
+  set("pt-th-dim",pt("dim")); set("pt-th-peso",pt("peso")); set("pt-th-acc",pt("acc"));
+  const ni=document.getElementById("pt-new-dim"); if(ni) ni.placeholder=pt("dim");
+  const np=document.getElementById("pt-new-peso"); if(np) np.placeholder=pt("peso");
+  const cp=document.getElementById("pt-cp"); if(cp && document.activeElement!==cp) cp.value=CP_PESO;
+  const tb=document.getElementById("pt-table"); if(!tb) return;
+  tb.innerHTML=PALLET_TIPOS.length?PALLET_TIPOS.map(p=>`<tr>
+    <td><input id="pt-d-${p.id}" value="${ptEsc(p.dim)}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;box-sizing:border-box"></td>
+    <td><input id="pt-p-${p.id}" type="number" step="0.01" min="0" value="${p.peso}" style="width:100px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px"></td>
+    <td style="white-space:nowrap"><button class="abtn abtn-add" onclick="savePalletTipo('${p.id}')">💾</button> <button class="abtn" onclick="delPalletTipo('${p.id}')" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)">🗑</button></td></tr>`).join('')
+    :`<tr><td colspan="3" style="color:var(--muted);text-align:center;padding:10px">${pt("empty")}</td></tr>`;
+}
+window.saveCpPeso=async()=>{
+  const v=parseFloat(document.getElementById("pt-cp").value);
+  if(!(v>0)){ showToast(pt("bad"),"var(--red)"); return; }
+  try{ await setDoc(doc(db,"pallets_tipo_p1","_config"),{pesoCrossPad:v,actualizadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()}); CP_PESO=v; showToast(pt("ok"),"var(--green)"); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+window.addPalletTipo=async()=>{
+  const dim=document.getElementById("pt-new-dim").value.trim();
+  const peso=parseFloat(document.getElementById("pt-new-peso").value);
+  if(!dim||!(peso>=0)||isNaN(peso)){ showToast(pt("bad"),"var(--red)"); return; }
+  try{ await addDoc(PT_COL(),{dimension:dim,pesoLb:peso,activo:true,creadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()});
+    document.getElementById("pt-new-dim").value=""; document.getElementById("pt-new-peso").value="";
+    showToast(pt("ok"),"var(--green)"); await loadPalletTipos(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+window.cargarPalletsRef=async()=>{
+  const REF=[["38 × 24",18],["31 × 22",15],["39 × 31",24],["32 × 28",18],["28 × 21",13]];
+  const norm=x=>String(x).replace(/\s+/g,"").replace(/x/gi,"×").toLowerCase();
+  const ya=new Set(PALLET_TIPOS.map(p=>norm(p.dim)));
+  try{
+    for(const [dim,peso] of REF){ if(ya.has(norm(dim))) continue;
+      await addDoc(PT_COL(),{dimension:dim,pesoLb:peso,activo:true,creadoPor:CURRENT_USER?.nombre||"",tsLocal:new Date().toISOString()}); }
+    showToast(pt("ok"),"var(--green)"); await loadPalletTipos();
+  }catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+window.savePalletTipo=async(id)=>{
+  const dim=document.getElementById("pt-d-"+id).value.trim();
+  const peso=parseFloat(document.getElementById("pt-p-"+id).value);
+  if(!dim||isNaN(peso)||peso<0){ showToast(pt("bad"),"var(--red)"); return; }
+  try{ await updateDoc(doc(db,"pallets_tipo_p1",id),{dimension:dim,pesoLb:peso,tsLocal:new Date().toISOString()}); showToast(pt("ok"),"var(--green)"); await loadPalletTipos(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+window.delPalletTipo=async(id)=>{
+  if(!confirm(pt("conf"))) return;
+  try{ await deleteDoc(doc(db,"pallets_tipo_p1",id)); await loadPalletTipos(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+
 function renderCatalogo(){
   catTexts();
   const cnt=document.getElementById("cat-count"); if(cnt) cnt.textContent=CATALOGO_P1.length;
@@ -2505,7 +2582,7 @@ window.setLang = function(lang){
   const active = document.getElementById('lang-'+map[lang]);
   if(active) active.classList.add('active');
   applyTranslations();
-  if(typeof catTexts==='function')catTexts();
+  if(typeof catTexts==='function')catTexts(); if(typeof renderPalletTipos==='function')renderPalletTipos();
   if(typeof renderCatalogo==='function')renderCatalogo();
   if(window._selRefresh)window._selRefresh();
 };
@@ -3094,6 +3171,22 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </details>
       <input type="text" id="cat-filter" oninput="renderCatalogo()" placeholder="Buscar…" style="width:100%;margin:12px 0 8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box">
       <div id="cat-table-wrap"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Descripción</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
+    </div>
+    <div class="acard">
+      <h3 id="pt-h">📏 Tipos de pallet y peso Cross Pad</h3>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:flex-end;margin-bottom:12px">
+        <div><div id="pt-l-cp" style="font-size:.8rem;color:var(--muted);margin-bottom:4px">Peso de cada pieza Cross Pad (lb)</div>
+          <input id="pt-cp" type="number" step="0.01" min="0" value="0.2" style="width:110px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px"></div>
+        <button class="abtn abtn-add" id="pt-btn-cp" onclick="saveCpPeso()">💾 Guardar</button>
+      </div>
+      <div id="pt-note" style="font-size:.8rem;color:var(--muted);margin-bottom:12px"></div>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px">
+        <input id="pt-new-dim" placeholder="Dimensión del pallet" style="flex:2;min-width:160px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px">
+        <input id="pt-new-peso" type="number" step="0.01" min="0" placeholder="Peso del pallet (lb)" style="flex:1;min-width:120px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px">
+        <button class="abtn abtn-add" id="pt-btn-add" onclick="addPalletTipo()">➕ Agregar pallet</button>
+        <button class="abtn" id="pt-btn-seed" onclick="cargarPalletsRef()" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4)">📦 Cargar pallets de referencia (5)</button>
+      </div>
+      <table><thead><tr><th id="pt-th-dim">Dimensión del pallet</th><th id="pt-th-peso">Peso del pallet (lb)</th><th id="pt-th-acc">Acciones</th></tr></thead><tbody id="pt-table"></tbody></table>
     </div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
