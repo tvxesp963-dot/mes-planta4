@@ -726,19 +726,19 @@ const CAT_T={
 };
 const ct=(k)=>((CAT_T[LANG]||CAT_T.es)[k]||CAT_T.es[k]);
 const PLT={
-  es:{tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"Pzas/pallet",peso:"Peso pallet (lbs) · manual",cpp:"Cajas/pallet",dim:"Dimensión pallet (in) LxWxH",
+  es:{precio:"Precio por pieza (USD)",tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"Pzas/pallet",peso:"Peso pallet (lbs) · manual",cpp:"Cajas/pallet",dim:"Dimensión pallet (in) LxWxH",
       sync:"🔄 Enviar datos PL al maestro de ShipQR",syncOk:"✅ Partes actualizadas en ShipQR: ",syncNone:"No hay partes en el catálogo",syncErr:"No pude escribir en ShipQR (usa la plantilla Excel). ",
       plHelp:"Cross Pad: las piezas van apiladas en el pallet (sin cajas); cada pallet lleva lo producido en la máquina. El peso del pallet es manual por ahora. Datos del Packing List: se usan en la etiqueta y el PL de ShipQR. Para corregir una parte usa ✏️, cambia el dato y presiona «Agregar parte».",
       edit:"✏️",dimBad:"Dimensión inválida. Usa el formato 48x40x50",
       pallet:"📦 Pallet · dimensión (pulgadas)",palletHint:"Largo × Ancho × Alto del pallet. Se usa para cuadrar el contenedor en ShipQR.",thpallet:"Pallet (in)",
       needDim:"Captura la dimensión del pallet (L, W y H)",modalDim:"Dimensión del pallet (L×W×H in)",modalDimBad:"Captura la dimensión del pallet, ej. 48x40x50"},
-  en:{tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"Pcs/pallet",peso:"Pallet weight (lbs) · manual",cpp:"Boxes/pallet",dim:"Pallet dimension (in) LxWxH",
+  en:{precio:"Price per piece (USD)",tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"Pcs/pallet",peso:"Pallet weight (lbs) · manual",cpp:"Boxes/pallet",dim:"Pallet dimension (in) LxWxH",
       sync:"🔄 Send PL data to ShipQR master",syncOk:"✅ Parts updated in ShipQR: ",syncNone:"There are no parts in the catalog",syncErr:"Could not write to ShipQR (use the Excel template). ",
       plHelp:"Cross Pad: pieces are stacked on the pallet (no boxes); each pallet carries what the machine produced. Pallet weight is manual for now. Packing List data: used on the ShipQR label and PL. To fix a part use ✏️, change the value and press «Add part».",
       edit:"✏️",dimBad:"Invalid dimension. Use the format 48x40x50",
       pallet:"📦 Pallet · dimension (inches)",palletHint:"Pallet Length × Width × Height. Used to match the container load in ShipQR.",thpallet:"Pallet (in)",
       needDim:"Enter the pallet dimension (L, W and H)",modalDim:"Pallet dimension (L×W×H in)",modalDimBad:"Enter the pallet dimension, e.g. 48x40x50"},
-  ko:{tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"팔레트당 수량",peso:"팔레트 무게 (lbs) · 수동",cpp:"팔레트당 박스",dim:"팔레트 치수 (in) LxWxH",
+  ko:{precio:"개당 가격 (USD)",tipo:"TYPE",fsc:"FSC type",rev:"Rev",pcs:"팔레트당 수량",peso:"팔레트 무게 (lbs) · 수동",cpp:"팔레트당 박스",dim:"팔레트 치수 (in) LxWxH",
       sync:"🔄 PL 데이터를 ShipQR 마스터로 전송",syncOk:"✅ ShipQR에서 업데이트된 부품: ",syncNone:"카탈로그에 부품이 없습니다",syncErr:"ShipQR에 쓸 수 없습니다 (엑셀 템플릿을 사용하세요). ",
       plHelp:"Cross Pad: 박스 없이 팔레트 위에 적재되며, 각 팔레트는 기계에서 생산된 수량입니다. 팔레트 무게는 현재 수동입니다. 패킹리스트 데이터: ShipQR 라벨과 PL에 사용됩니다. 수정하려면 ✏️를 누르고 값을 바꾼 뒤 «부품 추가»를 누르세요.",
       edit:"✏️",dimBad:"치수가 잘못되었습니다. 48x40x50 형식으로 입력하세요",
@@ -751,7 +751,7 @@ function normDimTxt(sv){
   const m=String(sv==null?'':sv).trim().replace(/,/g,'.').match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)$/i);
   return m?`${+m[1]}x${+m[2]}x${+m[3]}`:'';
 }
-const PL_COLS=[["tipo","tipo"],["fsc","fsc"],["rev","rev"],["pcs","pcs"],["peso","peso"],["cpp","cpp"],["dim","dim"]];
+const PL_COLS=[["tipo","tipo"],["fsc","fsc"],["rev","rev"],["pcs","pcs"],["peso","peso"],["cpp","cpp"],["dim","dim"],["precio","precio"]];
 function catTexts(){
   const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
   set("cat-h",ct("h")); set("cat-l-pn",ct("pn")); set("cat-l-desc",ct("desc")); set("cat-btn-add",ct("add"));
@@ -764,7 +764,7 @@ function catTexts(){
 async function loadCatalogo(){
   try{
     const snap=await getDocs(CAT_COL());
-    CATALOGO_P1=snap.docs.map(d=>({id:d.id,pn:String(d.data().parte||d.id).toUpperCase(),desc:String(d.data().descripcion||'').toUpperCase(),descMat:String(d.data().descripcionMaterial||'').toUpperCase(),tipo:String(d.data().tipo||''),fsc:String(d.data().fscType||''),rev:String(d.data().rev==null?'':d.data().rev),pcs:Number(d.data().pcsPorCaja)||0,peso:Number(d.data().pesoCaja)||0,cpp:Number(d.data().cajasPorPallet)||0,dim:String(d.data().dimension||'')}))
+    CATALOGO_P1=snap.docs.map(d=>({id:d.id,pn:String(d.data().parte||d.id).toUpperCase(),desc:String(d.data().descripcion||'').toUpperCase(),descMat:String(d.data().descripcionMaterial||'').toUpperCase(),tipo:String(d.data().tipo||''),fsc:String(d.data().fscType||''),rev:String(d.data().rev==null?'':d.data().rev),pcs:Number(d.data().pcsPorCaja)||0,peso:Number(d.data().pesoCaja)||0,cpp:Number(d.data().cajasPorPallet)||0,dim:String(d.data().dimension||''),precio:Number(d.data().precio)||0}))
       .sort((a,b)=>a.pn.localeCompare(b.pn));
   }catch(e){ console.error("Catálogo P1:",e); CATALOGO_P1=[]; }
   renderCatalogo(); buildModelosDL(); buildPartesDL(document.getElementById("ip-modelo")?.value.trim().toUpperCase()||'');
@@ -898,7 +898,7 @@ function renderCatalogo(){
   const tb=document.getElementById("cat-table"); if(!tb) return;
   const q=(document.getElementById("cat-filter")?.value||'').trim().toUpperCase();
   const lista=CATALOGO_P1.filter(c=>!q||c.pn.includes(q)||c.desc.includes(q)||c.descMat.includes(q));
-  tb.innerHTML=lista.map(c=>`<tr><td style="font-family:monospace">${c.pn}</td><td>${c.desc}</td><td>${c.descMat||'<span style="color:#f1c40f">—</span>'}</td><td>${c.tipo||'—'}</td><td>${c.fsc||'—'}</td><td>${c.rev||'—'}</td><td>${c.peso||'<span style="color:#f1c40f">—</span>'}</td><td style="font-family:monospace">${c.dim||'<span style="color:#f1c40f">—</span>'}</td><td style="white-space:nowrap"><button class="abtn" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);margin-right:4px" onclick="editarParteCat('${c.id}')">${pt("edit")}</button><button class="abtn" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)" onclick="delCatalogoParte('${c.id}')">🗑 ${ct("del")}</button></td></tr>`).join("");
+  tb.innerHTML=lista.map(c=>`<tr><td style="font-family:monospace">${c.pn}</td><td>${c.desc}</td><td>${c.descMat||'<span style="color:#f1c40f">—</span>'}</td><td>${c.tipo||'—'}</td><td>${c.fsc||'—'}</td><td>${c.rev||'—'}</td><td>${c.peso||'<span style="color:#f1c40f">—</span>'}</td><td style="font-family:monospace">${c.dim||'<span style="color:#f1c40f">—</span>'}</td><td style="font-family:monospace">${c.precio>0?'$'+c.precio:'<span style="color:#f1c40f">—</span>'}</td><td style="white-space:nowrap"><button class="abtn" style="background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4);margin-right:4px" onclick="editarParteCat('${c.id}')">${pt("edit")}</button><button class="abtn" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)" onclick="delCatalogoParte('${c.id}')">🗑 ${ct("del")}</button></td></tr>`).join("");
 }
 window.renderCatalogo=renderCatalogo;
 async function guardarParteCat(pn,desc,mat,pl){
@@ -915,16 +915,17 @@ async function guardarParteCat(pn,desc,mat,pl){
     if(Number(pl.peso)>0) dato.pesoCaja=parseFloat(pl.peso);
     if(Number(pl.cpp)>0) dato.cajasPorPallet=parseInt(pl.cpp);
     if(pl.dim) dato.dimension=pl.dim;
+    const pr=parseFloat(String(pl.precio==null?'':pl.precio).replace(/[^0-9.]/g,'')); if(pr>0) dato.precio=pr;   // precio por pieza (USD)
   }
   await setDoc(doc(db,"catalogo_partes_p1",id),dato,{merge:true});
   return true;
 }
-const PL_IDS=["cat-pn","cat-desc","cat-mat","cat-tipo","cat-fsc","cat-rev","cat-pcs","cat-peso","cat-cpp","cat-dim"];
+const PL_IDS=["cat-pn","cat-desc","cat-mat","cat-tipo","cat-fsc","cat-rev","cat-pcs","cat-peso","cat-cpp","cat-dim","cat-precio"];
 window.editarParteCat=(id)=>{
   const c=CATALOGO_P1.find(x=>x.id===id); if(!c) return;
   const set=(i,v)=>{ const el=document.getElementById(i); if(el) el.value=v||''; };
   set("cat-pn",c.pn); set("cat-desc",c.desc); set("cat-mat",c.descMat); set("cat-tipo",c.tipo); set("cat-fsc",c.fsc); set("cat-rev",c.rev);
-  set("cat-pcs",c.pcs||''); set("cat-peso",c.peso||''); set("cat-cpp",c.cpp||''); set("cat-dim",c.dim);
+  set("cat-pcs",c.pcs||''); set("cat-peso",c.peso||''); set("cat-cpp",c.cpp||''); set("cat-dim",c.dim); set("cat-precio",c.precio||'');
   document.getElementById("cat-pn").scrollIntoView({behavior:"smooth",block:"center"});
 };
 window.addCatalogoParte=async()=>{
@@ -933,7 +934,7 @@ window.addCatalogoParte=async()=>{
   const g=(i)=>document.getElementById(i).value.trim();
   const dimRaw=g("cat-dim"), dimN=normDimTxt(dimRaw);
   if(dimRaw&&!dimN){showToast(pt("dimBad"),"var(--red)");return;}
-  const pl={tipo:g("cat-tipo"),fsc:g("cat-fsc"),rev:g("cat-rev"),pcs:g("cat-pcs"),peso:g("cat-peso"),cpp:1,dim:dimN};
+  const pl={tipo:g("cat-tipo"),fsc:g("cat-fsc"),rev:g("cat-rev"),pcs:g("cat-pcs"),peso:g("cat-peso"),cpp:1,dim:dimN,precio:g("cat-precio")};
   try{ await guardarParteCat(pn,d,mat,pl); PL_IDS.forEach(i=>{document.getElementById(i).value="";});
     showToast(ct("ok"),"var(--green)"); await loadCatalogo(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
@@ -946,7 +947,7 @@ async function importarTexto(txt){
     const pn=(partes[0]||'').trim(), d=(partes[1]||'').trim();
     const conTab=l.includes('\t');
     const mat=(conTab?(partes[2]||''):partes.slice(2).join(' ')).trim();
-    const pl=conTab?{tipo:(partes[3]||'').trim(),fsc:(partes[4]||'').trim(),rev:(partes[5]||'').trim(),pcs:(partes[6]||'').trim(),peso:(partes[7]||'').trim(),cpp:1,dim:normDimTxt(partes[9])}:null;
+    const pl=conTab?{tipo:(partes[3]||'').trim(),fsc:(partes[4]||'').trim(),rev:(partes[5]||'').trim(),pcs:(partes[6]||'').trim(),peso:(partes[7]||'').trim(),cpp:1,dim:normDimTxt(partes[9]),precio:(partes[10]||'').trim()}:null;
     if(/^(n\.?º?\s*de\s*parte|item|part)/i.test(pn)) continue;   // encabezados
     try{ if(await guardarParteCat(pn,d,mat,pl)) n++; }catch(e){ console.error(e); }
   }
@@ -974,6 +975,7 @@ window.subirExcelCatalogo=async(inp)=>{
       if(/^(weight|peso)/.test(x)) return 'peso';
       if(/^(box\/pallet|cajas\/pallet|cajas por pallet)/.test(x)) return 'cpp';
       if(/^dimension|^dimensi/.test(x)) return 'dim';
+      if(/^(precio|price|unit price|가격|단가)/.test(x)) return 'precio';
       return '';
     };
     wb.SheetNames.forEach(nombre=>{
@@ -986,7 +988,7 @@ window.subirExcelCatalogo=async(inp)=>{
         if(cols && cols.pn!=null && /^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/i.test(celdas[cols.pn]||'')){
           const g=(k)=>cols[k]!=null?(celdas[cols[k]]||''):'';
           const mm=g('m').toUpperCase(); if(!mm) return;
-          mapa[celdas[cols.pn].toUpperCase()]={m:mm, mat:g('mat').toUpperCase(), pl:{tipo:g('tipo'),fsc:g('fsc'),rev:g('rev'),pcs:g('pcs'),peso:g('peso'),cpp:1,dim:normDimTxt(g('dim'))}};
+          mapa[celdas[cols.pn].toUpperCase()]={m:mm, mat:g('mat').toUpperCase(), pl:{tipo:g('tipo'),fsc:g('fsc'),rev:g('rev'),pcs:g('pcs'),peso:g('peso'),cpp:1,dim:normDimTxt(g('dim')),precio:g('precio')}};
           return;
         }
         const i=celdas.findIndex(c=>/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/i.test(c));   // ej. GH69-46627A (sin encabezados: PN, Modelo, Descripción)
@@ -1047,6 +1049,7 @@ window.sincronizarPLShipqr=async()=>{
       pcsPorCaja:(/cross\s*pad/i.test(c.tipo||"Cross Pad")?0:(c.pcs||0)), palletUnico:/cross\s*pad/i.test(c.tipo||"Cross Pad"),   // Cross Pad: 1 pallet = lo producido, sin cajas
       pesoCajaCompleta:c.peso||0, cajasPorPallet:1,
       dimension:c.dim||"",
+      ...(c.precio>0?{precioUnitario:c.precio}:{}),
       updated_by:CURRENT_USER?.nombre||CURRENT_USER?.email||"MES P1",
       updated_at:new Date().toISOString()
     },{merge:true}).then(()=>1).catch(e=>{ err=e; return 0; })));
@@ -3518,6 +3521,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="form-field"><label id="cat-l-peso">Peso caja (lbs)</label><input type="number" id="cat-peso" min="0" step="any" placeholder="0"></div>
         <div class="form-field" style="display:none"><label id="cat-l-cpp">Cajas/pallet</label><input type="number" id="cat-cpp" min="0" placeholder="1"></div>
         <div class="form-field"><label id="cat-l-dim">Dimensión pallet (in) LxWxH</label><input type="text" id="cat-dim" placeholder="48x40x50" autocomplete="off"></div>
+        <div class="form-field"><label id="cat-l-precio">Precio por pieza (USD)</label><input type="number" id="cat-precio" min="0" step="any" placeholder="0.00"></div>
       </div>
       <div id="cat-pl-help" style="font-size:.8rem;color:var(--muted);margin-bottom:8px"></div>
       <button class="abtn abtn-add" id="cat-btn-add" onclick="addCatalogoParte()">➕ Agregar parte</button>
@@ -3541,7 +3545,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         </div>
       </details>
       <input type="text" id="cat-filter" oninput="renderCatalogo()" placeholder="Buscar…" style="width:100%;margin:12px 0 8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box">
-      <div id="cat-table-wrap" style="overflow-x:auto"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Modelo</th><th id="cat-th-mat">Descripción del material</th><th id="cat-th-tipo">TYPE</th><th id="cat-th-fsc">FSC type</th><th id="cat-th-rev">Rev</th><th id="cat-th-pcs" style="display:none">Pcs/caja</th><th id="cat-th-peso">Peso</th><th id="cat-th-cpp" style="display:none">Cajas/pallet</th><th id="cat-th-dim">Dim</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
+      <div id="cat-table-wrap" style="overflow-x:auto"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Modelo</th><th id="cat-th-mat">Descripción del material</th><th id="cat-th-tipo">TYPE</th><th id="cat-th-fsc">FSC type</th><th id="cat-th-rev">Rev</th><th id="cat-th-pcs" style="display:none">Pcs/caja</th><th id="cat-th-peso">Peso</th><th id="cat-th-cpp" style="display:none">Cajas/pallet</th><th id="cat-th-dim">Dim</th><th id="cat-th-precio">Precio</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
     </div>
     <div class="acard">
       <h3 id="pt-h">📏 Tipos de pallet y peso Cross Pad</h3>
