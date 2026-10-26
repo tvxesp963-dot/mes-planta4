@@ -1023,10 +1023,10 @@ window.descargarPlantillaShipQR=async()=>{
   const todas=[...CATALOGO_P1].sort((a,b)=>(a.desc+a.pn).localeCompare(b.desc+b.pn));
   const faltan=existentes ? todas.filter(c=>!existentes[c.desc+"__"+c.pn]) : todas;
   if(!faltan.length){ msg.style.color="var(--green)"; msg.textContent=ct("sqAll"); return; }
-  const H=['Model','Part No.','Description','Type','FSC type','Rev','pc/box','weight (lbs)','box/pallet','Box No.','Dimension (in)\nLxWxH'];
-  const filas=faltan.map(c=>[c.desc, c.pn, c.descMat||(c.desc+" CROSS PAD"), c.tipo||"Cross Pad", c.fsc||"", c.rev||"0", c.pcs||"", c.peso||"", 1, "", c.dim||""]);
+  const H=['Model','Part No.','Description','Type','FSC type','Rev','pc/box','weight (lbs)','box/pallet','Box No.','Dimension (in)\nLxWxH','Price (USD/pc)'];
+  const filas=faltan.map(c=>[c.desc, c.pn, c.descMat||(c.desc+" CROSS PAD"), c.tipo||"Cross Pad", c.fsc||"", c.rev||"0", c.pcs||"", c.peso||"", 1, "", c.dim||"", c.precio||""]);
   const ws=XLSX.utils.aoa_to_sheet([H,...filas]);
-  ws["!cols"]=[{wch:16},{wch:16},{wch:24},{wch:12},{wch:12},{wch:6},{wch:10},{wch:14},{wch:11},{wch:10},{wch:24}];
+  ws["!cols"]=[{wch:16},{wch:16},{wch:24},{wch:12},{wch:12},{wch:6},{wch:10},{wch:14},{wch:11},{wch:10},{wch:24},{wch:14}];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Empaque por modelo");
   XLSX.writeFile(wb,`Plantilla_ShipQR_CrossPad_P1_${fechaLocal()}.xlsx`);
