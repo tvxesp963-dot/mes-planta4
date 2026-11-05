@@ -1258,6 +1258,19 @@ window.toggleUser = async (docId,activo) => {
   await updateDoc(doc(db,"usuarios_p1",docId),{activo:!activo});
   showToast("Usuario actualizado","var(--accent)"); loadUsuarios();
 };
+window.changeRole = async (docId,nuevoRol,selEl) => {
+  if(CURRENT_USER?.rol!=="admin"){showToast("Solo un Admin puede cambiar roles","var(--red)");loadUsuarios();return;}
+  if(!["admin","supervisor","operador"].includes(nuevoRol))return;
+  const u=USUARIOS.find(x=>x.docId===docId);
+  if(!u||u.uid===CURRENT_USER.uid){loadUsuarios();return;}
+  const nombres={admin:"Admin",supervisor:"Supervisor",operador:"Operador"};
+  if(!confirm(`${{es:"¿Cambiar el rol de",en:"Change role of",ko:"역할 변경:"}[LANG]||"¿Cambiar el rol de"} "${u.nombre}" → ${nombres[nuevoRol]}?`)){loadUsuarios();return;}
+  try{
+    await updateDoc(doc(db,"usuarios_p1",docId),{rol:nuevoRol});
+    showToast(`✅ ${u.nombre}: ${nombres[nuevoRol]}`,"var(--green)");
+  }catch(e){showToast("Error: "+e.message,"var(--red)");}
+  loadUsuarios();
+};
 window.delUser = async (docId,nombre) => {
   if(!confirm(`¿Eliminar perfil de "${nombre}"?`))return;
   await deleteDoc(doc(db,"usuarios_p1",docId));
@@ -1280,7 +1293,9 @@ function renderAdmin() {
     const isMe=u.uid===CURRENT_USER.uid;
     const tr=document.createElement("tr");
     tr.innerHTML=`<td>${u.email}</td><td><strong>${u.nombre}</strong><br><span style="font-size:.8rem;color:var(--muted)">${u.empleado||""}</span></td>
-      <td><span class="role-badge role-${u.rol}">${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[u.rol]}</span></td>
+      <td>${!isMe?`<select onchange="changeRole('${u.docId}',this.value,this)" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:4px 6px;font-size:.8rem">
+          ${["operador","supervisor","admin"].map(r=>`<option value="${r}" ${u.rol===r?"selected":""}>${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[r]}</option>`).join("")}
+        </select>`:`<span class="role-badge role-${u.rol}">${{admin:"Admin",supervisor:"Supervisor",operador:"Operador"}[u.rol]}</span>`}</td>
       <td>${u.activo?'<span class="dot-on"></span> Activo':'<span class="dot-off"></span> Inactivo'}</td>
       <td>${regs}</td>
       <td>${!isMe?`<button class="abtn abtn-edit" onclick="toggleUser('${u.docId}',${u.activo})">${u.activo?"Desactivar":"Activar"}</button>
@@ -1850,11 +1865,14 @@ function plDimOperador(){
   const l=n("ip-dl"),w=n("ip-dw"),h=n("ip-dh");
   return {l,w,h,ok:l>0&&w>0&&h>0,alguna:l>0||w>0||h>0,txt:(l>0&&w>0&&h>0)?`${l}x${w}x${h}`:''};
 }
+// Partes que se envían a Dallas (ShipQR): prefijo GH90/GH69 + códigos extra temporales (se buscan dentro del N° de parte)
+const PN_EXTRA_DALLAS=["35771A"];
+function pnVaADallas(pu){ pu=String(pu||'').toUpperCase(); return /^(GH90|GH69)/.test(pu)||PN_EXTRA_DALLAS.some(x=>pu.includes(x)); }
 function plValidarDim(){
   const d=plDimOperador();
   const m=MAQUINAS[opMaq];
   const pu=(document.getElementById("ip-parte").value||'').trim().toUpperCase();
-  const exige=!!m && String(m.nombre).toUpperCase()==="TC" && /^(GH90|GH69)/.test(pu);   // las partes que van a ShipQR
+  const exige=!!m && ["TC","TB"].includes(String(m.nombre).toUpperCase()) && pnVaADallas(pu);   // las partes que van a ShipQR
   if(exige && /^GH69/.test(pu) && !palletSelOp()){ showToast(ptt("needPallet"),"var(--red)"); document.getElementById("ip-pallet").focus(); return false; }
   if((exige||d.alguna) && !d.ok){ showToast(pt("needDim"),"var(--red)"); document.getElementById(d.l>0?(d.w>0?"ip-dh":"ip-dw"):"ip-dl").focus(); return false; }
   return true;
@@ -2060,13 +2078,13 @@ function renderShipqr(){
   const hasta=inpHasta?inpHasta.value:HOY;
   const assyRango=REGISTROS.filter(r=>{
     const fecha=r.fecha||"";
-    const esTC=(r.maqNombre||"").toUpperCase()==="TC";
+    const esTC=["TC","TB"].includes((r.maqNombre||"").toUpperCase());
     const pu=(r.parte||"").toUpperCase();
-    const esGH90=pu.startsWith("GH90")||pu.startsWith("GH69");
+    const esGH90=pnVaADallas(pu);
     return esTC && esGH90 && fecha>=desde && fecha<=hasta;
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción TC con PN GH90/GH69 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="8" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción TC/TB para Dallas (GH90/GH69/35771A) entre ${desde} y ${hasta}.</td></tr>`;
     window._shipqrExportRows=[];
     return;
   }
