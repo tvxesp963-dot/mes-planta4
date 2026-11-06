@@ -82,8 +82,9 @@
     <h1>📦 <span data-i18n="title"></span> · P3</h1>
     <div class="sub"><span data-i18n="machine"></span> <span id="maq-nombre">Pre-Kit</span> · <span id="op-name">—</span></div>
 
-    <div id="linea-box"></div>
-    <button type="button" id="btn-linea" class="btn-primary" style="margin-top:8px" onclick="abrirPicker()"></button>
+    <!-- P3 no tiene plan de producción: ya no se pide "confirmar modelo en línea" (se deja oculto) -->
+    <div id="linea-box" style="display:none"></div>
+    <button type="button" id="btn-linea" class="btn-primary" style="display:none" onclick="abrirPicker()"></button>
 
     <div class="badge" style="margin-top:14px">⏰ <span data-i18n="cutDetected"></span>: <b id="corte-auto">—</b> &nbsp;|&nbsp; 🎯 <span data-i18n="target"></span>: <b id="corte-target">—</b></div>
 
@@ -98,7 +99,8 @@
     <select id="ip-modelo" onchange="onModeloChange()"></select>
 
     <label data-i18n="part"></label>
-    <select id="ip-parte"></select>
+    <select id="ip-parte" onchange="onParteChange()"></select>
+    <input type="text" id="ip-parte-otro" style="display:none;margin-top:8px;text-transform:uppercase" maxlength="30" autocomplete="off">
 
     <label data-i18n="qty"></label>
     <input type="number" id="ip-qty" placeholder="500" min="1">
@@ -221,7 +223,7 @@ const I18N = {
     title:"Salida de Pallet", loginSub:"Inicia sesión con tu cuenta MES", email:"Correo", pass:"Contraseña", enter:"Entrar", entering:"Entrando...",
     errFields:"Ingresa correo y contraseña.", errCreds:"Correo o contraseña incorrectos.", notReg:"Tu usuario no está registrado en el sistema.",
     machine:"Máquina", cutDetected:"Corte detectado", target:"Target", shift:"Turno", shiftA:"Turno A", shiftB:"Turno B", shiftC:"Turno C",
-    model:"Modelo", selModel:"— Seleccionar modelo —", part:"N° de Parte", selPart:"— Seleccionar N° Parte —", noParts:"⚠️ Sin partes en el BOM para este modelo",
+    model:"Modelo", selModel:"— Seleccionar modelo —", part:"N° de Parte", selPart:"— Seleccionar N° Parte —", noParts:"⚠️ Sin partes para este modelo", otherPart:"✏️ Otro N° de parte…", typePart:"Escribe el N° de parte (ej. GH90-12345A)",
     qty:"Cantidad en el pallet", defects:"Defectos (opcional)", scrap:"Scrap (opcional)", shipType:"¿Qué tipo de envío es?",
     normal:"Producción normal", replacement:"Remplazo", replNote:"Un Remplazo se jala a ShipQR igual que producción GH90, aunque la parte sea especial (ej. GH69).",
     save:"✅ Registrar pallet", saving:"Guardando...", logout:"Cerrar sesión", histTitle:"Pallets registrados hoy (este corte)", histEmpty:"Sin pallets registrados en este corte todavía.", pcs:"pz",
@@ -244,7 +246,7 @@ const I18N = {
     title:"Pallet Output", loginSub:"Sign in with your MES account", email:"Email", pass:"Password", enter:"Sign in", entering:"Signing in...",
     errFields:"Enter email and password.", errCreds:"Wrong email or password.", notReg:"Your user is not registered in the system.",
     machine:"Machine", cutDetected:"Detected cut", target:"Target", shift:"Shift", shiftA:"Shift A", shiftB:"Shift B", shiftC:"Shift C",
-    model:"Model", selModel:"— Select model —", part:"Part No.", selPart:"— Select part No. —", noParts:"⚠️ No parts in the BOM for this model",
+    model:"Model", selModel:"— Select model —", part:"Part No.", selPart:"— Select part No. —", noParts:"⚠️ No parts for this model", otherPart:"✏️ Other part No.…", typePart:"Type the part No. (e.g. GH90-12345A)",
     qty:"Quantity on the pallet", defects:"Defects (optional)", scrap:"Scrap (optional)", shipType:"What type of shipment is it?",
     normal:"Normal production", replacement:"Replacement", replNote:"A Replacement is pulled into ShipQR just like GH90 production, even if the part is special (e.g. GH69).",
     save:"✅ Register pallet", saving:"Saving...", logout:"Sign out", histTitle:"Pallets registered today (this cut)", histEmpty:"No pallets registered in this cut yet.", pcs:"pcs",
@@ -267,7 +269,7 @@ const I18N = {
     title:"팔레트 출고", loginSub:"MES 계정으로 로그인", email:"이메일", pass:"비밀번호", enter:"로그인", entering:"로그인 중...",
     errFields:"이메일과 비밀번호를 입력하세요.", errCreds:"이메일 또는 비밀번호가 올바르지 않습니다.", notReg:"시스템에 등록되지 않은 사용자입니다.",
     machine:"설비", cutDetected:"감지된 컷", target:"목표", shift:"근무조", shiftA:"A조", shiftB:"B조", shiftC:"C조",
-    model:"모델", selModel:"— 모델 선택 —", part:"부품 번호", selPart:"— 부품 번호 선택 —", noParts:"⚠️ 이 모델의 BOM에 부품이 없습니다",
+    model:"모델", selModel:"— 모델 선택 —", part:"부품 번호", selPart:"— 부품 번호 선택 —", noParts:"⚠️ 이 모델의 부품이 없습니다", otherPart:"✏️ 다른 부품 번호…", typePart:"부품 번호를 입력하세요 (예: GH90-12345A)",
     qty:"팔레트 수량", defects:"불량 (선택)", scrap:"스크랩 (선택)", shipType:"출하 유형은 무엇입니까?",
     normal:"정상 생산", replacement:"교체", replNote:"교체는 특수 부품(예: GH69)이어도 GH90 생산과 동일하게 ShipQR로 전송됩니다.",
     save:"✅ 팔레트 등록", saving:"저장 중...", logout:"로그아웃", histTitle:"오늘 등록된 팔레트 (이번 컷)", histEmpty:"이번 컷에 등록된 팔레트가 없습니다.", pcs:"개",
@@ -370,18 +372,33 @@ window.setTipoEnvio = (tipo) => {
   btnRemplazo.style.color = !esPlan ? '#e67e22' : 'var(--muted)';
 };
 
+// P3 NO usa plan de producción: la captura queda abierta. Los MODELOS salen del "Empaque por modelo" de ShipQR
+// (colección shipqr_empaque_master). Las PARTES = las de ese empaque (MODELO__PARTE) + las del BOM para ese modelo + "Otro".
+let EMP_PARTES = {};   // modelo -> Set de partes
 async function cargarBOM(){
+  EMP_PARTES = {}; BOM_ACTIVO = [];
   try{
-    const bomDoc = await getDoc(doc(db, CFG.BOM_COL, CFG.BOM_DOC));
-    if(!bomDoc.exists()){ BOM_ACTIVO=[]; MODELOS_BOM=[]; llenarModelos(); return; }
-    BOM_ACTIVO = JSON.parse(bomDoc.data().bom || '[]');
-    MODELOS_BOM = [...new Set(BOM_ACTIVO.map(r=>r.sm).filter(Boolean))].sort();
-    llenarModelos();
+    const ms = await getDocs(collection(db, "shipqr_empaque_master"));
+    ms.forEach(d=>{
+      const x = d.data() || {};
+      const id = String(d.id).toUpperCase();
+      const partes = id.split("__");
+      const mod = String(x.modelo || partes[0] || '').trim().toUpperCase();
+      const pn  = String(x.numeroParte || partes[1] || '').trim().toUpperCase();
+      if(!mod) return;
+      if(!EMP_PARTES[mod]) EMP_PARTES[mod] = new Set();
+      if(pn) EMP_PARTES[mod].add(pn);
+    });
   }catch(e){
-    BOM_ACTIVO=[]; MODELOS_BOM=[];
-    llenarModelos();
+    console.warn('No se pudo leer el Empaque por modelo de ShipQR:', e);
     showToast(t('bomErr'), "var(--red)");
   }
+  try{   // el BOM solo completa las partes de cada modelo (no define qué modelos aparecen)
+    const bomDoc = await getDoc(doc(db, CFG.BOM_COL, CFG.BOM_DOC));
+    if(bomDoc.exists()) BOM_ACTIVO = JSON.parse(bomDoc.data().bom || '[]');
+  }catch(e){ BOM_ACTIVO = []; }
+  MODELOS_BOM = Object.keys(EMP_PARTES).sort();
+  llenarModelos();
 }
 
 function llenarModelos(){
@@ -398,20 +415,34 @@ function llenarPartes(seleccion){
   const actual = seleccion || selParte.value;
   if(!modelo){
     selParte.innerHTML = `<option value="">${t('selPart')}</option>`;
+    onParteChange();
     return;
   }
-  const partes = [...new Set(BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim()===modelo).map(b=>b.pn.trim().toUpperCase()))].sort();
-  if(!partes.length){
-    selParte.innerHTML = `<option value="">${t('noParts')}</option>`;
-    return;
-  }
-  selParte.innerHTML = `<option value="">${t('selPart')}</option>` +
-    partes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("");
+  const mUp = modelo.toUpperCase();
+  const partes = [...new Set([
+    ...(EMP_PARTES[mUp] ? [...EMP_PARTES[mUp]] : []),
+    ...BOM_ACTIVO.filter(b=>b.pn && b.sm && b.sm.trim().toUpperCase()===mUp).map(b=>b.pn.trim().toUpperCase())
+  ])].sort();
+  selParte.innerHTML = (partes.length ? `<option value="">${t('selPart')}</option>` : `<option value="">${t('noParts')}</option>`) +
+    partes.map(p=>`<option value="${esc(p)}">${esc(p)}</option>`).join("") +
+    `<option value="__OTRO__">${t('otherPart')}</option>`;
   if(actual && partes.includes(actual.toUpperCase())) selParte.value = actual.toUpperCase();
   else if(partes.length === 1) selParte.value = partes[0];
+  onParteChange();
 }
 
 window.onModeloChange = () => { llenarPartes(); };
+window.onParteChange = () => {
+  const otro = document.getElementById("ip-parte-otro");
+  const esOtro = document.getElementById("ip-parte").value === "__OTRO__";
+  otro.style.display = esOtro ? "block" : "none";
+  otro.placeholder = t('typePart');
+  if(!esOtro) otro.value = "";
+};
+function parteElegida(){
+  const v = document.getElementById("ip-parte").value.trim();
+  return (v === "__OTRO__" ? document.getElementById("ip-parte-otro").value : v).trim().toUpperCase();
+}
 
 window.doLogin = async () => {
   const email = document.getElementById("lg-email").value.trim();
@@ -488,7 +519,7 @@ onAuthStateChanged(auth, async (fireUser) => {
   refrescarCorte();
   setTipoEnvio('PLAN');
   await cargarBOM();
-  escucharLinea();
+  // (sin escucharLinea(): en P3 no hay plan ni "modelo en línea")
   await cargarHistorial();
   aplicarIdioma();
 });
@@ -671,21 +702,15 @@ window.guardarPallet = async () => {
 
   const turno  = document.getElementById("ip-turno").value;
   const modelo = document.getElementById("ip-modelo").value.trim().toUpperCase();
-  const parte  = document.getElementById("ip-parte").value.trim().toUpperCase();
+  const parte  = parteElegida();
   const qty    = parseInt(document.getElementById("ip-qty").value) || 0;
   const def    = parseInt(document.getElementById("ip-def").value) || 0;
   const scrap  = parseInt(document.getElementById("ip-scrap").value) || 0;
   const esRemplazo = tipoEnvio === 'REMPLAZO';
 
-  if(!LINEA){ errEl.textContent=t('mustConfirm'); errEl.style.display="block"; return; }
   if(!modelo){ errEl.textContent=t('errModel'); errEl.style.display="block"; return; }
   if(!parte){ errEl.textContent=t('errPart'); errEl.style.display="block"; return; }
   if(qty<=0){ errEl.textContent=t('errQty'); errEl.style.display="block"; return; }
-
-  if(!esRemplazo && modelo !== (LINEA.sm||'').toUpperCase()){
-    if(!window.confirm(t('changedAsk',{a:LINEA.sm, b:modelo}))) return;
-    if(!(await guardarLinea(document.getElementById("ip-modelo").value.trim(), parte))) return;
-  }
 
   refrescarCorte();
   const target = MAQUINA.cortes[corteHoy] || MAQUINA.target;
