@@ -290,7 +290,7 @@ window.abrirNuevoRegistro = function() {
         <select id="nr-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
       </div>
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Defectos</div><input id="er-def" type="number" value="${reg.def||reg.defectos||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Scrap</div><input id="er-scrap" type="number" value="${reg.scrap||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
         <select id="nr-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
       </div>
       <div>
@@ -512,7 +512,7 @@ async function loadModelos(){
     buildModelosDL();
     if(status){
       if(MODELOS_LIST.length){
-        status.textContent=`ℹ️ ${MODELOS_LIST.length} modelos en el BOM (${bomData.semana||''}) — escribe el modelo tal como aparece`;
+        status.textContent=`ℹ️ ${MODELOS_LIST.length} modelos en el BOM (${bomData.semana||''}) — toca el campo y elige de la lista (o escribe el modelo)`;
         status.style.color='var(--muted)';
       }else{
         status.textContent='⚠️ El BOM activo no contiene modelos.';
@@ -528,7 +528,219 @@ function buildModelosDL(){
   const opts='<option value="">— Seleccionar modelo —</option>'+MODELOS_LIST.map(m=>`<option value="${m}">${m}</option>`).join("");
   const cmBueno=document.getElementById("cm-bueno");
   if(cmBueno)cmBueno.innerHTML=opts;
+  // Lista de modelos del BOM Simulator (+ los del catálogo P3) para elegir en la captura del operador
+  const dl=document.getElementById("dl-ip-modelos");
+  if(dl){
+    const extra=(typeof CATALOGO_P3!=='undefined')?CATALOGO_P3.map(c=>c.modelo).filter(Boolean):[];
+    const todos=[...new Set([...MODELOS_LIST,...extra])].sort();
+    dl.innerHTML=todos.map(m=>`<option value="${m}"></option>`).join("");
+  }
 }
+/* ══ CATÁLOGO P3: partes que NO están en el BOM y se envían a Dallas (ej. GH90 bandita) ══ */
+const CAT_COL=()=>collection(db,"catalogo_partes_p3");
+let CATALOGO_P3=[];
+let SHIPQR_POR_KEY={};
+const CAT_T={
+  es:{h:"📚 Catálogo de partes (envío a Dallas)",pn:"N° Parte",model:"Modelo",desc:"Descripción material",tipo:"Tipo",fsc:"FSC",rev:"Rev",pcs:"Pzas/caja",peso:"Peso caja (lb)",cpp:"Cajas/pallet",dim:"Dimensión pallet",acc:"Acciones",
+      add:"💾 Guardar parte",need:"Captura N° de parte y modelo",ok:"✅ Guardada",conf:"¿Eliminar esta parte del catálogo?",search:"Buscar…",bulk:"Pegar lista desde Excel (columnas: Parte, Modelo, Descripción, Tipo, FSC, Rev, Pzas/caja, Peso, Cajas/pallet, Dimensión)",imp:"📥 Importar lo pegado",imported:"✅ Importadas: ",
+      upl:"📤 Subir Excel",file:"O sube un Excel (.xlsx/.csv) con esas mismas columnas",reading:"Leyendo…",none:"No encontré partes en el archivo",done:"✅ Importadas: ",
+      sync:"🔄 Recargar datos de caja/pallet desde ShipQR",syncOk:"✅ Partes con datos de ShipQR: ",syncMiss:"sin datos en ShipQR: ",syncNone:"No hay partes en el catálogo",syncErr:"No pude leer ShipQR. ",
+      help:"Pzas/caja, Peso y Cajas/pallet se toman del «Empaque por modelo» de ShipQR (no se capturan aquí). Si una parte sale en rojo «⚠ ShipQR», captura su empaque en ShipQR con el mismo modelo y presiona «Recargar».",
+      sel:"📚 Parte del catálogo (opcional)",selPh:"— Elegir parte del catálogo —",selHint:"Al elegirla se llenan Modelo y N° Parte",dimBad:"Dimensión inválida. Usa el formato 48x40x50"},
+  en:{h:"📚 Parts catalog (shipment to Dallas)",pn:"Part No.",model:"Model",desc:"Material description",tipo:"Type",fsc:"FSC",rev:"Rev",pcs:"Pcs/box",peso:"Box weight (lb)",cpp:"Boxes/pallet",dim:"Pallet dimension",acc:"Actions",
+      add:"💾 Save part",need:"Enter part number and model",ok:"✅ Saved",conf:"Delete this part from the catalog?",search:"Search…",bulk:"Paste list from Excel (columns: Part, Model, Description, Type, FSC, Rev, Pcs/box, Weight, Boxes/pallet, Dimension)",imp:"📥 Import pasted",imported:"✅ Imported: ",
+      upl:"📤 Upload Excel",file:"Or upload an Excel (.xlsx/.csv) with the same columns",reading:"Reading…",none:"No parts found in the file",done:"✅ Imported: ",
+      sync:"🔄 Reload box/pallet data from ShipQR",syncOk:"✅ Parts with ShipQR data: ",syncMiss:"missing in ShipQR: ",syncNone:"There are no parts in the catalog",syncErr:"Could not read ShipQR. ",
+      help:"Pcs/box, Weight and Boxes/pallet come from ShipQR's «Packing per model» (not entered here). If a part shows red «⚠ ShipQR», enter its packing in ShipQR with the same model and press «Reload».",
+      sel:"📚 Catalog part (optional)",selPh:"— Choose a catalog part —",selHint:"Choosing it fills Model and Part No.",dimBad:"Invalid dimension. Use the format 48x40x50"},
+  ko:{h:"📚 부품 카탈로그 (달라스 출하)",pn:"부품번호",model:"모델",desc:"자재 설명",tipo:"유형",fsc:"FSC",rev:"Rev",pcs:"박스당 수량",peso:"박스 무게 (lb)",cpp:"팔레트당 박스",dim:"팔레트 치수",acc:"작업",
+      add:"💾 부품 저장",need:"부품번호와 모델을 입력하세요",ok:"✅ 저장됨",conf:"카탈로그에서 이 부품을 삭제할까요?",search:"검색…",bulk:"엑셀에서 목록 붙여넣기 (열: 부품, 모델, 설명, 유형, FSC, Rev, 박스당 수량, 무게, 팔레트당 박스, 치수)",imp:"📥 붙여넣은 내용 가져오기",imported:"✅ 가져옴: ",
+      upl:"📤 엑셀 업로드",file:"또는 같은 열의 엑셀(.xlsx/.csv)을 업로드하세요",reading:"읽는 중…",none:"파일에서 부품을 찾지 못했습니다",done:"✅ 가져옴: ",
+      sync:"🔄 ShipQR에서 박스/팔레트 데이터 다시 불러오기",syncOk:"✅ ShipQR 데이터가 있는 부품: ",syncMiss:"ShipQR에 없음: ",syncNone:"카탈로그에 부품이 없습니다",syncErr:"ShipQR을 읽을 수 없습니다. ",
+      help:"박스당 수량, 무게, 팔레트당 박스는 ShipQR의 «모델별 포장»에서 가져옵니다 (여기서 입력하지 않음). 부품이 빨간색 «⚠ ShipQR»로 표시되면 같은 모델로 ShipQR에 포장 정보를 입력하고 «다시 불러오기»를 누르세요.",
+      sel:"📚 카탈로그 부품 (선택)",selPh:"— 카탈로그 부품 선택 —",selHint:"선택하면 모델과 부품번호가 채워집니다",dimBad:"치수가 잘못되었습니다. 48x40x50 형식으로 입력하세요"}
+};
+const ct=(k)=>((CAT_T[LANG]||CAT_T.es)[k]||CAT_T.es[k]);
+const SQ_T={
+  es:{title:"🚚 Enviar a ShipQR",prod:"Producidas",pend:"Pendiente",qty:"Cantidad a enviar",dim:"Dimensión del pallet (L×W×H in) · opcional",normal:"📦 Producción normal",remp:"⚠️ Remplazo",send:"🚚 Enviar",cancel:"Cancelar envío",badQty:"Cantidad inválida.",onlyLeft:"Solo quedan pendientes: ",badDim:"Dimensión inválida, ej. 48x40x50",
+      full:"Este lote ya fue enviado por completo.",saved:"✅ Envío guardado. ¿No se abrió ShipQR para crear el label?",open:"🏷️ Abrir ShipQR y crear label",errReg:"Error al registrar el envío: ",
+      blocked:"⚠️ El navegador bloqueó la ventana de ShipQR.\n\nEl envío YA quedó guardado en el MES, pero el lote todavía NO se ha creado en ShipQR.\n\nAbre este link a mano para crearlo:\n",
+      undo:"↩ Deshacer envío",undoQ:"¿Deshacer el último envío de ",undoQ2:"Esto lo regresa a pendiente para volver a enviarlo.",errUndo:"Error al deshacer: ",
+      none:"Sin envíos registrados",pzas:"pzas",st_pend:"PENDIENTE",st_part:"PARCIAL",st_sent:"✓ ENVIADO",empty:"Sin producción Pre-Kit GH90 ni partes del catálogo entre ",and:" y "},
+  en:{title:"🚚 Send to ShipQR",prod:"Produced",pend:"Pending",qty:"Quantity to send",dim:"Pallet dimension (L×W×H in) · optional",normal:"📦 Normal production",remp:"⚠️ Replacement",send:"🚚 Send",cancel:"Cancel",badQty:"Invalid quantity.",onlyLeft:"Only pending left: ",badDim:"Invalid dimension, e.g. 48x40x50",
+      full:"This lot was already fully sent.",saved:"✅ Shipment saved. Did ShipQR not open to create the label?",open:"🏷️ Open ShipQR and create label",errReg:"Error saving the shipment: ",
+      blocked:"⚠️ The browser blocked the ShipQR window.\n\nThe shipment IS saved in the MES, but the lot has NOT been created in ShipQR yet.\n\nOpen this link manually to create it:\n",
+      undo:"↩ Undo shipment",undoQ:"Undo the last shipment of ",undoQ2:"This returns it to pending so it can be sent again.",errUndo:"Error undoing: ",
+      none:"No shipments recorded",pzas:"pcs",st_pend:"PENDING",st_part:"PARTIAL",st_sent:"✓ SENT",empty:"No Pre-Kit GH90 production or catalog parts between ",and:" and "},
+  ko:{title:"🚚 ShipQR로 전송",prod:"생산",pend:"대기",qty:"전송 수량",dim:"팔레트 치수 (L×W×H in) · 선택",normal:"📦 정상 생산",remp:"⚠️ 교체",send:"🚚 전송",cancel:"전송 취소",badQty:"잘못된 수량입니다.",onlyLeft:"남은 수량: ",badDim:"치수가 잘못되었습니다. 예: 48x40x50",
+      full:"이 로트는 이미 전부 전송되었습니다.",saved:"✅ 전송이 저장되었습니다. ShipQR이 열리지 않았나요?",open:"🏷️ ShipQR 열고 라벨 만들기",errReg:"전송 저장 오류: ",
+      blocked:"⚠️ 브라우저가 ShipQR 창을 차단했습니다.\n\n전송은 MES에 저장되었지만 ShipQR에는 아직 로트가 생성되지 않았습니다.\n\n아래 링크를 직접 열어 생성하세요:\n",
+      undo:"↩ 전송 취소",undoQ:"마지막 전송을 취소할까요: ",undoQ2:"대기 상태로 돌아가 다시 전송할 수 있습니다.",errUndo:"취소 오류: ",
+      none:"전송 기록 없음",pzas:"개",st_pend:"대기",st_part:"부분",st_sent:"✓ 전송됨",empty:"기간 내 Pre-Kit GH90 생산 또는 카탈로그 부품 없음: ",and:" ~ "}
+};
+const sqt=(k)=>((SQ_T[LANG]||SQ_T.es)[k]||SQ_T.es[k]);
+function normDimTxt(sv){
+  const m=String(sv==null?'':sv).trim().replace(/,/g,'.').match(/^(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)\s*[x×*]\s*(\d+(?:\.\d+)?)$/i);
+  return m?`${+m[1]}x${+m[2]}x${+m[3]}`:'';
+}
+const catEsc=(x)=>String(x==null?'':x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+const CAT_FIELDS=["cat-pn","cat-model","cat-mat","cat-tipo","cat-fsc","cat-rev","cat-pcs","cat-peso","cat-cpp","cat-dim"];
+function catTexts(){
+  const set=(id,v)=>{const el=document.getElementById(id); if(el) el.textContent=v;};
+  set("cat-h",ct("h")); set("cat-btn-add",ct("add")); set("cat-l-bulk",ct("bulk")); set("cat-btn-imp",ct("imp")); set("cat-btn-file",ct("upl")); set("cat-l-file",ct("file")); set("cat-btn-sync",ct("sync")); set("cat-help",ct("help"));
+  [["pn","pn"],["model","model"],["mat","desc"],["tipo","tipo"],["fsc","fsc"],["rev","rev"],["pcs","pcs"],["peso","peso"],["cpp","cpp"],["dim","dim"]].forEach(([id,k])=>{ set("cat-l-"+id,ct(k)); set("cat-th-"+id,ct(k)); });
+  set("cat-th-acc",ct("acc"));
+  ["cat-pcs","cat-peso","cat-cpp"].forEach(id=>{const e=document.getElementById(id); if(e&&e.parentElement) e.parentElement.style.display="none";});   // vienen de ShipQR, no se capturan aquí
+  const f=document.getElementById("cat-filter"); if(f) f.placeholder=ct("search");
+  set("lbl-cat",ct("sel")); set("cat-sel-hint",ct("selHint"));
+  const s=document.getElementById("ip-cat"); if(s&&s.options.length) s.options[0].textContent=ct("selPh");
+}
+async function loadCatalogo(){
+  try{
+    const snap=await getDocs(CAT_COL());
+    CATALOGO_P3=snap.docs.map(d=>{const x=d.data(); return {id:d.id,pn:String(x.parte||d.id).toUpperCase(),modelo:String(x.modelo||'').toUpperCase(),mat:String(x.descripcionMaterial||'').toUpperCase(),tipo:String(x.tipo||''),fsc:String(x.fscType||''),rev:String(x.rev==null?'':x.rev),pcs:Number(x.pcsPorCaja)||0,peso:Number(x.pesoCaja)||0,cpp:Number(x.cajasPorPallet)||0,dim:String(x.dimension||'')};})
+      .sort((a,b)=>a.pn.localeCompare(b.pn));
+    // Empaque por modelo de ShipQR = ÚNICA fuente de Pzas/caja, Peso y Cajas/pallet (y tipo/FSC/rev/dimensión si ahí existen).
+    // Misma búsqueda que usa ShipQR: primero MODELO__PARTE (excepción), si no MODELO.
+    try{
+      const ms=await getDocs(collection(db,"shipqr_empaque_master")); const M={};
+      ms.forEach(d=>{M[d.id.toUpperCase()]=d.data();});
+      CATALOGO_P3.forEach(c=>{
+        const m=M[c.modelo+"__"+c.pn]||M[c.modelo];
+        if(m&&(Number(m.pcsPorCaja)>0||m.palletUnico)){
+          c.deShipqr=true;
+          c.pcs=Number(m.pcsPorCaja)||0; c.peso=Number(m.pesoCajaCompleta)||0; c.cpp=Number(m.cajasPorPallet)||0;
+          if(m.tipo) c.tipo=String(m.tipo); if(m.fscType) c.fsc=String(m.fscType);
+          if(m.rev!=null&&m.rev!=='') c.rev=String(m.rev); if(m.dimension) c.dim=String(m.dimension);
+        } else { c.deShipqr=false; c.pcs=0; c.peso=0; c.cpp=0; }
+      });
+    }catch(e){ console.error("Empaque ShipQR:",e); }
+  }catch(e){ console.error("Catálogo P3:",e); CATALOGO_P3=[]; }
+  renderCatalogo(); pintarSelCat(); buildModelosDL();
+  if(typeof renderShipqr==='function') try{renderShipqr();}catch(e){}
+}
+function pintarSelCat(){
+  const s=document.getElementById("ip-cat"); if(!s) return;
+  const cur=s.value;
+  s.innerHTML=`<option value="">${ct("selPh")}</option>`+CATALOGO_P3.map(c=>`<option value="${catEsc(c.id)}">${catEsc(c.pn)} · ${catEsc(c.modelo)}</option>`).join('');
+  if(cur&&CATALOGO_P3.some(c=>c.id===cur)) s.value=cur;
+  const box=document.getElementById("cat-sel-box"); if(box) box.style.display=CATALOGO_P3.length?"block":"none";
+}
+window.onCatSel=()=>{
+  const c=CATALOGO_P3.find(x=>x.id===document.getElementById("ip-cat").value); if(!c) return;
+  const m=document.getElementById("ip-modelo"), p=document.getElementById("ip-parte");
+  m.value=c.modelo; p.value=c.pn;
+  const pe=document.getElementById('pe'); if(pe){pe.textContent=p.value.length+'/11'; pe.style.color=p.value.length===11?'#2ecc71':'#f1c40f';}
+  if(typeof buildMaqGrid==='function') try{buildMaqGrid();}catch(e){}
+};
+function renderCatalogo(){
+  catTexts();
+  const cnt=document.getElementById("cat-count"); if(cnt) cnt.textContent=CATALOGO_P3.length;
+  const tb=document.getElementById("cat-table"); if(!tb) return;
+  const q=(document.getElementById("cat-filter")?.value||'').trim().toUpperCase();
+  const lista=CATALOGO_P3.filter(c=>!q||c.pn.includes(q)||c.modelo.includes(q)||c.mat.includes(q));
+  const inp=(c,k,v,w,ph)=>`<input id="ce-${k}-${catEsc(c.id)}" value="${catEsc(v)}" placeholder="${ph||''}" style="width:${w}px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:6px;box-sizing:border-box;font-size:.8rem">`;
+  // Pzas/caja, Peso y Cajas/pallet son solo lectura: vienen del Empaque por modelo de ShipQR (rojo = falta en ShipQR)
+  const ro=(c,v)=>`<span title="ShipQR" style="display:inline-block;min-width:50px;padding:6px;border-radius:6px;font-size:.8rem;border:1px solid ${c.deShipqr?'var(--border)':'#e74c3c'};color:${c.deShipqr?'var(--text)':'#e74c3c'}">${c.deShipqr?catEsc(v):'⚠ ShipQR'}</span>`;
+  tb.innerHTML=lista.map(c=>`<tr><td style="font-family:monospace;white-space:nowrap">${catEsc(c.pn)}</td>
+    <td>${inp(c,'modelo',c.modelo,110)}</td><td>${inp(c,'mat',c.mat,150)}</td><td>${inp(c,'tipo',c.tipo,80)}</td><td>${inp(c,'fsc',c.fsc,70)}</td><td>${inp(c,'rev',c.rev,50)}</td>
+    <td>${ro(c,c.pcs)}</td><td>${ro(c,c.peso)}</td><td>${ro(c,c.cpp)}</td><td>${inp(c,'dim',c.dim,90,'48x40x50')}</td>
+    <td style="white-space:nowrap"><button class="abtn abtn-add" onclick="guardarFilaCatalogo('${catEsc(c.id)}')">💾</button> <button class="abtn" style="background:rgba(231,76,60,.15);color:#e74c3c;border:1px solid rgba(231,76,60,.4)" onclick="delCatalogoParte('${catEsc(c.id)}')">🗑</button></td></tr>`).join('');
+}
+// Guarda los cambios hechos directo en la fila de la tabla (permite también vaciar un dato)
+window.guardarFilaCatalogo=async(id)=>{
+  const c=CATALOGO_P3.find(x=>x.id===id); if(!c) return;
+  const g=(k)=>document.getElementById("ce-"+k+"-"+id).value.trim();
+  const modelo=g("modelo").toUpperCase();
+  if(!modelo){ showToast(ct("need"),"var(--red)"); return; }
+  const dimRaw=g("dim"), dimN=normDimTxt(dimRaw);
+  if(dimRaw&&!dimN){ showToast(ct("dimBad"),"var(--red)"); return; }
+  const num=(k,f)=>{const n=f(g(k)); return n>0?n:0;};
+  try{
+    await setDoc(doc(db,"catalogo_partes_p3",id),{
+      parte:c.pn, modelo, descripcionMaterial:g("mat").toUpperCase(), tipo:g("tipo"), fscType:g("fsc"), rev:g("rev"),
+      dimension:dimN,   // Pzas/caja, peso y cajas/pallet ya NO se guardan aquí: se leen de ShipQR
+      activo:true, actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||'', tsLocal:new Date().toISOString()
+    },{merge:true});
+    showToast(ct("ok"),"var(--green)"); await loadCatalogo();
+  }catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+window.renderCatalogo=renderCatalogo;
+async function guardarParteCat(pn,modelo,mat,pl){
+  pn=String(pn||'').trim().toUpperCase(); modelo=String(modelo||'').trim().toUpperCase(); mat=String(mat||'').trim().toUpperCase();
+  if(!pn||!modelo) return false;
+  const id=pn.replace(/\//g,'-');
+  const dato={parte:pn,modelo,activo:true,creadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||'',tsLocal:new Date().toISOString()};
+  if(mat) dato.descripcionMaterial=mat;
+  if(pl){
+    if(pl.tipo) dato.tipo=String(pl.tipo).trim();
+    if(pl.fsc) dato.fscType=String(pl.fsc).trim();
+    if(pl.rev!==''&&pl.rev!=null) dato.rev=String(pl.rev).trim();
+    // Pzas/caja, peso y cajas/pallet no se guardan: la fuente es el Empaque por modelo de ShipQR
+    if(pl.dim) dato.dimension=pl.dim;
+  }
+  await setDoc(doc(db,"catalogo_partes_p3",id),dato,{merge:true});
+  return true;
+}
+window.editarParteCat=(id)=>{
+  const c=CATALOGO_P3.find(x=>x.id===id); if(!c) return;
+  const v={ "cat-pn":c.pn,"cat-model":c.modelo,"cat-mat":c.mat,"cat-tipo":c.tipo,"cat-fsc":c.fsc,"cat-rev":c.rev,"cat-pcs":c.pcs||'',"cat-peso":c.peso||'',"cat-cpp":c.cpp||'',"cat-dim":c.dim };
+  CAT_FIELDS.forEach(i=>{const el=document.getElementById(i); if(el) el.value=v[i]||'';});
+  document.getElementById("cat-pn").scrollIntoView({behavior:"smooth",block:"center"});
+};
+window.addCatalogoParte=async()=>{
+  const g=(i)=>document.getElementById(i).value.trim();
+  if(!g("cat-pn")||!g("cat-model")){ showToast(ct("need"),"var(--red)"); return; }
+  const dimRaw=g("cat-dim"), dimN=normDimTxt(dimRaw);
+  if(dimRaw&&!dimN){ showToast(ct("dimBad"),"var(--red)"); return; }
+  const pl={tipo:g("cat-tipo")||"Bandita",fsc:g("cat-fsc"),rev:g("cat-rev"),pcs:g("cat-pcs"),peso:g("cat-peso"),cpp:g("cat-cpp"),dim:dimN};
+  try{ await guardarParteCat(g("cat-pn"),g("cat-model"),g("cat-mat"),pl); CAT_FIELDS.forEach(i=>{document.getElementById(i).value="";}); showToast(ct("ok"),"var(--green)"); await loadCatalogo(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+window.delCatalogoParte=async(id)=>{
+  if(!confirm(ct("conf"))) return;
+  try{ await deleteDoc(doc(db,"catalogo_partes_p3",id)); await loadCatalogo(); }
+  catch(e){ showToast("Error: "+e.message,"var(--red)"); }
+};
+// Una fila: [Parte, Modelo, Descripción, Tipo, FSC, Rev, Pzas/caja, Peso, Cajas/pallet, Dimensión]
+async function guardarFilaCat(c){
+  const pn=String(c[0]||'').trim();
+  if(!/^[A-Za-z]{2}\d{2}-\d{4,}[A-Za-z]?$/.test(pn)) return false;
+  const s=(i)=>String(c[i]==null?'':c[i]).trim();
+  return guardarParteCat(pn,s(1),s(2),{tipo:s(3)||"Bandita",fsc:s(4),rev:s(5),pcs:s(6),peso:s(7),cpp:s(8),dim:normDimTxt(s(9))});
+}
+window.importarCatalogoPegado=async()=>{
+  const ta=document.getElementById("cat-bulk"); let n=0;
+  for(const l of ta.value.split(/\r?\n/).map(x=>x.trim()).filter(Boolean)){
+    const c=l.includes('\t')?l.split('\t'):l.split(/;|,/);
+    try{ if(await guardarFilaCat(c)) n++; }catch(e){ console.error(e); }
+  }
+  ta.value=""; showToast(ct("imported")+n,"var(--green)"); await loadCatalogo();
+};
+window.subirExcelCatalogo=async(inp)=>{
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const msg=document.getElementById("cat-file-msg"); msg.style.color="var(--muted)"; msg.textContent=ct("reading");
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array"}); let n=0;
+    for(const nombre of wb.SheetNames){
+      const filas=XLSX.utils.sheet_to_json(wb.Sheets[nombre],{header:1,defval:""});
+      for(const fila of filas){ try{ if(await guardarFilaCat(fila)) n++; }catch(e){ console.error(e); } }
+    }
+    if(!n){ msg.style.color="var(--red)"; msg.textContent=ct("none"); }
+    else { msg.style.color="var(--green)"; msg.textContent=ct("done")+n; await loadCatalogo(); }
+  }catch(e){ msg.style.color="var(--red)"; msg.textContent="Error: "+e.message; }
+  inp.value="";
+};
+// Copia caja/pallet/peso al maestro de ShipQR (misma clave MODELO__PARTE que usa ShipQR)
+window.sincronizarMasterShipqr=async()=>{
+  const msg=document.getElementById("cat-file-msg");
+  // YA NO escribe en ShipQR (antes pisaba el Empaque por modelo con ceros). Solo vuelve a leer el Empaque por modelo de ShipQR.
+  msg.style.color="var(--muted)"; msg.textContent=ct("reading");
+  try{ await loadCatalogo(); }catch(e){ msg.style.color="var(--red)"; msg.textContent=ct("syncErr")+e.message; return; }
+  const n=CATALOGO_P3.filter(c=>c.deShipqr).length, f=CATALOGO_P3.length-n;
+  msg.style.color=f?"#f1c40f":"var(--green)"; msg.textContent=ct("syncOk")+n+(f?" · ⚠ "+ct("syncMiss")+f:"");
+};
+
 const USERS_COL = () => collection(db, "usuarios_p3");
 
 const CAUSAS_PARO_DEFAULT = [
@@ -619,7 +831,7 @@ function showApp() {
   document.getElementById("login-view").style.display="none";
   document.getElementById("app").style.display="flex";
   document.getElementById("app").style.flexDirection="column";
-  applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos();});
+  applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos(); loadCatalogo();});
   if(typeof applyTranslations==='function')applyTranslations();
 }
 function applyRoleUI() {
@@ -1059,51 +1271,165 @@ window.desconfirmarLinea = desconfirmarLinea;
 
 window.exportExcel=()=>{const rows=[["Fecha","Turno","Corte","Operador","Empleado","Modelo","N° Parte","Línea","Tipo","Target","Producción","Defectos","Scrap","Cumpl%","Scrap%","Def%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,(r.corte==="C1"?"Break":r.corte==="C2"?"Lunch":r.corte==="C3"?"Home":r.corte==="OT"?"OT":r.corte||"—"),r.operador,r.empleado,r.modelo||"—",r.parte,r.maqNombre,r.maqTipo,r.target,r.prod,r.def,r.scrap,r.pct,r.scrapPct,r.defPct,r.notas]));const ws=XLSX.utils.aoa_to_sheet(rows);const wb=XLSX.utils.book_new();XLSX.utils.book_append_sheet(wb,ws,"MES");XLSX.writeFile(wb,"MES_Produccion.xlsx");};
 
-// ── Envío a SHIPQR (conectado con ShipQR Web v2.0, con registro de movimientos) ──
+// ── Envío a SHIPQR (conectado con ShipQR Web v2.0, con registro de movimientos y envíos parciales) ──
 async function loadShipqrEnviados(){
   try{
     const snap=await getDocs(collection(db,'shipqr_envios_mes_p3'));
-    SHIPQR_ENVIADOS={};
-    snap.forEach(d=>{ SHIPQR_ENVIADOS[d.id]=d.data(); });
+    SHIPQR_ENVIADOS={}; SHIPQR_POR_KEY={};
+    snap.forEach(d=>{
+      const data=d.data();
+      SHIPQR_ENVIADOS[d.id]=data;
+      const k=data.key||d.id;
+      const cantidad=(data.cantidad_enviada!=null)?Number(data.cantidad_enviada):(Number(data.prod)||0);
+      if(!SHIPQR_POR_KEY[k]) SHIPQR_POR_KEY[k]=[];
+      SHIPQR_POR_KEY[k].push({...data,cantidad_enviada:cantidad,_docId:d.id});
+    });
     pintarHistorialShipqr();
     if(typeof renderShipqr==='function') renderShipqr();
-  }catch(err){ console.error('Error cargando shipqr_envios_mes:', err); }
+  }catch(err){ console.error('Error cargando shipqr_envios_mes_p3:', err); }
+}
+function sumEnviadoShipqr(key){
+  return (SHIPQR_POR_KEY[key]||[]).reduce((s,e)=>s+(Number(e.cantidad_enviada)||0),0);
 }
 function pintarHistorialShipqr(){
   const el=document.getElementById('tb-shipqr-historial');
   if(!el) return;
   const envios=Object.values(SHIPQR_ENVIADOS).sort((a,b)=>new Date(b.fecha_envio)-new Date(a.fecha_envio));
   if(!envios.length){
-    el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:10px">Sin envíos registrados</div>`;
+    el.innerHTML=`<div style="color:var(--muted);font-size:12px;text-align:center;padding:10px">${sqt('none')}</div>`;
     return;
   }
   el.innerHTML=envios.map(e=>`
     <div style="display:flex;justify-content:space-between;background:var(--card2);border-radius:6px;padding:8px 12px;font-size:12px;flex-wrap:wrap;gap:6px">
-      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.prod||0).toLocaleString()} pzas</span>
+      <span><span class="model-code">${e.modelo}</span> · <span style="color:var(--accent);font-family:monospace">${e.parte}</span> · ${(e.cantidad_enviada!=null?e.cantidad_enviada:(e.prod||0)).toLocaleString()} ${sqt('pzas')}${e.dim?' · 📦 '+e.dim:''}${e.motivo==='REMPLAZO'?' · <span style="color:#e67e22;font-weight:700">⚠ REMPLAZO</span>':''}</span>
       <span style="color:var(--muted)">${e.enviado_por} · ${new Date(e.fecha_envio).toLocaleString('es-MX')}</span>
     </div>
   `).join('');
+}
+// Aviso con enlace de respaldo (un clic real nunca se bloquea)
+function mostrarAvisoAbrirShipqr(url){
+  const prev=document.getElementById('shipqr-open-banner'); if(prev) prev.remove();
+  const b=document.createElement('div');
+  b.id='shipqr-open-banner';
+  b.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:99998;background:var(--card,#151a2e);border:1px solid #5BA3FF;border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:92vw;flex-wrap:wrap;justify-content:center';
+  b.innerHTML='<span style="font-size:13px;color:var(--text,#eaeef7)">'+sqt('saved')+'</span>'
+    +'<a href="'+url+'" target="_blank" rel="noopener" style="background:rgba(77,166,255,.2);border:1px solid #5BA3FF;color:#5BA3FF;font-weight:700;font-size:13px;padding:8px 14px;border-radius:8px;text-decoration:none">'+sqt('open')+'</a>'
+    +'<button style="background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:8px;padding:8px 10px;cursor:pointer">✕</button>';
+  b.querySelector('button').onclick=()=>b.remove();
+  document.body.appendChild(b);
+  setTimeout(()=>{ if(b.parentNode) b.remove(); }, 120000);
+}
+// Modal único: cantidad + dimensión (opcional) + tipo (normal / remplazo). La ventana de ShipQR se abre dentro del clic real.
+function mostrarModalEnvioShipqr({modelo,parte,prod,pendiente,dim}){
+  return new Promise((resolve)=>{
+    let motivoActual='PLAN';
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+    overlay.innerHTML=`
+      <div style="background:var(--card,#151a2e);border:1px solid var(--border,#2a3050);border-radius:14px;padding:20px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text,#eaeef7)">${sqt('title')}</div>
+        <div style="font-size:12px;color:var(--muted,#7f8c9a);margin-bottom:12px"><span style="font-family:monospace;color:var(--accent,#4f8ef7)">${modelo}</span> · ${parte}<br>${sqt('prod')}: ${prod.toLocaleString()} · ${sqt('pend')}: ${pendiente.toLocaleString()}</div>
+        <label style="font-size:12px;color:var(--muted,#7f8c9a)">${sqt('qty')}</label>
+        <input id="se-qty" type="number" min="1" max="${pendiente}" value="${pendiente}" style="width:100%;box-sizing:border-box;margin:4px 0 12px;background:var(--card2,#22263a);border:1px solid var(--border,#2a3050);color:var(--text,#eaeef7);border-radius:8px;padding:10px;font-size:16px;text-align:center">
+        <label style="font-size:12px;color:var(--muted,#7f8c9a)">${sqt('dim')}</label>
+        <input id="se-dim" type="text" value="${dim||''}" placeholder="48x40x50" autocomplete="off" style="width:100%;box-sizing:border-box;margin:4px 0 12px;background:var(--card2,#22263a);border:1px solid var(--border,#2a3050);color:var(--text,#eaeef7);border-radius:8px;padding:10px;font-size:16px;text-align:center;font-family:monospace">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="se-plan" style="flex:1;padding:10px 6px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer">${sqt('normal')}</button>
+          <button id="se-remp" style="flex:1;padding:10px 6px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer">${sqt('remp')}</button>
+        </div>
+        <div id="se-err" style="display:none;color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
+        <button id="se-enviar" style="width:100%;margin-bottom:8px;padding:12px;font-size:14px;font-weight:700;background:rgba(77,166,255,.15);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:10px;cursor:pointer">${sqt('send')}</button>
+        <button id="se-cancelar" style="width:100%;padding:10px;font-size:13px;background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:10px;cursor:pointer">${sqt('cancel')}</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const $=(id)=>overlay.querySelector('#'+id);
+    const qtyEl=$('se-qty'), errEl=$('se-err'), btnPlan=$('se-plan'), btnRemp=$('se-remp');
+    const pintar=()=>{
+      const esPlan=motivoActual==='PLAN';
+      btnPlan.style.background=esPlan?'rgba(46,204,113,.18)':'transparent';
+      btnPlan.style.border=esPlan?'2px solid #2ecc71':'2px solid var(--border,#2a3050)';
+      btnPlan.style.color=esPlan?'#2ecc71':'var(--muted,#7f8c9a)';
+      btnRemp.style.background=!esPlan?'rgba(230,126,34,.18)':'transparent';
+      btnRemp.style.border=!esPlan?'2px solid #e67e22':'2px solid var(--border,#2a3050)';
+      btnRemp.style.color=!esPlan?'#e67e22':'var(--muted,#7f8c9a)';
+    };
+    pintar();
+    btnPlan.onclick=()=>{ motivoActual='PLAN'; pintar(); };
+    btnRemp.onclick=()=>{ motivoActual='REMPLAZO'; pintar(); };
+    const cerrar=(val)=>{ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(val); };
+    $('se-cancelar').onclick=()=>cerrar(null);
+    $('se-enviar').onclick=()=>{
+      const n=parseInt(qtyEl.value,10)||0;
+      if(n<=0){ errEl.textContent=sqt('badQty'); errEl.style.display='block'; return; }
+      if(n>pendiente){ errEl.textContent=sqt('onlyLeft')+pendiente.toLocaleString(); errEl.style.display='block'; return; }
+      const dimRaw=$('se-dim').value.trim(), dimN=normDimTxt(dimRaw);
+      if(dimRaw&&!dimN){ errEl.textContent=sqt('badDim'); errEl.style.display='block'; return; }
+      const win=window.open('','shipqr_'+Date.now()); // dentro del clic real: no se bloquea
+      cerrar({cantidad:n,motivo:motivoActual,win,dim:dimN});
+    };
+    setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); },50);
+  });
 }
 window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura)=>{
   const modelo=decodeURIComponent(modeloEnc);
   const parte=decodeURIComponent(parteEnc);
   const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
-  if(SHIPQR_ENVIADOS[key]){ return; }
+  const pendiente=Math.max(0, Number(prod)-sumEnviadoShipqr(key));
+  if(pendiente<=0){ alert(sqt('full')); return; }
+  const catP=CATALOGO_P3.find(x=>x.pn===String(parte).toUpperCase());
+  const sel=await mostrarModalEnvioShipqr({modelo,parte,prod:Number(prod),pendiente,dim:(catP&&catP.dim)||''});
+  if(!sel) return;
+  const cantidad=sel.cantidad, motivo=sel.motivo, shipqrWin=sel.win, dimPallet=sel.dim;
+  const descMat=catP?(catP.mat||''):'';
+  const tipoMat=catP?(catP.tipo||'Bandita'):'', fscMat=catP?(catP.fsc||''):'', revMat=catP?String(catP.rev==null?'':catP.rev):'';
+  const docId=key+'||'+Date.now();
   const registro={
-    modelo, parte, prod,
+    key, modelo, parte, fecha, turno, horaCaptura,
+    prod: Number(prod),
+    cantidad_enviada: cantidad,
+    dim: dimPallet,
+    motivo,
     enviado_por: CURRENT_USER?.nombre || 'Desconocido',
     fecha_envio: new Date().toISOString()
   };
   try{
-    await setDoc(doc(db,'shipqr_envios_mes_p3',key), registro);
-    SHIPQR_ENVIADOS[key]=registro;
+    await setDoc(doc(db,'shipqr_envios_mes_p3',docId), registro);
+    SHIPQR_ENVIADOS[docId]=registro;
+    if(!SHIPQR_POR_KEY[key]) SHIPQR_POR_KEY[key]=[];
+    SHIPQR_POR_KEY[key].push({...registro,_docId:docId});
     pintarHistorialShipqr();
   }catch(err){
     console.error('Error registrando envío a ShipQR:', err);
+    alert(sqt('errReg')+err.message);
+    if(shipqrWin && !shipqrWin.closed) shipqrWin.close();
+    return;
   }
-  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${prod}`;
-  window.open(url,'shipqr_window');
+  const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}${dimPallet?`&dim=${encodeURIComponent(dimPallet)}`:''}${descMat?`&desc=${encodeURIComponent(descMat)}`:''}${tipoMat?`&tipo=${encodeURIComponent(tipoMat)}`:''}${fscMat?`&fsc=${encodeURIComponent(fscMat)}`:''}${revMat!==''?`&rev=${encodeURIComponent(revMat)}`:''}&planta=P3`;
+  mostrarAvisoAbrirShipqr(url);
+  if(shipqrWin){ shipqrWin.location=url; }
+  else { alert(sqt('blocked')+url); }
   if(typeof renderShipqr==='function') renderShipqr();
+};
+// Deshace el último envío de ese lote (vuelve a pendiente)
+window.reactivarShipqr=async(modeloEnc,parteEnc,fecha,turno,horaCaptura)=>{
+  const modelo=decodeURIComponent(modeloEnc);
+  const parte=decodeURIComponent(parteEnc);
+  const key=modelo+'||'+parte+'||'+fecha+'||'+turno+'||'+horaCaptura;
+  const envios=(SHIPQR_POR_KEY[key]||[]).slice().sort((a,b)=>new Date(b.fecha_envio)-new Date(a.fecha_envio));
+  if(!envios.length) return;
+  const ultimo=envios[0];
+  const cant=(ultimo.cantidad_enviada!=null?ultimo.cantidad_enviada:(ultimo.prod||0));
+  if(!confirm(`${sqt('undoQ')}${modelo} · ${parte} (${cant.toLocaleString()} ${sqt('pzas')}, ${new Date(ultimo.fecha_envio).toLocaleString('es-MX')})?\n${sqt('undoQ2')}`)) return;
+  try{
+    await deleteDoc(doc(db,'shipqr_envios_mes_p3',ultimo._docId));
+    delete SHIPQR_ENVIADOS[ultimo._docId];
+    SHIPQR_POR_KEY[key]=(SHIPQR_POR_KEY[key]||[]).filter(e=>e._docId!==ultimo._docId);
+    pintarHistorialShipqr();
+    if(typeof renderShipqr==='function') renderShipqr();
+  }catch(err){
+    console.error('Error reactivando envío a ShipQR:', err);
+    alert(sqt('errUndo')+err.message);
+  }
 };
 window.exportCSV=()=>{const rows=[["Fecha","Turno","Operador","N° Parte","Línea","Producción","Defectos","Scrap","Cumpl%","Notas"]];REGISTROS.forEach(r=>rows.push([r.fecha,r.turno,r.operador,r.parte,r.maqNombre,r.prod,r.def,r.scrap,r.pct,r.notas]));const blob=new Blob([rows.map(r=>r.join(",")).join("\n")],{type:"text/csv"});const a=document.createElement("a");a.href=URL.createObjectURL(blob);a.download="MES.csv";a.click();};
 
@@ -1117,7 +1443,7 @@ function initApp(){
 }
 function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";LINEAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${lbl(m.tipo)}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las líneas</option>";LINEAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre}`,i));s2.appendChild(new Option(`${m.nombre}`,i));});}
-window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
+window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();renderCatalogo();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=LINEAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
@@ -1368,13 +1694,14 @@ function renderShipqr(){
   const assyRango=REGISTROS.filter(r=>{
     const esPreKit=(r.maqNombre||"").toUpperCase().includes("PRE-KIT")||(r.maqTipo||"").toUpperCase()==="PRE-KIT";
     const esGH90=(r.parte||"").toUpperCase().startsWith("GH90");
-    if(!esPreKit||!esGH90) return false;
+    const enCat=CATALOGO_P3.some(c=>c.pn===(r.parte||"").toUpperCase());
+    if(!(esPreKit&&esGH90) && !enCat) return false;
     const fh=fechaHoraDeRegistro(r);
     if(!fh) return false;
     return fh>=limiteDesde(desde) && fh<=limiteHasta(hasta);
   });
   if(!assyRango.length){
-    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">Sin producción Pre-Kit con PN GH90 entre ${desde} y ${hasta}.</td></tr>`;
+    tbShipqr.innerHTML=`<tr><td colspan="7" style="text-align:center;color:var(--muted);padding:12px;font-size:13px">${sqt('empty')}${desde}${sqt('and')}${hasta}.</td></tr>`;
     window._shipqrExportRows=[];
     return;
   }
@@ -1396,7 +1723,8 @@ function renderShipqr(){
   rows.forEach(m=>{
     totalShip+=m.prod;
     const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
-    const env=SHIPQR_ENVIADOS[key];
+    const enviado=sumEnviadoShipqr(key);
+    const completo=enviado>=m.prod;
     const tCol=turnoColor[m.turno]||'#7f8c9a';
     const tr=document.createElement("tr");
     tr.innerHTML=`<td class="model-code" style="font-size:.85rem;padding:10px 6px">${m.modelo}</td>
@@ -1405,16 +1733,19 @@ function renderShipqr(){
       <td style="text-align:center;padding:10px 6px"><span style="color:${tCol};font-weight:700;font-size:.8rem;white-space:nowrap">${m.horaCaptura}</span></td>
       <td class="blue" style="text-align:right;font-weight:700;font-size:.95rem;padding:10px 6px">${m.prod.toLocaleString()}</td>
       <td style="text-align:center;padding:10px 6px">
-        ${env
-          ? `<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">✓ ENVIADO</span>`
-          : `<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">PENDIENTE</span>`}
+        ${completo
+          ? `<span style="background:rgba(46,204,113,.15);color:#2ecc71;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">${sqt('st_sent')}</span>`
+          : enviado>0
+            ? `<span style="background:rgba(230,126,34,.15);color:#e67e22;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">${sqt('st_part')} ${enviado.toLocaleString()}/${m.prod.toLocaleString()}</span>`
+            : `<span style="background:rgba(241,196,15,.15);color:#f1c40f;font-size:.75rem;font-weight:700;padding:4px 10px;border-radius:20px">${sqt('st_pend')}</span>`}
       </td>
-      <td style="text-align:center;padding:10px 6px">
+      <td style="text-align:center;padding:10px 6px;white-space:nowrap">
         <button onclick="enviarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}',${m.prod},'${m.fecha}','${m.turno}','${m.horaCaptura}')"
-          ${env?'disabled':''}
-          style="background:${env?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${env?'var(--border)':'rgba(77,166,255,.4)'};color:${env?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${env?'not-allowed':'pointer'};min-height:36px">
+          ${completo?'disabled':''}
+          style="background:${completo?'#22263a':'rgba(77,166,255,.12)'};border:1px solid ${completo?'var(--border)':'rgba(77,166,255,.4)'};color:${completo?'#5a5f6e':'#5BA3FF'};border-radius:8px;padding:8px 14px;font-size:13px;font-weight:600;cursor:${completo?'not-allowed':'pointer'};min-height:36px">
           🚚 SHIPQR
         </button>
+        ${enviado>0?`<button title="${sqt('undo')}" onclick="reactivarShipqr('${encodeURIComponent(m.modelo)}','${encodeURIComponent(m.parte)}','${m.fecha}','${m.turno}','${m.horaCaptura}')" style="background:rgba(230,126,34,.12);border:1px solid rgba(230,126,34,.4);color:#e67e22;border-radius:8px;padding:8px 10px;font-size:13px;font-weight:700;cursor:pointer;min-height:36px;margin-left:4px">↻</button>`:''}
       </td>`;
     tbShipqr.appendChild(tr);
   });
@@ -1439,7 +1770,7 @@ function exportarShipqrExcel(){
   rows.forEach(m=>{
     totalShip+=m.prod;
     const key=m.modelo+"||"+m.parte+"||"+m.fecha+"||"+m.turno+"||"+m.horaCaptura;
-    const estado=SHIPQR_ENVIADOS[key]?'ENVIADO':'PENDIENTE';
+    const env=sumEnviadoShipqr(key); const estado=env>=m.prod?'ENVIADO':(env>0?'PARCIAL '+env:'PENDIENTE');
     data.push([m.modelo,m.parte,m.fecha,m.turno,m.horaCaptura,m.prod,estado]);
   });
   data.push(['','','','','TOTAL',totalShip,'']);
@@ -2264,6 +2595,7 @@ window.setLang = function(lang){
   const active = document.getElementById('lang-'+map[lang]);
   if(active) active.classList.add('active');
   applyTranslations();
+  try{ catTexts(); renderCatalogo(); if(typeof renderShipqr==='function') renderShipqr(); pintarHistorialShipqr(); }catch(e){}
 };
 
 function applyTranslations(){
@@ -2611,8 +2943,13 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <div class="field"><label id="lbl-fecha">Fecha</label><input type="date" id="ip-fecha"></div>
         <div class="field"><label id="lbl-operador">👷 Operador</label><input type="text" id="ip-op" placeholder="Nombre completo" autocomplete="off"></div>
         <div class="field"><label id="lbl-emp">🔢 N° Empleado</label><input type="text" id="ip-emp" placeholder="Ej. 00421"></div>
+        <div class="field" id="cat-sel-box" style="display:none"><label id="lbl-cat">📚 Parte del catálogo (opcional)</label>
+          <select id="ip-cat" onchange="onCatSel()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box"><option value="">— Elegir parte del catálogo —</option></select>
+          <div id="cat-sel-hint" style="font-size:.75rem;margin-top:4px;color:var(--muted)"></div>
+        </div>
         <div class="field"><label id="lbl-modelo">📱 Modelo</label>
-          <input type="text" id="ip-modelo" placeholder="Ej. SM-XXXXXXXXXXX o CRN-XXXXXX" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
+          <datalist id="dl-ip-modelos"></datalist>
+          <input type="text" id="ip-modelo" list="dl-ip-modelos" placeholder="Ej. SM-XXXXXXXXXXX o CRN-XXXXXX" autocomplete="off" oninput="this.value=this.value.toUpperCase()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:.9rem;box-sizing:border-box">
           <div id="ip-modelo-status" style="font-size:.75rem;margin-top:4px"></div>
         </div>
         <div class="field"><label id="lbl-parte">🔩 N° Parte / Ensamble</label><input type="text" id="ip-parte" placeholder="Ej. GH69-46036A" maxlength="11" oninput="this.value=this.value.toUpperCase();var pe=document.getElementById('pe');pe.textContent=this.value.length+'/11';pe.style.color=this.value.length===11?'#2ecc71':'#f1c40f';"></div><div id="pe" style="font-size:.8rem;min-height:13px;margin-top:2px"></div>
@@ -2821,6 +3158,24 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
     </div>
     <div class="acard"><h3><span id="adm-h-users">👥 Usuarios</span> (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
+    <div class="acard">
+      <h3><span id="cat-h">📚 Catálogo de partes</span> (<span id="cat-count">0</span>)</h3>
+      <div class="form-row">
+        <div class="form-field"><label id="cat-l-pn"></label><input id="cat-pn" placeholder="GH90-12345A" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-model"></label><input id="cat-model" placeholder="SM-XXXX" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-mat"></label><input id="cat-mat" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-tipo"></label><input id="cat-tipo" placeholder="Bandita" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-fsc"></label><input id="cat-fsc" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-rev"></label><input id="cat-rev" placeholder="0" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-pcs"></label><input id="cat-pcs" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-peso"></label><input id="cat-peso" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-cpp"></label><input id="cat-cpp" placeholder="" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div><div class="form-field"><label id="cat-l-dim"></label><input id="cat-dim" placeholder="48x40x50" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></div>
+      </div>
+      <button class="abtn abtn-add" id="cat-btn-add" onclick="addCatalogoParte()">💾</button>
+      <div style="margin-top:12px"><label id="cat-l-bulk" style="font-size:.85rem;color:var(--muted)"></label>
+        <textarea id="cat-bulk" rows="4" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box"></textarea>
+        <button class="abtn abtn-add" id="cat-btn-imp" style="margin-top:6px" onclick="importarCatalogoPegado()"></button></div>
+      <div style="margin-top:12px"><label id="cat-l-file" style="font-size:.85rem;color:var(--muted);display:block;margin-bottom:6px"></label>
+        <input type="file" id="cat-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="subirExcelCatalogo(this)">
+        <button class="abtn abtn-add" id="cat-btn-file" onclick="document.getElementById('cat-file').click()"></button>
+        <button class="abtn" id="cat-btn-sync" style="margin-left:6px;background:rgba(77,166,255,.15);color:#5BA3FF;border:1px solid rgba(77,166,255,.4)" onclick="sincronizarMasterShipqr()"></button>
+        <div id="cat-file-msg" style="font-size:.85rem;margin-top:6px"></div></div>
+      <div id="cat-help" style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted)"></div>
+      <input id="cat-filter" oninput="renderCatalogo()" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;margin-top:10px;padding:8px;box-sizing:border-box">
+      <div style="overflow-x:auto"><table><thead><tr><th id="cat-th-pn"></th><th id="cat-th-model"></th><th id="cat-th-mat"></th><th id="cat-th-tipo"></th><th id="cat-th-fsc"></th><th id="cat-th-rev"></th><th id="cat-th-pcs"></th><th id="cat-th-peso"></th><th id="cat-th-cpp"></th><th id="cat-th-dim"></th><th id="cat-th-acc"></th></tr></thead><tbody id="cat-table"></tbody></table></div>
+    </div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
       <h3 id="adm-h-maquinas">🖥️ Estado de Líneas</h3>
