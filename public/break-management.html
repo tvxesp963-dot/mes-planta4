@@ -599,6 +599,10 @@ body.flash-mode .sc-cd {
         <label class="lbl" id="hb-l-shift" style="margin:0">Turno</label>
         <select class="sel" id="hb-shift" style="width:auto" onchange="renderHb()"></select>
       </div>
+      <div id="hb-jor" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;max-width:420px">
+        <div><label class="lbl" id="hb-l-ini">Inicio de jornada</label><input class="inp" type="time" id="hb-j-ini"></div>
+        <div><label class="lbl" id="hb-l-fin">Fin de jornada</label><input class="inp" type="time" id="hb-j-fin" oninput="hbSyncFin()"></div>
+      </div>
       <div style="display:flex;gap:8px;align-items:center;padding:0 0 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600">
         <span style="flex:1" id="hb-h-desc">Descripción</span>
         <span style="width:115px" id="hb-h-start">Hora inicio</span>
@@ -789,7 +793,7 @@ const TRANSLATIONS = {
     ot_on: "SÍ — el tiempo extra se incluye",
     ot_off: "NO — el Shift A termina en Home",
     ot_help: "Se apaga solo cada día. Si está en NO, el tiempo extra se ignora en Shift A y la pantalla final aparece al terminar Home.",
-    hb_title: "🕐 Horario base de la jornada", hb_l_shift: "Turno", hb_h_desc: "Descripción", hb_h_start: "Hora inicio", hb_h_end: "Hora fin", hb_cuts: "Hora de cierre de cada corte", hb_save: "Guardar horario base", hb_reset: "Descartar cambios", hb_saved: "Horario base guardado ✓", hb_err: "Revisa las horas: el fin debe ser mayor al inicio y los cortes en orden", hb_none: "Sin breaks para este turno", hb_help: "Cambia las horas y presiona Guardar. El cambio aplica desde hoy y todos los días siguientes, en esta pantalla y en las pantallas de TV.",
+    hb_title: "🕐 Horario base de la jornada", hb_l_ini: "Inicio de jornada", hb_l_fin: "Fin de jornada", hb_l_shift: "Turno", hb_h_desc: "Descripción", hb_h_start: "Hora inicio", hb_h_end: "Hora fin", hb_cuts: "Hora de cierre de cada corte", hb_save: "Guardar horario base", hb_reset: "Descartar cambios", hb_saved: "Horario base guardado ✓", hb_err: "Revisa las horas: el fin debe ser mayor al inicio y los cortes en orden", hb_none: "Sin breaks para este turno", hb_help: "Cambia las horas y presiona Guardar. El cambio aplica desde hoy y todos los días siguientes, en esta pantalla y en las pantallas de TV.",
     // Nav
     nav_dash:    '⏸ Dashboard',
     nav_admin:   '⚙️ Admin Breaks',
@@ -855,7 +859,7 @@ const TRANSLATIONS = {
     ot_on: "YES — overtime is included",
     ot_off: "NO — Shift A ends at Home",
     ot_help: "Resets by itself every day. When NO, overtime is ignored in Shift A and the final screen appears when Home ends.",
-    hb_title: "🕐 Base work schedule", hb_l_shift: "Shift", hb_h_desc: "Description", hb_h_start: "Start time", hb_h_end: "End time", hb_cuts: "Closing time of each cut", hb_save: "Save base schedule", hb_reset: "Discard changes", hb_saved: "Base schedule saved ✓", hb_err: "Check the times: end must be after start and cuts in order", hb_none: "No breaks for this shift", hb_help: "Change the times and press Save. The change applies from today and every following day, on this screen and on the TV screens.",
+    hb_title: "🕐 Base work schedule", hb_l_ini: "Shift start", hb_l_fin: "Shift end", hb_l_shift: "Shift", hb_h_desc: "Description", hb_h_start: "Start time", hb_h_end: "End time", hb_cuts: "Closing time of each cut", hb_save: "Save base schedule", hb_reset: "Discard changes", hb_saved: "Base schedule saved ✓", hb_err: "Check the times: end must be after start and cuts in order", hb_none: "No breaks for this shift", hb_help: "Change the times and press Save. The change applies from today and every following day, on this screen and on the TV screens.",
     nav_dash:    '⏸ Dashboard',
     nav_admin:   '⚙️ Admin Breaks',
     nav_tv:      '📺 TV Mode',
@@ -918,7 +922,7 @@ const TRANSLATIONS = {
     ot_on: "예 — 야근 포함",
     ot_off: "아니오 — Shift A는 Home에서 종료",
     ot_help: "매일 자동으로 꺼집니다. 아니오이면 Shift A에서 야근이 무시되고 Home 종료 시 최종 화면이 표시됩니다.",
-    hb_title: "🕐 기본 근무 시간표", hb_l_shift: "교대", hb_h_desc: "설명", hb_h_start: "시작 시간", hb_h_end: "종료 시간", hb_cuts: "각 구간 마감 시간", hb_save: "기본 시간표 저장", hb_reset: "변경 취소", hb_saved: "기본 시간표 저장됨 ✓", hb_err: "시간을 확인하세요: 종료가 시작보다 늦어야 하고 구간 순서가 맞아야 합니다", hb_none: "이 교대에는 휴식이 없습니다", hb_help: "시간을 변경하고 저장을 누르세요. 오늘부터 매일 적용되며 이 화면과 TV 화면에 반영됩니다.",
+    hb_title: "🕐 기본 근무 시간표", hb_l_ini: "근무 시작", hb_l_fin: "근무 종료", hb_l_shift: "교대", hb_h_desc: "설명", hb_h_start: "시작 시간", hb_h_end: "종료 시간", hb_cuts: "각 구간 마감 시간", hb_save: "기본 시간표 저장", hb_reset: "변경 취소", hb_saved: "기본 시간표 저장됨 ✓", hb_err: "시간을 확인하세요: 종료가 시작보다 늦어야 하고 구간 순서가 맞아야 합니다", hb_none: "이 교대에는 휴식이 없습니다", hb_help: "시간을 변경하고 저장을 누르세요. 오늘부터 매일 적용되며 이 화면과 TV 화면에 반영됩니다.",
     nav_dash:    '⏸ 대시보드',
     nav_admin:   '⚙️ 관리자',
     nav_tv:      '📺 TV 모드',
@@ -1253,10 +1257,18 @@ function applyOtTexts(){
 }
 // ── Horario base: editar horas de todos los breaks y de los cortes, y guardar ──
 let breaksFromDemo = false;
+let JOR_INI = '07:00';
+function secsTo(hm){ const n=new Date(),x=new Date(); const[h,m]=hm.split(':').map(Number); x.setHours(h,m,0,0); return Math.max(0,Math.floor((x-n)/1000)); }
+function hbSyncFin(){
+  const v=document.getElementById('hb-j-fin').value; if(!v) return;
+  const row=[...document.querySelectorAll('#hb-rows .srow')].find(r=>/home/i.test(r.querySelector('.sinfo').textContent));
+  if(row){ const m=toMin(v)-5; row.querySelector('.hb-e').value=v; row.querySelector('.hb-s').value=pad(Math.floor(m/60))+':'+pad(m%60); hbDur(row.querySelector('.hb-e')); }
+  const c3=document.getElementById('hb-c-C3'); if(c3) c3.value=v;
+}
 function applyHbTexts(){
   const set=(id,k)=>{ const el=document.getElementById(id); if(el) el.textContent=t(k); };
   set('hb-title','hb_title'); set('hb-l-shift','hb_l_shift'); set('hb-h-desc','hb_h_desc'); set('hb-h-start','hb_h_start');
-  set('hb-h-end','hb_h_end'); set('hb-cuts-title','hb_cuts'); set('hb-save','hb_save'); set('hb-reset','hb_reset'); set('hb-help','hb_help');
+  set('hb-h-end','hb_h_end'); set('hb-l-ini','hb_l_ini'); set('hb-l-fin','hb_l_fin'); set('hb-cuts-title','hb_cuts'); set('hb-save','hb_save'); set('hb-reset','hb_reset'); set('hb-help','hb_help');
   ['C1','C2','C3','OT'].forEach(id=>set('hb-l-'+id,'cut_'+id));
   const sel=document.getElementById('hb-shift');
   if(sel){ const v=sel.value||'A'; sel.innerHTML=['A','B','C'].map(x=>'<option value="'+x+'">'+anEsc(getShiftLabel(x))+'</option>').join(''); sel.value=v; }
@@ -1269,7 +1281,7 @@ function hbDur(el){
 }
 function renderHb(){
   const box=document.getElementById('hb-rows'); if(!box) return;
-  const hasFocus = box.contains(document.activeElement) || /^hb-c-/.test((document.activeElement||{}).id||'');
+  const hasFocus = box.contains(document.activeElement) || /^hb-[cj]-/.test((document.activeElement||{}).id||'');
   if(hasFocus) return;
   const sh=(document.getElementById('hb-shift')||{}).value||'A';
   const list=breaks.filter(b=>b.shift===sh&&b.active!==false).sort((a,b)=>toMin(a.start_time)-toMin(b.start_time));
@@ -1281,6 +1293,10 @@ function renderHb(){
       +'<input class="inp hb-e" type="time" value="'+b.end_time+'" style="width:115px" oninput="hbDur(this)">'
       +'<span class="hb-d" style="font-size:11px;color:var(--muted);width:52px;text-align:right">'+d+' min</span></div>';
   }).join('') : '<div class="sinfo" style="padding:8px 0">'+anEsc(t('hb_none'))+'</div>';
+  const jw=document.getElementById('hb-jor'); if(jw) jw.style.display = sh==='A'?'grid':'none';
+  const home=list.find(b=>/home/i.test(b.description||''));
+  const fi=document.getElementById('hb-j-fin'); if(fi) fi.value = home?home.end_time:'';
+  const ii=document.getElementById('hb-j-ini'); if(ii) ii.value = JOR_INI;
   CUTS.forEach(c=>{ const el=document.getElementById('hb-c-'+c.id); if(el) el.value=pad(Math.floor(c.end/60))+':'+pad(c.end%60); });
 }
 function hbReset(){ if(document.activeElement&&document.activeElement.blur) document.activeElement.blur(); loadBreaks(); renderHb(); }
@@ -1291,6 +1307,7 @@ function loadCutsConfig(){
   onSnapshot(doc(window._db,'tv_config','cortes'), snap=>{
     if(!snap.exists()) return; const d=snap.data();
     CUTS.forEach(c=>{ if(/^\d{2}:\d{2}$/.test(d[c.id]||'')) c.end=toMin(d[c.id]); });
+    if(/^\d{2}:\d{2}$/.test(d.inicio||'')) JOR_INI=d.inicio;
     renderHb(); fetchDayKPIs();
   }, e=>console.warn('cortes:', e.message));
 }
@@ -1301,6 +1318,12 @@ async function saveHb(){
     const s=r.querySelector('.hb-s').value, e=r.querySelector('.hb-e').value;
     if(!s||!e||toMin(e)<=toMin(s)){ showToast(t('hb_err')); return; }
     edits[r.dataset.id]={s,e};
+  }
+  const shSel=(document.getElementById('hb-shift')||{}).value||'A';
+  let ini=JOR_INI;
+  if(shSel==='A'){
+    ini=document.getElementById('hb-j-ini').value; const fin=document.getElementById('hb-j-fin').value;
+    if(!ini||(fin&&toMin(ini)>=toMin(fin))){ showToast(t('hb_err')); return; }
   }
   const cuts={}; let prev=-1;
   for(const c of CUTS){
@@ -1318,11 +1341,11 @@ async function saveHb(){
           await updateDoc(doc(window._db,'break_schedule',b.id),{start_time:x.s,end_time:x.e});
         }
       }
-      await setDoc(doc(window._db,'tv_config','cortes'),{...cuts, actualizadoPor:(window._auth&&window._auth.currentUser&&window._auth.currentUser.email)||'', actualizadoEn:new Date().toISOString()});
+      await setDoc(doc(window._db,'tv_config','cortes'),{...cuts, inicio:ini, actualizadoPor:(window._auth&&window._auth.currentUser&&window._auth.currentUser.email)||'', actualizadoEn:new Date().toISOString()});
     } else {
       breaks=breaks.map(b=>edits[b.id]?{...b,start_time:edits[b.id].s,end_time:edits[b.id].e}:b);
     }
-    CUTS.forEach(c=>c.end=toMin(cuts[c.id]));
+    CUTS.forEach(c=>c.end=toMin(cuts[c.id])); JOR_INI=ini;
     showToast(t('hb_saved')); loadBreaks(); fetchDayKPIs();
   }catch(e){ showToast('Error: '+e.message); }
 }
@@ -1362,8 +1385,6 @@ function isShiftOver(){
 function getNextLabel(b){
   if(!b) return {title:t('next_break'),startLbl:t('starts_at'),endLbl:t('ends_at')};
   const desc=(b.description||'').toLowerCase();
-  if(isFirstBreak(b)&&nowMin()<toMin(b.start_time))
-    return {title:t('inicio'),startLbl:t('starts_at'),endLbl:t('first_break')};
   if(desc.includes('home'))
     return {title:t('next_home'),startLbl:t('starts_at'),endLbl:''};
   if(desc.includes('ot')||desc.includes('tiempo extra')||desc.includes('overtime'))
@@ -1582,6 +1603,11 @@ function renderAll(){
       <div class="sc-val" style="color:var(--green)">${getEndOfShift()?.end_time||'--:--'}</div>
       <div class="sc-lbl" style="margin-top:8px">${t('redirecting')}</div>`;
     scheduleRedirect();
+  } else if(status==='RUNNING'&&currentShift==='A'&&nowMin()<toMin(JOR_INI)){
+    html=`<div class="sc-lbl">${t('inicio')}</div>
+      <div class="sc-val">${JOR_INI}</div>
+      <div class="sc-lbl">${t('countdown')}</div>
+      <div class="sc-cd sc-cd-md" style="${cdStyle}">${toHMS(secsTo(JOR_INI))}</div>`;
   } else if(status==='RUNNING'&&nxt){
     const nl=getNextLabel(nxt);
     html=`<div class="sc-lbl">${nl.title}</div>
@@ -1662,6 +1688,10 @@ function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
     html=`<div class="tv-lbl">${t('shift_done')}</div>
       <div class="tv-big" style="color:#2ecc71;text-shadow:0 0 55px rgba(46,204,113,.5)">${getEndOfShift()?.end_time||'--:--'}</div>
       <div class="tv-lbl" style="margin-top:8px">${t('redirecting')}</div>`;
+  } else if(status==='RUNNING'&&currentShift==='A'&&nowMin()<toMin(JOR_INI)){
+    html=`<div class="tv-lbl">${t('inicio')}</div>
+      <div class="tv-big" style="${cdStyle}">${JOR_INI}</div>
+      <div class="tv-cd tv-cd-md" style="${cdStyle}">${toHMS(secsTo(JOR_INI))}</div>`;
   } else if(status==='RUNNING'&&nxt){
     const nl=getNextLabel(nxt);
     html=`<div class="tv-lbl">${nl.title} — ${nxt.description}</div>
