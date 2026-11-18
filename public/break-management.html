@@ -11,7 +11,7 @@
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, query, orderBy, where }
+import { getFirestore, collection, doc, addDoc, getDocs, updateDoc, query, orderBy, where, setDoc, onSnapshot, deleteDoc }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -29,7 +29,7 @@ const db   = getFirestore(app);
 
 window._db  = db;
 window._auth = auth;
-window._fbMod = { collection, doc, addDoc, getDocs, updateDoc, query, orderBy, where };
+window._fbMod = { collection, doc, addDoc, getDocs, updateDoc, query, orderBy, where, setDoc, onSnapshot, deleteDoc };
 
 onAuthStateChanged(auth, user => {
   const el = document.getElementById('user-chip');
@@ -511,7 +511,7 @@ body.flash-mode .sc-cd {
         <img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR">
       </button>
     </div>
-    <a href="index.html" class="tb-back">← MES</a>
+    <a href="index.html" class="tb-back" id="tb-back">← MES</a>
   </div>
 </div>
 
@@ -544,6 +544,8 @@ body.flash-mode .sc-cd {
         <div id="sc-body"><div class="loading"><div class="spinner"></div>Conectando...</div></div>
       </div>
       <button class="tv-btn" onclick="openTV()">📺 Abrir TV Mode — Pantalla de Planta</button>
+      <button class="tv-btn" id="tv-piso-btn" style="margin-top:8px" onclick="window.open('tv-piso.html','_blank')">📺 Abrir pantalla de piso</button>
+      <button class="tv-btn" id="tv-test-btn" style="margin-top:8px;border-color:var(--orange);color:var(--orange)" onclick="window.open('tv-piso-test.html','_blank')">🧪 Abrir pantalla de prueba</button>
     </div>
 
     <div>
@@ -589,6 +591,87 @@ body.flash-mode .sc-cd {
     <div class="card" style="margin-bottom:0">
       <div class="card-title">📋 Horarios registrados</div>
       <div id="sched-list"><div class="loading"><div class="spinner"></div>Cargando...</div></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1;margin-bottom:0">
+      <div class="card-title" id="hb-title">🕐 Horario base de la jornada</div>
+      <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:10px">
+        <label class="lbl" id="hb-l-shift" style="margin:0">Turno</label>
+        <select class="sel" id="hb-shift" style="width:auto" onchange="renderHb()"></select>
+      </div>
+      <div style="display:flex;gap:8px;align-items:center;padding:0 0 4px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600">
+        <span style="flex:1" id="hb-h-desc">Descripción</span>
+        <span style="width:115px" id="hb-h-start">Hora inicio</span>
+        <span style="width:115px" id="hb-h-end">Hora fin</span>
+        <span style="width:52px"></span>
+      </div>
+      <div id="hb-rows"></div>
+      <div style="margin-top:14px;font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600" id="hb-cuts-title">Hora de cierre de cada corte</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:6px">
+        <div><label class="lbl" id="hb-l-C1">Break</label><input class="inp" type="time" id="hb-c-C1"></div>
+        <div><label class="lbl" id="hb-l-C2">Lunch</label><input class="inp" type="time" id="hb-c-C2"></div>
+        <div><label class="lbl" id="hb-l-C3">Home</label><input class="inp" type="time" id="hb-c-C3"></div>
+        <div><label class="lbl" id="hb-l-OT">OT</label><input class="inp" type="time" id="hb-c-OT"></div>
+      </div>
+      <div id="hb-help" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="hb-save" onclick="saveHb()">Guardar horario base</button>
+        <button class="btn btn-sec" id="hb-reset" onclick="hbReset()">Descartar cambios</button>
+      </div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1;margin-bottom:0">
+      <div class="card-title" id="ot-title">⏰ Tiempo extra de hoy</div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <label class="chk-row" style="margin:0"><input type="checkbox" id="ot-toggle" onchange="setOvertimeToday(this.checked)"><span id="ot-lbl" style="font-size:13px;color:var(--text);font-weight:600">¿Hay tiempo extra hoy?</span></label>
+        <span id="ot-state" style="font-size:11px;font-weight:700;letter-spacing:.08em"></span>
+      </div>
+      <div id="ot-help" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1;margin-bottom:0">
+      <div class="card-title" id="tvc-title">📺 Rotación de pantalla de piso</div>
+      <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+        <label style="font-size:13px;color:var(--text);font-weight:600"><span id="tvc-plant">Resumen de planta (seg)</span> <input type="number" id="tvc-plant-in" min="3" max="120" value="10" style="width:70px;margin-left:6px"></label>
+        <label style="font-size:13px;color:var(--text);font-weight:600"><span id="tvc-line">Cada línea (seg)</span> <input type="number" id="tvc-line-in" min="3" max="120" value="5" style="width:70px;margin-left:6px"></label>
+        <button class="tv-btn" id="tvc-save" style="margin:0;width:auto;padding:8px 18px" onclick="saveTvConfig()">Guardar</button>
+      </div>
+      <div id="tvc-help" style="font-size:11px;color:var(--muted);margin-top:8px"></div>
+    </div>
+
+    <div class="card" style="grid-column:1/-1;margin-bottom:0">
+      <div class="card-title" id="an-title">📢 Anuncios para pantallas</div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:10px">
+        <div><label class="lbl" id="an-l-trig">Cuándo se muestra</label><select class="sel" id="an-trig" onchange="anToggle()"></select></div>
+        <div><label class="lbl" id="an-l-tipo">Tipo</label><select class="sel" id="an-tipo"></select></div>
+        <div id="an-metabox"><label class="lbl" id="an-l-linea">Línea / equipo</label><select class="sel" id="an-linea"></select></div>
+        <div id="an-modobox"><label class="lbl" id="an-l-modo">Mostrar como</label><select class="sel" id="an-modo"></select></div>
+        <div><label class="lbl" id="an-l-seg">Seg en pantalla completa</label><input class="inp" type="number" id="an-seg" min="5" max="120" value="15"></div>
+      </div>
+      <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;margin-bottom:10px">
+        <div><label class="lbl" id="an-l-es">Mensaje (ES)</label><textarea class="inp" id="an-es" rows="2" style="resize:none"></textarea></div>
+        <div><label class="lbl" id="an-l-en">Mensaje (EN, opcional)</label><textarea class="inp" id="an-en" rows="2" style="resize:none"></textarea></div>
+        <div><label class="lbl" id="an-l-ko">Mensaje (KO, opcional)</label><textarea class="inp" id="an-ko" rows="2" style="resize:none"></textarea></div>
+      </div>
+      <div id="an-manual" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:10px;margin-bottom:10px">
+        <div><label class="lbl" id="an-l-dest">Dónde</label>
+          <label style="font-size:12px;display:block"><input type="checkbox" id="an-d-piso" checked> <span id="an-t-piso">TV piso</span></label>
+          <label style="font-size:12px;display:block"><input type="checkbox" id="an-d-desc" checked> <span id="an-t-desc">Pantalla de descansos</span></label></div>
+        <div><label class="lbl" id="an-l-desde">Desde</label><input class="inp" type="datetime-local" id="an-desde"></div>
+        <div><label class="lbl" id="an-l-hasta">Hasta</label><input class="inp" type="datetime-local" id="an-hasta"></div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:10px">
+        <label class="btn btn-sec" style="cursor:pointer"><span id="an-t-img">Subir imagen</span><input type="file" accept="image/*" id="an-file" style="display:none" onchange="anPickImg(this)"></label>
+        <img id="an-prev" style="display:none;height:64px;border-radius:6px;border:1px solid var(--border2)" alt="">
+        <button class="btn btn-sec btn-sm" id="an-imgrm" style="display:none" onclick="anClearImg()">Quitar imagen</button>
+        <div id="an-help" style="font-size:11px;color:var(--muted);flex:1;min-width:200px"></div>
+      </div>
+      <div class="btn-row">
+        <button class="btn btn-primary" id="an-save" onclick="anSave()">Publicar</button>
+        <button class="btn btn-sec" id="an-cancel" style="display:none" onclick="anReset()">Cancelar</button>
+      </div>
+      <div style="margin-top:14px;font-size:11px;color:var(--muted);text-transform:uppercase;letter-spacing:.08em;font-weight:600" id="an-listlbl">Anuncios</div>
+      <div id="an-list"></div>
     </div>
 
     <div class="card" style="grid-column:1/-1;margin-bottom:0">
@@ -688,6 +771,25 @@ const TRANSLATIONS = {
     kpi_scrap:   'SCRAP',
     kpi_def:     'DEFECTOS',
     kpi_cuts:    'Cortes',
+    kpi_down: "DOWNTIME",
+    kpi_prod_c: "PRODUCCIÓN",
+    cut_C1: "Break",
+    cut_C2: "Lunch",
+    cut_C3: "Home",
+    cut_OT: "OT",
+    no_cut: "AÚN NO HAY CORTE CERRADO",
+    kpi_target: "Target",
+    cut_lbl: "Corte",
+    tv_piso_btn: "📺 Abrir pantalla de piso",
+    tv_test_btn: "🧪 Abrir pantalla de prueba",
+    tvc_title: "📺 Rotación de pantalla de piso", tvc_plant: "Resumen de planta (seg)", tvc_line: "Cada línea (seg)", tvc_save: "Guardar", tvc_help: "La pantalla de piso se actualiza sola en segundos.", tvc_ok: "Guardado ✓",
+    an_title: "📢 Anuncios para pantallas", an_l_trig: "Cuándo se muestra", an_trig_manual: "Manual (fecha y hora)", an_trig_meta: "Al cumplir la meta de producción", an_l_tipo: "Tipo", an_t_info: "Informativo", an_t_aviso: "Aviso", an_t_urgente: "Urgente", an_t_logro: "Reconocimiento", an_l_linea: "Línea / equipo", an_plant: "Toda la planta", an_l_modo: "Mostrar como", an_m_franja: "Franja inferior", an_m_full: "Pantalla completa", an_l_seg: "Seg en pantalla completa", an_l_es: "Mensaje (ES)", an_l_en: "Mensaje (EN, opcional)", an_l_ko: "Mensaje (KO, opcional)", an_l_dest: "Dónde", an_t_piso: "TV piso", an_t_desc: "Pantalla de descansos", an_l_desde: "Desde", an_l_hasta: "Hasta", an_t_img: "Subir imagen", an_imgrm: "Quitar imagen", an_help: "La imagen se reduce sola. Si EN o KO quedan vacíos se muestra el texto en español.", an_save: "Publicar", an_cancel: "Cancelar", an_listlbl: "Anuncios", an_empty: "Sin anuncios", an_edit: "Editar", an_del: "Quitar", an_saved: "Anuncio guardado ✓", an_need: "Escribe un mensaje o sube una imagen", an_confirm: "¿Quitar este anuncio?", an_meta_txt: "Al cumplir meta:", an_always: "sin fecha límite",
+    ot_title: "⏰ Tiempo extra de hoy",
+    ot_lbl: "¿Hay tiempo extra hoy?",
+    ot_on: "SÍ — el tiempo extra se incluye",
+    ot_off: "NO — el Shift A termina en Home",
+    ot_help: "Se apaga solo cada día. Si está en NO, el tiempo extra se ignora en Shift A y la pantalla final aparece al terminar Home.",
+    hb_title: "🕐 Horario base de la jornada", hb_l_shift: "Turno", hb_h_desc: "Descripción", hb_h_start: "Hora inicio", hb_h_end: "Hora fin", hb_cuts: "Hora de cierre de cada corte", hb_save: "Guardar horario base", hb_reset: "Descartar cambios", hb_saved: "Horario base guardado ✓", hb_err: "Revisa las horas: el fin debe ser mayor al inicio y los cortes en orden", hb_none: "Sin breaks para este turno", hb_help: "Cambia las horas y presiona Guardar. El cambio aplica desde hoy y todos los días siguientes, en esta pantalla y en las pantallas de TV.",
     // Nav
     nav_dash:    '⏸ Dashboard',
     nav_admin:   '⚙️ Admin Breaks',
@@ -735,6 +837,25 @@ const TRANSLATIONS = {
     kpi_scrap:   'SCRAP',
     kpi_def:     'DEFECTS',
     kpi_cuts:    'Cuts',
+    kpi_down: "DOWNTIME",
+    kpi_prod_c: "PRODUCTION",
+    cut_C1: "Break",
+    cut_C2: "Lunch",
+    cut_C3: "Home",
+    cut_OT: "OT",
+    no_cut: "NO CUT CLOSED YET",
+    kpi_target: "Target",
+    cut_lbl: "Cut",
+    tv_piso_btn: "📺 Open floor screen",
+    tv_test_btn: "🧪 Open test screen",
+    tvc_title: "📺 Floor screen rotation", tvc_plant: "Plant summary (sec)", tvc_line: "Each line (sec)", tvc_save: "Save", tvc_help: "The floor screen updates by itself within seconds.", tvc_ok: "Saved ✓",
+    an_title: "📢 Screen announcements", an_l_trig: "When to show", an_trig_manual: "Manual (date and time)", an_trig_meta: "When production goal is met", an_l_tipo: "Type", an_t_info: "Info", an_t_aviso: "Notice", an_t_urgente: "Urgent", an_t_logro: "Recognition", an_l_linea: "Line / team", an_plant: "Whole plant", an_l_modo: "Show as", an_m_franja: "Bottom bar", an_m_full: "Full screen", an_l_seg: "Seconds in full screen", an_l_es: "Message (ES)", an_l_en: "Message (EN, optional)", an_l_ko: "Message (KO, optional)", an_l_dest: "Where", an_t_piso: "Floor TV", an_t_desc: "Break screen", an_l_desde: "From", an_l_hasta: "Until", an_t_img: "Upload image", an_imgrm: "Remove image", an_help: "The image is resized automatically. If EN or KO are empty, the Spanish text is shown.", an_save: "Publish", an_cancel: "Cancel", an_listlbl: "Announcements", an_empty: "No announcements", an_edit: "Edit", an_del: "Remove", an_saved: "Announcement saved ✓", an_need: "Write a message or upload an image", an_confirm: "Remove this announcement?", an_meta_txt: "When goal is met:", an_always: "no end date",
+    ot_title: "⏰ Today's overtime",
+    ot_lbl: "Is there overtime today?",
+    ot_on: "YES — overtime is included",
+    ot_off: "NO — Shift A ends at Home",
+    ot_help: "Resets by itself every day. When NO, overtime is ignored in Shift A and the final screen appears when Home ends.",
+    hb_title: "🕐 Base work schedule", hb_l_shift: "Shift", hb_h_desc: "Description", hb_h_start: "Start time", hb_h_end: "End time", hb_cuts: "Closing time of each cut", hb_save: "Save base schedule", hb_reset: "Discard changes", hb_saved: "Base schedule saved ✓", hb_err: "Check the times: end must be after start and cuts in order", hb_none: "No breaks for this shift", hb_help: "Change the times and press Save. The change applies from today and every following day, on this screen and on the TV screens.",
     nav_dash:    '⏸ Dashboard',
     nav_admin:   '⚙️ Admin Breaks',
     nav_tv:      '📺 TV Mode',
@@ -779,6 +900,25 @@ const TRANSLATIONS = {
     kpi_scrap:   '불량률',
     kpi_def:     '결함',
     kpi_cuts:    '교대',
+    kpi_down: "다운타임",
+    kpi_prod_c: "생산량",
+    cut_C1: "Break",
+    cut_C2: "Lunch",
+    cut_C3: "Home",
+    cut_OT: "OT",
+    no_cut: "마감된 구간 없음",
+    kpi_target: "목표",
+    cut_lbl: "구간",
+    tv_piso_btn: "📺 현장 화면 열기",
+    tv_test_btn: "🧪 테스트 화면 열기",
+    tvc_title: "📺 현장 화면 순환", tvc_plant: "공장 요약 (초)", tvc_line: "각 라인 (초)", tvc_save: "저장", tvc_help: "현장 화면이 몇 초 안에 자동으로 업데이트됩니다.", tvc_ok: "저장됨 ✓",
+    an_title: "📢 화면 공지", an_l_trig: "표시 시점", an_trig_manual: "수동 (날짜 및 시간)", an_trig_meta: "생산 목표 달성 시", an_l_tipo: "유형", an_t_info: "안내", an_t_aviso: "공지", an_t_urgente: "긴급", an_t_logro: "표창", an_l_linea: "라인 / 팀", an_plant: "전체 공장", an_l_modo: "표시 방식", an_m_franja: "하단 바", an_m_full: "전체 화면", an_l_seg: "전체 화면 표시 시간(초)", an_l_es: "메시지 (ES)", an_l_en: "메시지 (EN, 선택)", an_l_ko: "메시지 (KO, 선택)", an_l_dest: "표시 위치", an_t_piso: "현장 TV", an_t_desc: "휴식 화면", an_l_desde: "시작", an_l_hasta: "종료", an_t_img: "이미지 업로드", an_imgrm: "이미지 삭제", an_help: "이미지는 자동으로 축소됩니다. EN 또는 KO가 비어 있으면 스페인어 텍스트가 표시됩니다.", an_save: "게시", an_cancel: "취소", an_listlbl: "공지 목록", an_empty: "공지 없음", an_edit: "수정", an_del: "삭제", an_saved: "공지 저장됨 ✓", an_need: "메시지를 입력하거나 이미지를 올리세요", an_confirm: "이 공지를 삭제할까요?", an_meta_txt: "목표 달성 시:", an_always: "종료일 없음",
+    ot_title: "⏰ 오늘 야근",
+    ot_lbl: "오늘 야근이 있습니까?",
+    ot_on: "예 — 야근 포함",
+    ot_off: "아니오 — Shift A는 Home에서 종료",
+    ot_help: "매일 자동으로 꺼집니다. 아니오이면 Shift A에서 야근이 무시되고 Home 종료 시 최종 화면이 표시됩니다.",
+    hb_title: "🕐 기본 근무 시간표", hb_l_shift: "교대", hb_h_desc: "설명", hb_h_start: "시작 시간", hb_h_end: "종료 시간", hb_cuts: "각 구간 마감 시간", hb_save: "기본 시간표 저장", hb_reset: "변경 취소", hb_saved: "기본 시간표 저장됨 ✓", hb_err: "시간을 확인하세요: 종료가 시작보다 늦어야 하고 구간 순서가 맞아야 합니다", hb_none: "이 교대에는 휴식이 없습니다", hb_help: "시간을 변경하고 저장을 누르세요. 오늘부터 매일 적용되며 이 화면과 TV 화면에 반영됩니다.",
     nav_dash:    '⏸ 대시보드',
     nav_admin:   '⚙️ 관리자',
     nav_tv:      '📺 TV 모드',
@@ -804,6 +944,7 @@ function setLang(lang){
   document.getElementById('mb-admin').textContent = t('nav_admin');
   document.getElementById('mb-tv').textContent = t('nav_tv');
   document.getElementById('tb-back').textContent = t('back');
+  applyOtTexts();
   // Force re-render
   renderAll();
 }
@@ -820,6 +961,7 @@ let audioCtx    = null;
 
 // ── KPIs reales del día desde Firestore ───────────────────────────
 let realKpis = null; // cache
+let dayRecs = null;  // registros de hoy (para KPIs por corte)
 
 async function fetchDayKPIs(){
   try {
@@ -828,8 +970,9 @@ async function fetchDayKPIs(){
     const today = new Date();
     const HOY = `${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}-${String(today.getDate()).padStart(2,'0')}`;
     const snap = await getDocs(query(collection(window._db,'registros'), where('fecha','==',HOY)));
-    if(snap.empty) return null;
+    if(snap.empty){ dayRecs = []; return null; }
     const recs = snap.docs.map(d=>d.data());
+    dayRecs = recs;
     const totalProd  = recs.reduce((s,r)=>s+(r.prod||0),0);
     const totalScrap = recs.reduce((s,r)=>s+(r.scrap||0),0);
     const totalDef   = recs.reduce((s,r)=>s+(r.def||0),0);
@@ -849,6 +992,59 @@ async function fetchDayKPIs(){
     };
     return realKpis;
   } catch(e){ console.warn('KPIs fetch error:', e); return null; }
+}
+
+// ── KPIs del ÚLTIMO CORTE CERRADO (se congelan hasta que cierra el siguiente corte) ──
+// Horas de cierre de cada corte (igual que el MES). Ajusta aquí si cambian.
+const CUTS = [
+  { id:'C1', end: 8*60+45  },   // Break  7:00–8:45
+  { id:'C2', end: 12*60+30 },   // Lunch  9:00–12:30
+  { id:'C3', end: 16*60+30 },   // Home   1:00–4:30
+  { id:'OT', end: 18*60+25 },   // OT     4:45–6:25
+];
+function lastClosedCut(){
+  const n = nowMin(); let c = null;
+  CUTS.forEach(x=>{ if(x.end<=n && (x.id!=='OT' || hayOTHoy)) c = x; });
+  return c;
+}
+function cutKpis(cutId){
+  if(!dayRecs) return null;
+  const r = dayRecs.filter(x=>x.corte===cutId);
+  if(!r.length) return null;
+  const sum = f => r.reduce((s,x)=>s+(Number(x[f])||0),0);
+  const prod=sum('prod'), scrap=sum('scrap'), tgt=sum('target'), paro=sum('minParo');
+  return { prod, tgt, scrap, paro,
+    comp: tgt>0 ? prod/tgt*100 : null,
+    scrapPct: prod>0 ? scrap/prod*100 : null };
+}
+function kcolor(v, tgt, invert){
+  if(v===null||v===undefined||isNaN(v)) return '#7f8c9a';
+  return invert ? (v<=tgt?'#2ecc71':v<=tgt*1.5?'#f1c40f':'#e74c3c')
+                : (v>=tgt?'#2ecc71':v>=tgt*.9?'#f1c40f':'#e74c3c');
+}
+function cutKpiHTML(){
+  const cut = lastClosedCut();
+  const k = cut ? cutKpis(cut.id) : null;
+  const cutName = cut ? t('cut_'+cut.id) : '';
+  const dash = '—';
+  const prod = k ? k.prod.toLocaleString('es-MX') : dash;
+  const comp = k && k.comp!==null ? k.comp.toFixed(1)+'%' : dash;
+  const scr  = k && k.scrapPct!==null ? k.scrapPct.toFixed(1)+'%' : dash;
+  const dt   = k ? k.paro+' min' : dash;
+  const sub  = cut ? '' : `<div class="tv-ktgt">${t('no_cut')}</div>`;
+  const cc = k ? kcolor(k.comp,90,false) : '#7f8c9a';
+  const sc = k ? kcolor(k.scrapPct,3,true) : '#7f8c9a';
+  const dc = k ? kcolor(k.paro,10,true) : '#7f8c9a';
+  const card=(label,val,color,tgt)=>`
+      <div class="tv-kcard" style="border-top-color:${color}">
+        <div class="tv-klbl">${label}</div>
+        <div class="tv-kval" style="color:${color}">${val}</div>
+        <div class="tv-ktgt">${tgt}</div>
+      </div>`;
+  return card(`${t('kpi_prod_c')}${cutName?' · '+cutName:''}`, prod, '#4f8ef7', cut ? `${t('kpi_target')}: ${k?k.tgt.toLocaleString('es-MX'):dash}` : t('no_cut'))
+       + card(t('kpi_comp'), comp, cc, `${t('kpi_target')}: 90%`)
+       + card(t('kpi_scrap'), scr, sc, `${t('kpi_target')}: &lt;3%`)
+       + card(t('kpi_down'), dt, dc, `${t('kpi_target')}: &lt;10 min`);
 }
 
 const demoKpis = [
@@ -879,7 +1075,259 @@ const toMin  = t => { const[h,m]=t.split(':').map(Number); return h*60+m; };
 const nowMin = () => { const n=new Date(); return n.getHours()*60+n.getMinutes(); };
 function toHMS(s){ return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; }
 
-function shiftBreaks(){ return breaks.filter(b=>b.shift===currentShift&&b.active!==false); }
+// ── Tiempo extra de HOY (se guarda por fecha en Firestore: break_overtime_days/AAAA-MM-DD) ──
+let hayOTHoy = false, _otUnsub = null, _otDate = null;
+function todayStr(){ const d=new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function isOTBreak(b){ const d=((b&&b.description)||'').toLowerCase(); return d.includes('tiempo extra')||d.includes('overtime')||/\bot\b/.test(d); }
+function subscribeOT(){
+  const { doc, onSnapshot } = window._fbMod || {};
+  const d = todayStr(); _otDate = d;
+  if(_otUnsub){ _otUnsub(); _otUnsub=null; }
+  hayOTHoy = false;
+  if(!window._db || !onSnapshot){ try{ hayOTHoy = localStorage.getItem('bm-ot-'+d)==='1'; }catch(e){} refreshOtUI(); return; }
+  _otUnsub = onSnapshot(doc(window._db,'break_overtime_days',d),
+    snap=>{ hayOTHoy = snap.exists() && snap.data().hayOT===true; refreshOtUI(); },
+    err=>{ console.warn('OT listener:', err.message); refreshOtUI(); });
+  refreshOtUI();
+}
+async function setOvertimeToday(val){
+  const { doc, setDoc } = window._fbMod || {};
+  const d = todayStr();
+  if(!window._db || !setDoc){ hayOTHoy=!!val; try{ localStorage.setItem('bm-ot-'+d, val?'1':'0'); }catch(e){} refreshOtUI(); return; }
+  try{
+    await setDoc(doc(window._db,'break_overtime_days',d), { hayOT:!!val, fecha:d, actualizadoPor:(window._auth&&window._auth.currentUser&&window._auth.currentUser.email)||'', actualizadoEn:new Date().toISOString() });
+    showToast(val ? t('ot_on') : t('ot_off'));
+  }catch(e){ showToast('Error: '+e.message); refreshOtUI(); }
+}
+function refreshOtUI(){
+  const cb=document.getElementById('ot-toggle'); if(cb) cb.checked=hayOTHoy;
+  const st=document.getElementById('ot-state');
+  if(st){ st.textContent = hayOTHoy ? t('ot_on') : t('ot_off'); st.style.color = hayOTHoy ? 'var(--orange)' : 'var(--muted)'; }
+}
+
+// ── Tiempos de rotación de la pantalla de piso (Firestore: tv_config/piso) ──
+let _tvcLoaded = false;
+function loadTvConfig(){
+  const { doc, onSnapshot } = window._fbMod || {};
+  if(_tvcLoaded || !window._db || !onSnapshot) return; _tvcLoaded = true;
+  onSnapshot(doc(window._db,'tv_config','piso'), snap=>{
+    if(!snap.exists()) return; const d = snap.data();
+    const p = document.getElementById('tvc-plant-in'), l = document.getElementById('tvc-line-in');
+    if(p && document.activeElement !== p && d.plantSec) p.value = d.plantSec;
+    if(l && document.activeElement !== l && d.lineSec) l.value = d.lineSec;
+  }, e=>console.warn('tv_config:', e.message));
+}
+async function saveTvConfig(){
+  const { doc, setDoc } = window._fbMod || {};
+  const clamp = v => Math.min(120, Math.max(3, Math.round(Number(v)) || 0));
+  const plantSec = clamp(document.getElementById('tvc-plant-in').value) || 10;
+  const lineSec  = clamp(document.getElementById('tvc-line-in').value) || 5;
+  try{
+    await setDoc(doc(window._db,'tv_config','piso'), { plantSec, lineSec, actualizadoPor:(window._auth&&window._auth.currentUser&&window._auth.currentUser.email)||'', actualizadoEn:new Date().toISOString() });
+    document.getElementById('tvc-plant-in').value = plantSec; document.getElementById('tvc-line-in').value = lineSec;
+    showToast(t('tvc_ok'));
+  }catch(e){ showToast('Error: ' + e.message); }
+}
+
+// ── Anuncios para pantallas (Firestore: tv_anuncios) ──
+let ANN_IMG = '', ANN_EDIT = null, ANN_LIST = [], _annLoaded = false;
+const AN_LINES = ['ASSY1','S1','S2','S3','S4','S5','Zhongke','VC1','VC2','PLANTA'];
+const anEsc = s => String(s==null?'':s).replace(/[&<>"]/g, c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+function applyAnTexts(){
+  const set=(id,k)=>{ const el=document.getElementById(id); if(el) el.textContent=t(k); };
+  [['an-title','an_title'],['an-l-trig','an_l_trig'],['an-l-tipo','an_l_tipo'],['an-l-linea','an_l_linea'],['an-l-modo','an_l_modo'],['an-l-seg','an_l_seg'],
+   ['an-l-es','an_l_es'],['an-l-en','an_l_en'],['an-l-ko','an_l_ko'],['an-l-dest','an_l_dest'],['an-t-piso','an_t_piso'],['an-t-desc','an_t_desc'],
+   ['an-l-desde','an_l_desde'],['an-l-hasta','an_l_hasta'],['an-t-img','an_t_img'],['an-imgrm','an_imgrm'],['an-help','an_help'],['an-save','an_save'],
+   ['an-cancel','an_cancel'],['an-listlbl','an_listlbl']].forEach(([i,k])=>set(i,k));
+  const fill=(id,opts)=>{ const s=document.getElementById(id); if(!s) return; const v=s.value; s.innerHTML=opts.map(([val,k])=>'<option value="'+val+'">'+anEsc(t(k))+'</option>').join(''); if(v) s.value=v; };
+  fill('an-trig',[['manual','an_trig_manual'],['meta','an_trig_meta']]);
+  fill('an-tipo',[['info','an_t_info'],['aviso','an_t_aviso'],['urgente','an_t_urgente'],['logro','an_t_logro']]);
+  fill('an-modo',[['franja','an_m_franja'],['full','an_m_full']]);
+  const sl=document.getElementById('an-linea'); if(sl){ const v=sl.value; sl.innerHTML=AN_LINES.map(l=>'<option value="'+l+'">'+(l==='PLANTA'?anEsc(t('an_plant')):l)+'</option>').join(''); if(v) sl.value=v; }
+  anToggle(); anRender();
+}
+function anToggle(){
+  const meta=document.getElementById('an-trig').value==='meta';
+  document.getElementById('an-manual').style.display = meta?'none':'grid';
+  document.getElementById('an-modobox').style.display = meta?'none':'';
+  document.getElementById('an-metabox').style.display = meta?'':'none';
+}
+function anShowImg(){
+  const p=document.getElementById('an-prev'), b=document.getElementById('an-imgrm');
+  p.style.display = ANN_IMG?'':'none'; b.style.display = ANN_IMG?'':'none'; if(ANN_IMG) p.src=ANN_IMG;
+}
+function anClearImg(){ ANN_IMG=''; anShowImg(); }
+function anPickImg(inp){
+  const f=inp.files && inp.files[0]; if(!f) return;
+  const rd=new FileReader();
+  rd.onload=()=>{ const im=new Image(); im.onload=()=>{
+    let w=im.width, hh=im.height; const MAX=1000;
+    if(Math.max(w,hh)>MAX){ const r=MAX/Math.max(w,hh); w=Math.round(w*r); hh=Math.round(hh*r); }
+    const c=document.createElement('canvas'); c.width=w; c.height=hh; c.getContext('2d').drawImage(im,0,0,w,hh);
+    let q=.8, d=c.toDataURL('image/jpeg',q);
+    while(d.length>700000 && q>.3){ q-=.1; d=c.toDataURL('image/jpeg',q); }
+    ANN_IMG=d; anShowImg();
+  }; im.src=rd.result; };
+  rd.readAsDataURL(f); inp.value='';
+}
+function anReset(){
+  ANN_EDIT=null; ANN_IMG=''; anShowImg();
+  ['an-es','an-en','an-ko','an-desde','an-hasta'].forEach(i=>document.getElementById(i).value='');
+  document.getElementById('an-seg').value=15;
+  document.getElementById('an-d-piso').checked=true; document.getElementById('an-d-desc').checked=true;
+  document.getElementById('an-trig').value='manual'; document.getElementById('an-tipo').value='info'; document.getElementById('an-modo').value='franja';
+  document.getElementById('an-cancel').style.display='none'; anToggle();
+}
+const anLocal = ms => { if(!ms) return ''; const d=new Date(ms); const p=n=>String(n).padStart(2,'0'); return d.getFullYear()+'-'+p(d.getMonth()+1)+'-'+p(d.getDate())+'T'+p(d.getHours())+':'+p(d.getMinutes()); };
+async function anSave(){
+  const { doc, setDoc } = window._fbMod || {};
+  const v=id=>document.getElementById(id).value;
+  const es=v('an-es').trim();
+  if(!es && !ANN_IMG){ showToast(t('an_need')); return; }
+  const meta=v('an-trig')==='meta';
+  const prev=ANN_LIST.find(a=>a.id===ANN_EDIT);
+  const data={
+    texto:{ es, en:v('an-en').trim(), ko:v('an-ko').trim() },
+    tipo:v('an-tipo'), trigger:v('an-trig'), modo: meta?'full':v('an-modo'), linea: meta?v('an-linea'):'',
+    destinos:{ piso:document.getElementById('an-d-piso').checked, descanso:document.getElementById('an-d-desc').checked },
+    desde: (!meta && v('an-desde')) ? new Date(v('an-desde')).getTime() : null,
+    hasta: (!meta && v('an-hasta')) ? new Date(v('an-hasta')).getTime() : null,
+    segFull: Math.min(120, Math.max(5, Math.round(Number(v('an-seg')))||15)),
+    imagen: ANN_IMG||'', activo: prev ? prev.activo!==false : true,
+    actualizadoPor:(window._auth&&window._auth.currentUser&&window._auth.currentUser.email)||'', actualizadoEn:new Date().toISOString()
+  };
+  try{
+    await setDoc(doc(window._db,'tv_anuncios', ANN_EDIT || ('a'+Date.now())), data);
+    showToast(t('an_saved')); anReset();
+  }catch(e){ showToast('Error: '+e.message); }
+}
+function anEdit(id){
+  const a=ANN_LIST.find(x=>x.id===id); if(!a) return;
+  ANN_EDIT=id; ANN_IMG=a.imagen||''; anShowImg();
+  const s=(i,val)=>document.getElementById(i).value=val;
+  s('an-trig',a.trigger||'manual'); s('an-tipo',a.tipo||'info'); s('an-modo',a.modo||'franja'); if(a.linea) s('an-linea',a.linea);
+  s('an-es',(a.texto&&a.texto.es)||''); s('an-en',(a.texto&&a.texto.en)||''); s('an-ko',(a.texto&&a.texto.ko)||'');
+  s('an-seg',a.segFull||15); s('an-desde',anLocal(a.desde)); s('an-hasta',anLocal(a.hasta));
+  document.getElementById('an-d-piso').checked=!(a.destinos&&a.destinos.piso===false);
+  document.getElementById('an-d-desc').checked=!(a.destinos&&a.destinos.descanso===false);
+  document.getElementById('an-cancel').style.display=''; anToggle();
+  document.getElementById('an-title').scrollIntoView({behavior:'smooth',block:'center'});
+}
+async function anDel(id){
+  if(!confirm(t('an_confirm'))) return;
+  const { doc, deleteDoc } = window._fbMod || {};
+  try{ await deleteDoc(doc(window._db,'tv_anuncios',id)); if(ANN_EDIT===id) anReset(); }catch(e){ showToast('Error: '+e.message); }
+}
+async function anActivo(id,val){
+  const { doc, updateDoc } = window._fbMod || {};
+  try{ await updateDoc(doc(window._db,'tv_anuncios',id),{ activo:!!val }); }catch(e){ showToast('Error: '+e.message); }
+}
+function anRender(){
+  const box=document.getElementById('an-list'); if(!box) return;
+  if(!ANN_LIST.length){ box.innerHTML='<div class="sinfo" style="padding:8px 0">'+anEsc(t('an_empty'))+'</div>'; return; }
+  const col={info:'#4f8ef7',aviso:'#f1c40f',urgente:'#e74c3c',logro:'#2ecc71'};
+  const fmtD=ms=>new Date(ms).toLocaleString([], {month:'short',day:'numeric',hour:'2-digit',minute:'2-digit'});
+  box.innerHTML=ANN_LIST.map(a=>{
+    const when = a.trigger==='meta' ? (t('an_meta_txt')+' '+(a.linea==='PLANTA'?t('an_plant'):a.linea)) : ((a.desde?fmtD(a.desde):'—')+' → '+(a.hasta?fmtD(a.hasta):t('an_always')));
+    const txt=(a.texto&&a.texto.es)||'';
+    return '<div class="srow">'
+      +(a.imagen?'<img src="'+a.imagen+'" style="height:34px;border-radius:4px" alt="">':'')
+      +'<span class="sshift" style="color:'+(col[a.tipo]||col.info)+'">'+anEsc(t('an_t_'+(a.tipo||'info')))+'</span>'
+      +'<span class="sinfo" style="color:var(--text)">'+anEsc(txt)+' <span style="color:var(--muted)">· '+anEsc(when)+'</span></span>'
+      +'<label style="font-size:11px"><input type="checkbox" '+(a.activo!==false?'checked':'')+' onchange="anActivo(\''+a.id+'\',this.checked)"></label>'
+      +'<button class="btn btn-sec btn-sm" onclick="anEdit(\''+a.id+'\')">'+anEsc(t('an_edit'))+'</button>'
+      +'<button class="btn btn-danger btn-sm" onclick="anDel(\''+a.id+'\')">'+anEsc(t('an_del'))+'</button></div>';
+  }).join('');
+}
+function loadAnuncios(){
+  const { collection, onSnapshot } = window._fbMod || {};
+  if(_annLoaded || !window._db || !onSnapshot) return; _annLoaded=true;
+  onSnapshot(collection(window._db,'tv_anuncios'), snap=>{
+    ANN_LIST=snap.docs.map(d=>({id:d.id,...d.data()})).sort((a,b)=>String(b.actualizadoEn||'').localeCompare(String(a.actualizadoEn||'')));
+    anRender();
+  }, e=>console.warn('tv_anuncios:', e.message));
+}
+function applyOtTexts(){
+  const set=(id,k)=>{ const el=document.getElementById(id); if(el) el.textContent=t(k); };
+  set('ot-title','ot_title'); set('ot-lbl','ot_lbl'); set('ot-help','ot_help'); set('tv-piso-btn','tv_piso_btn'); set('tv-test-btn','tv_test_btn'); set('tvc-title','tvc_title'); set('tvc-plant','tvc_plant'); set('tvc-line','tvc_line'); set('tvc-save','tvc_save'); set('tvc-help','tvc_help'); applyAnTexts(); applyHbTexts(); refreshOtUI();
+}
+// ── Horario base: editar horas de todos los breaks y de los cortes, y guardar ──
+let breaksFromDemo = false;
+function applyHbTexts(){
+  const set=(id,k)=>{ const el=document.getElementById(id); if(el) el.textContent=t(k); };
+  set('hb-title','hb_title'); set('hb-l-shift','hb_l_shift'); set('hb-h-desc','hb_h_desc'); set('hb-h-start','hb_h_start');
+  set('hb-h-end','hb_h_end'); set('hb-cuts-title','hb_cuts'); set('hb-save','hb_save'); set('hb-reset','hb_reset'); set('hb-help','hb_help');
+  ['C1','C2','C3','OT'].forEach(id=>set('hb-l-'+id,'cut_'+id));
+  const sel=document.getElementById('hb-shift');
+  if(sel){ const v=sel.value||'A'; sel.innerHTML=['A','B','C'].map(x=>'<option value="'+x+'">'+anEsc(getShiftLabel(x))+'</option>').join(''); sel.value=v; }
+  renderHb();
+}
+function hbDur(el){
+  const r=el.closest('.srow'); if(!r) return;
+  const s=r.querySelector('.hb-s').value, e=r.querySelector('.hb-e').value;
+  r.querySelector('.hb-d').textContent = (s&&e&&toMin(e)>toMin(s)) ? (toMin(e)-toMin(s))+' min' : '—';
+}
+function renderHb(){
+  const box=document.getElementById('hb-rows'); if(!box) return;
+  const hasFocus = box.contains(document.activeElement) || /^hb-c-/.test((document.activeElement||{}).id||'');
+  if(hasFocus) return;
+  const sh=(document.getElementById('hb-shift')||{}).value||'A';
+  const list=breaks.filter(b=>b.shift===sh&&b.active!==false).sort((a,b)=>toMin(a.start_time)-toMin(b.start_time));
+  box.innerHTML = list.length ? list.map(b=>{
+    const d=toMin(b.end_time)-toMin(b.start_time);
+    return '<div class="srow" data-id="'+anEsc(b.id)+'" style="flex-wrap:wrap">'
+      +'<div class="sinfo" style="color:var(--text);font-weight:600;min-width:140px">'+anEsc(b.description)+'<span style="color:var(--muted);font-weight:400"> '+(b.lines?'('+anEsc(b.lines)+')':'')+'</span></div>'
+      +'<input class="inp hb-s" type="time" value="'+b.start_time+'" style="width:115px" oninput="hbDur(this)">'
+      +'<input class="inp hb-e" type="time" value="'+b.end_time+'" style="width:115px" oninput="hbDur(this)">'
+      +'<span class="hb-d" style="font-size:11px;color:var(--muted);width:52px;text-align:right">'+d+' min</span></div>';
+  }).join('') : '<div class="sinfo" style="padding:8px 0">'+anEsc(t('hb_none'))+'</div>';
+  CUTS.forEach(c=>{ const el=document.getElementById('hb-c-'+c.id); if(el) el.value=pad(Math.floor(c.end/60))+':'+pad(c.end%60); });
+}
+function hbReset(){ if(document.activeElement&&document.activeElement.blur) document.activeElement.blur(); loadBreaks(); renderHb(); }
+let _cutsLoaded=false;
+function loadCutsConfig(){
+  const { doc, onSnapshot } = window._fbMod || {};
+  if(_cutsLoaded || !window._db || !onSnapshot) return; _cutsLoaded=true;
+  onSnapshot(doc(window._db,'tv_config','cortes'), snap=>{
+    if(!snap.exists()) return; const d=snap.data();
+    CUTS.forEach(c=>{ if(/^\d{2}:\d{2}$/.test(d[c.id]||'')) c.end=toMin(d[c.id]); });
+    renderHb(); fetchDayKPIs();
+  }, e=>console.warn('cortes:', e.message));
+}
+async function saveHb(){
+  const { collection, addDoc, doc, updateDoc, setDoc } = window._fbMod || {};
+  const edits={};
+  for(const r of document.querySelectorAll('#hb-rows .srow')){
+    const s=r.querySelector('.hb-s').value, e=r.querySelector('.hb-e').value;
+    if(!s||!e||toMin(e)<=toMin(s)){ showToast(t('hb_err')); return; }
+    edits[r.dataset.id]={s,e};
+  }
+  const cuts={}; let prev=-1;
+  for(const c of CUTS){
+    const v=document.getElementById('hb-c-'+c.id).value;
+    if(!v||toMin(v)<=prev){ showToast(t('hb_err')); return; }
+    prev=toMin(v); cuts[c.id]=v;
+  }
+  try{
+    if(window._db && updateDoc){
+      for(const b of breaks){
+        const x=edits[b.id];
+        if(breaksFromDemo){
+          await addDoc(collection(window._db,'break_schedule'),{shift:b.shift,description:b.description,lines:b.lines||'Todas',start_time:x?x.s:b.start_time,end_time:x?x.e:b.end_time,active:true});
+        } else if(x && (b.start_time!==x.s||b.end_time!==x.e)){
+          await updateDoc(doc(window._db,'break_schedule',b.id),{start_time:x.s,end_time:x.e});
+        }
+      }
+      await setDoc(doc(window._db,'tv_config','cortes'),{...cuts, actualizadoPor:(window._auth&&window._auth.currentUser&&window._auth.currentUser.email)||'', actualizadoEn:new Date().toISOString()});
+    } else {
+      breaks=breaks.map(b=>edits[b.id]?{...b,start_time:edits[b.id].s,end_time:edits[b.id].e}:b);
+    }
+    CUTS.forEach(c=>c.end=toMin(cuts[c.id]));
+    showToast(t('hb_saved')); loadBreaks(); fetchDayKPIs();
+  }catch(e){ showToast('Error: '+e.message); }
+}
+
+function shiftBreaks(){ return breaks.filter(b=>b.shift===currentShift&&b.active!==false&&!(currentShift==='A'&&isOTBreak(b)&&!hayOTHoy)); }
 
 function getCurrent(){
   const now=nowMin();
@@ -995,14 +1443,15 @@ function applyEffects(status){
 // ── Firebase ───────────────────────────────────────────
 function loadBreaks(){
   const { collection, getDocs, query, orderBy } = window._fbMod || {};
-  if(!window._db||!getDocs){ breaks=demoBreaks(); renderAll(); renderSchedList(); return; }
+  if(!window._db||!getDocs){ breaks=demoBreaks(); breaksFromDemo=true; renderAll(); renderSchedList(); return; }
   getDocs(query(collection(window._db,'break_schedule'),orderBy('start_time')))
     .then(snap=>{
       breaks=snap.docs.map(d=>({id:d.id,...d.data()}));
-      if(!breaks.length){ breaks=demoBreaks(); showToast('Usando horarios demo'); }
+      breaksFromDemo=false;
+      if(!breaks.length){ breaks=demoBreaks(); breaksFromDemo=true; showToast('Usando horarios demo'); }
       renderAll(); renderSchedList();
     })
-    .catch(()=>{ breaks=demoBreaks(); renderAll(); renderSchedList(); });
+    .catch(()=>{ breaks=demoBreaks(); breaksFromDemo=true; renderAll(); renderSchedList(); });
 }
 
 function loadSettings(){
@@ -1271,12 +1720,7 @@ function renderTV(status,cfg,cur,nxt,timeStr,dateStr){
         <div class="tv-ktgt">Target: &lt;2% · ${realKpis.records} registros</div>
       </div>`;
   } else {
-    document.getElementById('tv-kpi').innerHTML=demoKpis.map(k=>`
-      <div class="tv-kcard" style="border-top-color:${k.color}">
-        <div class="tv-klbl">${k.label}</div>
-        <div class="tv-kval" style="color:${k.color}">${k.value}${k.unit}</div>
-        <div class="tv-ktgt">Target: ${k.target}${k.unit}</div>
-      </div>`).join('');
+    document.getElementById('tv-kpi').innerHTML = cutKpiHTML();
   }
 }
 
@@ -1291,6 +1735,7 @@ function renderSchedList(){
         <button class="btn btn-danger btn-sm" onclick="deleteBreak('${b.id}')">Del</button>
       </div>
     </div>`).join(''):'<div class="empty">Sin breaks registrados</div>';
+  renderHb();
 }
 
 function editBreak(id){
@@ -1345,7 +1790,7 @@ function showToast(msg){
 }
 
 // ── Init ───────────────────────────────────────────────
-document.addEventListener('fb-ready',()=>{ loadSettings(); loadBreaks(); });
+document.addEventListener('fb-ready',()=>{ loadSettings(); loadBreaks(); subscribeOT(); loadTvConfig(); loadAnuncios(); loadCutsConfig(); });
 setTimeout(()=>{ if(!breaks.length){ breaks=demoBreaks(); renderAll(); } },3000);
 
 // Restore saved language
@@ -1357,6 +1802,7 @@ setTimeout(()=>{ if(!breaks.length){ breaks=demoBreaks(); renderAll(); } },3000)
   LANG = saved;
 })();
 
+applyOtTexts();
 renderAll();
 setInterval(renderAll,1000);
 
@@ -1369,6 +1815,14 @@ setInterval(()=>{
   if(minLeft <= 15) fetchDayKPIs();
 }, 60 * 1000); // revisa cada minuto
 setInterval(fetchDayKPIs, 5 * 60 * 1000); // refresco general cada 5 min
+
+// Cada minuto: si cerró un corte nuevo, recarga los registros; si cambió el día, reinicia el interruptor de tiempo extra
+let _lastCutFetched = undefined;
+setInterval(()=>{
+  if(_otDate && _otDate !== todayStr()) subscribeOT();
+  const c = lastClosedCut(); const id = c ? c.id : null;
+  if(id !== _lastCutFetched){ _lastCutFetched = id; fetchDayKPIs(); }
+}, 60 * 1000);
 </script>
 </body>
 </html>
