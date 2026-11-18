@@ -365,7 +365,7 @@ function ignoredBreaks(){
   const sh=SHIFT();
   return BREAKS.filter(b=>b.shift===sh && b.active!==false && b.start_time && b.end_time
     && (toMin(b.end_time)-toMin(b.start_time))>MAX_BREAK_MIN
-    && !(sh==='A' && isOTBreak(b) && !hayOT));
+    && !isOTBreak(b));   // el tiempo extra es largo a propósito: no es un break, no se avisa
 }
 function showSchedWarn(){
   const el=document.getElementById('warnbar'); if(!el) return;
@@ -382,8 +382,11 @@ function getBreakState(){
     return {mode:'break', st: r<=RETURN_SEC?'RETURN_NOW':(r<=WARN_SEC?'WARN':'BREAK'), b:cur, r, kind:kindOf(cur)};
   }
   const nxt=list.filter(b=>toMin(b.start_time)*60>ns).sort((a,b)=>toMin(a.start_time)-toMin(b.start_time))[0]||null;
-  const over=list.length>0 && ns>=Math.max(...list.map(b=>toMin(b.end_time)))*60;
-  return {mode:'run', next:nxt, over};
+  // Tiempo extra de hoy: no es un break, pero la jornada no termina hasta que acaba
+  const otEnds = (SHIFT()==='A' && hayOT) ? BREAKS.filter(b=>b.shift==='A' && b.active!==false && b.end_time && isOTBreak(b)).map(b=>toMin(b.end_time)) : [];
+  const otEnd = otEnds.length ? Math.max(...otEnds) : 0;
+  const over=list.length>0 && ns>=Math.max(...list.map(b=>toMin(b.end_time)), otEnd)*60;
+  return {mode:'run', next:nxt, over, otEnd};
 }
 
 /* ═══════════ CÁLCULOS ═══════════ */
@@ -718,6 +721,9 @@ function renderHeader(bs){
   let chip='';
   if(bs.mode==='run' && bs.next){
     chip=`${t('next')}: ${bs.next.description} ${bs.next.start_time} · ${t('in')} ${toHMS(toMin(bs.next.start_time)*60-nowSec())}`;
+  }
+  else if(bs.mode==='run' && !bs.over && bs.otEnd){
+    chip=`${t('a_ot')} ${pad(Math.floor(bs.otEnd/60))}:${pad(bs.otEnd%60)} · ${t('in')} ${toHMS(bs.otEnd*60-nowSec())}`;
   }
   $('chip').textContent=chip;
   ['es','en','ko'].forEach(l=>$('fl-'+l).classList.toggle('on',l===LANG));
