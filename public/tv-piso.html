@@ -1,0 +1,800 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="theme-color" content="#07090f">
+<title>Eunsung Management Execution System</title>
+<link href="https://fonts.googleapis.com/css2?family=Rajdhani:wght@500;600;700&family=DM+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#07090f; --bg2:#0a0d18; --card:#161b2e; --card2:#232b47; --border:#2a3350;
+  --text:#e8ecf4; --muted:#7f8c9a;
+  --blue:#4f8ef7; --green:#2ecc71; --amber:#f1c40f; --red:#e74c3c; --orange:#f97316;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%;background:var(--bg);color:var(--text);font-family:'DM Sans',sans-serif;overflow:hidden;-webkit-font-smoothing:antialiased}
+
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+@keyframes fadeIn{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:translateY(0)}}
+@keyframes blink-text{0%,100%{opacity:1}50%{opacity:.08}}
+@keyframes glow-border{0%,100%{box-shadow:inset 0 0 0 transparent}50%{box-shadow:inset 0 0 90px #f1c40f33}}
+@keyframes flash-screen{0%,100%{background:var(--bg)}50%{background:#2a0a08}}
+@keyframes flash-text{0%,100%{opacity:1}50%{opacity:.05}}
+
+#app{height:100vh;display:grid;grid-template-rows:auto minmax(0,1fr) auto}
+
+header{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:2vw;padding:1.1vh 2.2vw;background:var(--bg2);border-bottom:1px solid var(--border)}
+.brand{display:flex;align-items:center;gap:1vw}
+.acbar{width:4px;height:5vh;border-radius:2px;background:var(--blue)}
+.ttl{font-family:'Rajdhani',sans-serif;font-size:clamp(16px,1.9vw,42px);font-weight:700;letter-spacing:.04em;line-height:1.1}
+.sub{font-size:clamp(10px,.8vw,16px);color:var(--muted);letter-spacing:.22em;text-transform:uppercase;margin-top:.3vh}
+.mid{text-align:center}
+.clock{font-family:'Rajdhani',sans-serif;font-size:clamp(26px,3.3vw,72px);font-weight:700;color:var(--blue);line-height:1}
+.chip{font-size:clamp(11px,.95vw,20px);color:var(--muted);margin-top:.5vh;min-height:1.3em}
+.right{display:flex;flex-direction:column;align-items:flex-end;gap:.8vh}
+.badge{display:inline-flex;align-items:center;gap:.5vw;border:1px solid;border-radius:30px;padding:.3vh 1vw;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.12em;font-size:clamp(11px,1vw,20px)}
+.bdot{width:.7vw;height:.7vw;min-width:7px;min-height:7px;border-radius:50%;animation:pulse 1.5s infinite}
+.flags{display:flex;gap:6px}
+.flags button{background:var(--card);border:1px solid var(--border);border-radius:6px;padding:3px 5px;cursor:pointer;opacity:.45;line-height:0}
+.flags button.on{opacity:1;border-color:var(--blue)}
+.flags img{width:28px;height:20px;border-radius:3px;display:block}
+
+main{padding:1.6vh 2.2vw;min-height:0;overflow:hidden}
+.fade{animation:fadeIn .5s ease}
+.slide{height:100%;display:grid;gap:1.4vh;min-height:0}
+.slide.machine{grid-template-rows:auto minmax(0,3fr) minmax(0,2fr) minmax(0,1fr)}
+.slide.plant{grid-template-rows:auto minmax(0,2fr) minmax(0,3fr)}
+
+.stitle{display:flex;justify-content:space-between;align-items:flex-end}
+.lbl{font-size:clamp(11px,1vw,20px);letter-spacing:.16em;color:var(--muted);text-transform:uppercase;font-weight:500}
+.bigname{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:min(4.2vw,8.5vh);line-height:1}
+.bigname small{font-size:.45em;color:var(--muted);font-weight:600;letter-spacing:.08em}
+
+.row2{display:grid;grid-template-columns:minmax(0,3fr) minmax(0,2fr);gap:1.2vw;min-height:0}
+.row4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.2vw;min-height:0}
+.card{background:var(--card);border-radius:10px;padding:1.2vh 1.3vw;border-top:.6vh solid var(--c,var(--blue));display:flex;flex-direction:column;justify-content:center;min-height:0;min-width:0;overflow:hidden}
+.num{font-family:'Rajdhani',sans-serif;font-weight:700;line-height:1;font-size:min(8vw,13vh);white-space:nowrap}
+.num.m{font-size:min(3.8vw,6vh)}
+.num.s{font-size:min(3.1vw,4.8vh)}
+.nsub{font-size:clamp(12px,1.15vw,24px);color:var(--muted);margin-top:.6vh}
+.bar{height:1.1vh;background:var(--card2);border-radius:6px;margin-top:1.2vh}
+.bar>div{height:100%;border-radius:6px}
+.cuts{display:grid;gap:1.2vw;min-height:0}
+.kline{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:1.2vw}
+.kmini{background:var(--card);border-radius:10px;padding:.6vh 1.3vw;display:flex;justify-content:space-between;align-items:center;gap:1vw;min-height:0;overflow:hidden}
+
+.lines{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));grid-auto-rows:minmax(0,1fr);gap:1.2vh 1.2vw;min-height:0}
+.lcard{background:var(--card);border-radius:10px;padding:1vh 1.1vw;border-left:.6vw solid var(--c,var(--muted));display:flex;flex-direction:column;justify-content:center;min-height:0;min-width:0;overflow:hidden}
+.lhead{display:flex;justify-content:space-between;align-items:baseline;gap:1vw}
+.lname{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:min(2.1vw,4.4vh)}
+.lpct{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:min(2.6vw,5.4vh)}
+.lprod{font-size:clamp(12px,1.2vw,26px);color:var(--muted);white-space:nowrap}
+.lprod b{color:var(--text);font-size:1.5em;font-family:'Rajdhani',sans-serif}
+
+.runwrap{display:flex;gap:1.2vw;justify-content:flex-end;min-width:0;max-width:70%}
+.run.nxt{border-left:1px solid var(--border);padding-left:1.2vw}
+.run.nxt .rmodel{font-size:min(2.4vw,5vh)}
+.run{text-align:right;min-width:0;max-width:55%}
+.run .lbl{display:flex;align-items:center;justify-content:flex-end;gap:.5vw}
+.rdot{width:.8vw;height:.8vw;min-width:8px;min-height:8px;border-radius:50%;background:var(--green);animation:pulse 1.5s infinite}
+.rmodel{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:min(3.2vw,6.5vh);line-height:1.05;color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.run.none .rmodel{color:var(--muted);font-size:min(1.6vw,3.4vh);font-weight:500}
+.rpart{font-size:clamp(11px,1.1vw,22px);color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lmodel{font-size:clamp(11px,1vw,20px);color:var(--green);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+footer{background:var(--bg2);border-top:1px solid var(--border);padding:1.1vh 2.2vw .8vh}
+.pills{display:flex;gap:.5vw;flex-wrap:wrap;align-items:center}
+.pill{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:clamp(12px,1.15vw,24px);padding:.3vh .9vw;border-radius:30px;background:var(--card);color:var(--muted);letter-spacing:.06em}
+.pill.on{background:var(--blue);color:#07090f}
+.pbar{height:.6vh;background:var(--card2);border-radius:3px;margin-top:.9vh}
+#pfill{height:100%;background:var(--blue);border-radius:3px;width:0}
+
+/* ── Pantalla de break ── */
+body.mode-break footer{display:none}
+.brk{height:100%;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;gap:1vh;min-height:0}
+.brk .t1{font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.16em;color:var(--c);font-size:min(3.6vw,7vh);text-transform:uppercase}
+.brk .t2{font-size:min(2vw,4vh);color:var(--muted)}
+.brk .t3{font-size:min(1.7vw,3.4vh);letter-spacing:.18em;color:var(--muted);text-transform:uppercase;margin-top:1vh}
+.brk .tm{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--c);font-size:min(9vw,20vh);line-height:1;text-shadow:0 0 60px color-mix(in srgb,var(--c) 40%,transparent)}
+.brk .cd{font-family:'Rajdhani',sans-serif;font-weight:700;color:var(--c);font-size:min(7vw,15vh);line-height:1}
+.brk.big .cd{font-size:min(14vw,30vh)}
+.brkwrap{height:100%;display:grid;grid-template-rows:minmax(0,1fr) auto auto auto;gap:1vh;min-height:0}
+.kname{color:var(--blue);font-family:'Rajdhani',sans-serif;font-size:1.5em;letter-spacing:.08em}
+.kpills{margin-top:.2vh}
+.kcap{font-size:clamp(11px,1vw,20px);letter-spacing:.16em;color:var(--muted);text-transform:uppercase}
+.kstrip{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:1.2vw}
+.kstrip .card{padding:1vh 1.2vw}
+.kstrip .num{font-size:min(3.6vw,7vh)}
+
+body.fx-warn main{animation:glow-border 1s ease-in-out infinite}
+body.fx-warn .brk .cd,body.fx-warn .brk .tm{animation:blink-text 1s ease-in-out infinite}
+body.fx-flash{animation:flash-screen .5s ease-in-out infinite}
+body.fx-flash .brk .cd{animation:flash-text .5s ease-in-out infinite}
+
+#warnbar{position:fixed;left:1vw;bottom:5vh;background:#2a1f05;border:1px solid var(--amber);color:var(--amber);border-radius:8px;padding:6px 12px;font-size:clamp(12px,1vw,20px);display:none;z-index:50;max-width:70vw}
+#errbar{position:fixed;left:1vw;bottom:1vh;background:#2a1f05;border:1px solid var(--amber);color:var(--amber);border-radius:8px;padding:6px 12px;font-size:12px;display:none;z-index:50;max-width:60vw}
+
+#app{grid-template-rows:auto minmax(0,1fr) auto auto}
+#annbar{display:none;align-items:center;gap:1.2vw;padding:1vh 2.2vw;border-top:1px solid var(--border);background:color-mix(in srgb,var(--c) 18%,var(--bg2));color:var(--text);font-weight:600;font-size:min(2.2vw,4.4vh)}
+#annbar img{height:7vh;border-radius:6px}
+#annbar .atag{font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.12em;color:#07090f;background:var(--c);padding:.2vh .9vw;border-radius:6px;font-size:.7em;white-space:nowrap}
+#annbar .atx{min-width:0;overflow:hidden;text-overflow:ellipsis}
+body.has-ann #warnbar{bottom:13vh}
+.big{height:100%;display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:3vw;align-items:center;padding:3vh 3vw;border-radius:14px;border:1px solid color-mix(in srgb,var(--c) 45%,transparent);background:color-mix(in srgb,var(--c) 12%,var(--bg2));min-height:0}
+.big.noimg{grid-template-columns:minmax(0,1fr);text-align:center}
+.bimg{height:100%;min-height:0;display:flex;align-items:center;justify-content:center}
+.bimg img{max-width:100%;max-height:100%;border-radius:12px;object-fit:contain}
+.btx{min-width:0}
+.bt1{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:min(5.5vw,11vh);line-height:1;color:var(--c);text-transform:uppercase;letter-spacing:.06em}
+.bt2{font-family:'Rajdhani',sans-serif;font-weight:700;font-size:min(4vw,8vh);margin-top:1vh}
+.bt3{font-size:min(2.4vw,4.8vh);color:var(--muted);margin-top:1vh}
+.bt4{font-size:min(2.6vw,5vh);margin-top:2vh}
+.bt5{font-size:min(1.8vw,3.6vh);color:var(--muted);margin-top:2vh}
+#testbadge{border:0;cursor:pointer;position:fixed;right:1vw;bottom:1vh;background:var(--orange);color:#07090f;font-family:'Rajdhani',sans-serif;font-weight:700;letter-spacing:.14em;padding:3px 12px;border-radius:6px;z-index:60;font-size:clamp(12px,1vw,20px)}
+</style>
+</head>
+<body>
+<div id="app">
+  <header>
+    <div class="brand">
+      <div class="acbar" id="acbar"></div>
+      <div>
+        <div class="ttl">Eunsung Management Execution System</div>
+        <div class="sub" id="subttl"></div>
+      </div>
+    </div>
+    <div class="mid">
+      <div class="clock" id="clock">--:--:--</div>
+      <div class="chip" id="chip"></div>
+    </div>
+    <div class="right">
+      <div class="badge" id="badge"><div class="bdot" id="bdot"></div><span id="btxt"></span></div>
+      <div class="flags">
+        <button id="fl-es" title="Español"><img src="https://flagcdn.com/w40/mx.png" alt="ES"></button>
+        <button id="fl-en" title="English"><img src="https://flagcdn.com/w40/us.png" alt="EN"></button>
+        <button id="fl-ko" title="한국어"><img src="https://flagcdn.com/w40/kr.png" alt="KO"></button>
+      </div>
+    </div>
+  </header>
+  <main id="stage"></main>
+  <div id="annbar"></div>
+  <footer id="foot"></footer>
+</div>
+<div id="warnbar"></div>
+<div id="errbar"></div>
+
+<script type="module">
+import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
+import { getAuth } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
+import { getFirestore, collection, doc, getDocs, onSnapshot, query, where }
+  from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+
+const firebaseConfig = {
+  apiKey:            "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
+  authDomain:        "mes-production-esp.firebaseapp.com",
+  projectId:         "mes-production-esp",
+  storageBucket:     "mes-production-esp.firebasestorage.app",
+  messagingSenderId: "165168379582",
+  appId:             "1:165168379582:web:9707579b363156208cd0ef"
+};
+const app  = initializeApp(firebaseConfig);
+getAuth(app); // comparte la sesión del MES en este navegador
+const db   = getFirestore(app);
+
+/* ═══════════ AJUSTES (puedes cambiarlos aquí) ═══════════ */
+const params      = new URLSearchParams(location.search);
+let ROTATE_SEC  = Number(params.get('sec')) || 5;    // segundos por LÍNEA (?sec=8)
+let PLANT_SEC   = Number(params.get('secp')) || 10;  // segundos del RESUMEN de planta (?secp=15)
+const slideSec = i => (i===0 ? PLANT_SEC : ROTATE_SEC);  // la posición 0 de la rotación es el resumen
+const MAX_BREAK_MIN = 60;   // horarios más largos que esto NO se toman como break
+const WARN_SEC    = 180;    // aviso: faltan 3 min para regresar
+const RETURN_SEC  = 60;     // último minuto
+const ORDER = ['S1','S2','S3','S4','S5','Zhongke','VC1','VC2','ASSY1'];
+const SHORT = { Zhongke:'ZK' };
+const MAQ = [
+  {nombre:'S1',     tipo:'TOP',     target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
+  {nombre:'S2',     tipo:'TOP',     target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:1300}},
+  {nombre:'S3',     tipo:'BOT',     target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
+  {nombre:'S4',     tipo:'BOT',     target:9000,  cortes:{C1:1800,C2:3600,C3:3600,OT:1500}},
+  {nombre:'S5',     tipo:'TOP/BOT', target:5000,  cortes:{C1:1000,C2:2000,C3:2000,OT:930}},
+  {nombre:'Zhongke',tipo:'AUTO',    target:7000,  cortes:{C1:1400,C2:2800,C3:2800,OT:2000}},
+  {nombre:'VC1',    tipo:'VC',      target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:'VC2',    tipo:'VC',      target:8000,  cortes:{C1:1600,C2:3200,C3:3200,OT:2000}},
+  {nombre:'ASSY1',  tipo:'ASSY',    target:10000, cortes:{C1:2000,C2:4000,C3:4000,OT:2000}},
+];
+// Cortes de producción (igual que el MES). start/end en minutos desde 00:00
+const CUTS = [
+  {id:'C1', start:7*60,  end:8*60+45},
+  {id:'C2', start:9*60,  end:12*60+30},
+  {id:'C3', start:13*60, end:16*60+30},
+  {id:'OT', start:16*60+45, end:18*60+25},
+];
+const GREEN='#2ecc71', AMBER='#f1c40f', RED='#e74c3c', BLUE='#4f8ef7', ORANGE='#f97316', MUTED='#7f8c9a', DIM='#344070';
+
+/* ═══════════ IDIOMAS ES / EN / KO ═══════════ */
+let LANG = localStorage.getItem('bm-lang') || 'es';
+const TX = {
+  es:{ sub:'MES · Planta 4', line:'LÍNEA', of:'DE', plant:'PLANTA 4', plant_short:'Planta', plant_title:'PLANTA 4 · RESUMEN',
+    sched_ign:'Horario ignorado (dura más de 60 min), corrígelo en Admin Breaks', to_run:'POR CORRER', run_done:'Corrida terminada', conf_by:'confirmó', sug_plan:'sugerido por el plan', mat_par:'material', next_model:'SIGUIENTE', pcs:'pzas', mat_ok:'material listo', mat_no:'material pendiente', no_next:'Sin siguiente modelo en el plan', running:'CORRIENDO AHORA', no_model:'Sin modelo registrado hoy', last_rec:'último registro', prod_today:'PRODUCCIÓN HOY', of_target:'target del día', comp:'CUMPLIMIENTO', of_closed:'de los cortes cerrados',
+    no_cut:'Aún no cierra el primer corte', tgt:'target', st_closed:'cerrado', st_live:'en curso', st_pending:'pendiente', st_missing:'sin captura',
+    scrap:'SCRAP', defects:'DEFECTOS', down:'DOWNTIME', next:'Próximo', in:'en', shift_over:'JORNADA TERMINADA', live:'EN VIVO',
+    cut_C1:'Break', cut_C2:'Lunch', cut_C3:'Home', cut_OT:'OT', last_cut:'ÚLTIMO CORTE', no_cut_short:'SIN CORTE CERRADO',
+    t_break:'BREAK EN CURSO', t_lunch:'ALMUERZO EN CURSO', t_home:'FIN DE JORNADA', t_ot:'FIN DE OVERTIME',
+    a_break:'REGRESA AL TRABAJO A LAS', a_home:'FIN DE JORNADA A LAS', a_ot:'FIN DE OVERTIME A LAS', remaining:'TIEMPO RESTANTE',
+    w_break:'⚠ REGRESA AL TRABAJO EN', w_home:'🏠 FIN DE JORNADA EN', w_ot:'⏰ FIN DE OVERTIME EN',
+    err_perm:'Sin permiso para leer datos. Inicia sesión en el MES en este navegador.', err_other:'Error de conexión con Firebase', loc:'es-MX' },
+  en:{ sub:'MES · Plant 4', line:'LINE', of:'OF', plant:'PLANT 4', plant_short:'Plant', plant_title:'PLANT 4 · SUMMARY',
+    sched_ign:'Schedule ignored (longer than 60 min), fix it in Admin Breaks', to_run:'NEXT TO RUN', run_done:'Run finished', conf_by:'confirmed by', sug_plan:'suggested by plan', mat_par:'material', next_model:'NEXT', pcs:'pcs', mat_ok:'material ready', mat_no:'material pending', no_next:'No next model in plan', running:'RUNNING NOW', no_model:'No model recorded today', last_rec:'last record', prod_today:'PRODUCTION TODAY', of_target:'daily target', comp:'COMPLIANCE', of_closed:'of closed cuts',
+    no_cut:'First cut not closed yet', tgt:'target', st_closed:'closed', st_live:'in progress', st_pending:'pending', st_missing:'not captured',
+    scrap:'SCRAP', defects:'DEFECTS', down:'DOWNTIME', next:'Next', in:'in', shift_over:'SHIFT COMPLETE', live:'LIVE',
+    cut_C1:'Break', cut_C2:'Lunch', cut_C3:'Home', cut_OT:'OT', last_cut:'LAST CUT', no_cut_short:'NO CUT CLOSED YET',
+    t_break:'BREAK IN PROGRESS', t_lunch:'LUNCH IN PROGRESS', t_home:'END OF SHIFT', t_ot:'END OF OVERTIME',
+    a_break:'RETURN TO WORK AT', a_home:'END OF SHIFT AT', a_ot:'END OF OVERTIME AT', remaining:'TIME REMAINING',
+    w_break:'⚠ RETURN TO WORK IN', w_home:'🏠 END OF SHIFT IN', w_ot:'⏰ END OF OVERTIME IN',
+    err_perm:'No permission to read data. Sign in to the MES in this browser.', err_other:'Firebase connection error', loc:'en-US' },
+  ko:{ sub:'MES · 4공장', line:'라인', of:'/', plant:'4공장', plant_short:'공장', plant_title:'4공장 · 요약',
+    sched_ign:'60분 초과 일정은 무시됩니다. Admin Breaks에서 수정하세요', to_run:'가동 예정', run_done:'작업 종료', conf_by:'확인:', sug_plan:'계획 추천', mat_par:'자재', next_model:'다음 모델', pcs:'pcs', mat_ok:'자재 준비됨', mat_no:'자재 대기', no_next:'계획에 다음 모델 없음', running:'현재 가동 모델', no_model:'오늘 등록된 모델 없음', last_rec:'마지막 등록', prod_today:'오늘 생산량', of_target:'일일 목표', comp:'달성률', of_closed:'마감된 구간 기준',
+    no_cut:'첫 구간이 아직 마감되지 않았습니다', tgt:'목표', st_closed:'마감', st_live:'진행 중', st_pending:'대기', st_missing:'미입력',
+    scrap:'스크랩', defects:'불량', down:'다운타임', next:'다음', in:'후', shift_over:'근무 종료', live:'실시간',
+    cut_C1:'Break', cut_C2:'Lunch', cut_C3:'Home', cut_OT:'OT', last_cut:'마지막 구간', no_cut_short:'마감된 구간 없음',
+    t_break:'휴식 중', t_lunch:'점심 중', t_home:'퇴근 시간', t_ot:'야근 종료',
+    a_break:'복귀 시간', a_home:'퇴근 시간', a_ot:'야근 종료 시간', remaining:'남은 시간',
+    w_break:'⚠ 복귀까지', w_home:'🏠 퇴근까지', w_ot:'⏰ 야근 종료까지',
+    err_perm:'데이터를 읽을 권한이 없습니다. 이 브라우저에서 MES에 로그인하세요.', err_other:'Firebase 연결 오류', loc:'ko-KR' }
+};
+Object.assign(TX.es,{cel_title:'META CUMPLIDA',cel_thanks:'Gracias por su esfuerzo',ann_info:'INFORMATIVO',ann_aviso:'AVISO',ann_urgente:'URGENTE',ann_logro:'RECONOCIMIENTO'});
+Object.assign(TX.en,{cel_title:'GOAL ACHIEVED',cel_thanks:'Thank you for your effort',ann_info:'INFO',ann_aviso:'NOTICE',ann_urgente:'URGENT',ann_logro:'RECOGNITION'});
+Object.assign(TX.ko,{cel_title:'목표 달성',cel_thanks:'노력에 감사드립니다',ann_info:'안내',ann_aviso:'공지',ann_urgente:'긴급',ann_logro:'표창'});
+const t = k => (TX[LANG] && TX[LANG][k]) || TX.es[k] || k;
+
+/* ═══════════ RELOJ (con ?sim=HH:MM para probar) ═══════════ */
+let SIM_OFFSET = 0;
+if(params.get('sim')){
+  const p = params.get('sim').split(':').map(Number);
+  const d = new Date(); d.setHours(p[0]||0, p[1]||0, p[2]||0, 0);
+  SIM_OFFSET = d.getTime() - Date.now();
+}
+const nowDate = () => new Date(Date.now() + SIM_OFFSET);
+const pad = n => String(n).padStart(2,'0');
+const todayStr = () => { const d=nowDate(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; };
+const nowMin = () => { const d=nowDate(); return d.getHours()*60+d.getMinutes(); };
+const nowSec = () => { const d=nowDate(); return d.getHours()*3600+d.getMinutes()*60+d.getSeconds(); };
+const toMin = s => { const [h,m]=String(s||'0:0').split(':').map(Number); return (h||0)*60+(m||0); };
+const toHMS = s => { s=Math.max(0,Math.floor(s)); return `${pad(Math.floor(s/3600))}:${pad(Math.floor((s%3600)/60))}:${pad(s%60)}`; };
+const fmt = n => Math.round(Number(n)||0).toLocaleString('en-US');
+const num = v => Number(v)||0;
+const sum = (arr,f) => arr.reduce((s,x)=>s+f(x),0);
+
+/* ═══════════ ESTADO ═══════════ */
+let REGS=[], BREAKS=[], hayOT=false;
+let PLAN_ASSY=null, PLAN_MEDIO=null, LINEA_MEDIO={}, LINEA_ASY=null, PLANVER=0;
+let slideIdx=0, slideStart=Date.now(), curDate=todayStr();
+let unsubRegs=null, unsubOT=null;
+let stageKey='', footKey='', wasBreak=false;
+const errs={};
+MAQ.forEach(m=>{ m.activa=true; });
+
+/* ═══════════ FIREBASE ═══════════ */
+function setErr(k,e){ if(e) errs[k]=e; else delete errs[k]; showErr(); }
+function showErr(){
+  const bar=document.getElementById('errbar'); const list=Object.values(errs);
+  if(!list.length){ bar.style.display='none'; return; }
+  const denied=list.some(e=>e && e.code==='permission-denied');
+  bar.textContent='⚠ '+(denied?t('err_perm'):t('err_other'));
+  bar.style.display='block';
+}
+function subscribeRegs(){
+  if(unsubRegs) unsubRegs();
+  curDate=todayStr();
+  unsubRegs=onSnapshot(query(collection(db,'registros'),where('fecha','==',curDate)),
+    snap=>{ REGS=snap.docs.map(d=>d.data()); setErr('regs',null); },
+    err=>setErr('regs',err));
+}
+function subscribeBreaks(){
+  onSnapshot(collection(db,'break_schedule'),
+    snap=>{ BREAKS=snap.docs.map(d=>({id:d.id,...d.data()})); setErr('brk',null); },
+    err=>setErr('brk',err));
+}
+// Mismas fuentes que las pantallas de piso (piso.html / piso-medio.html del BOM Simulator)
+function subscribePlan(){
+  const B=(id,cb,key)=>onSnapshot(doc(db,'bom_simulator_p4',id),
+    snap=>{ cb(snap.exists()?snap.data():null); PLANVER++; setErr(key,null); },
+    err=>setErr(key,err));
+  B('plan_piso',      d=>{ PLAN_ASSY=d; },                 'pa');  // plan ASSY1
+  B('plan_piso_medio',d=>{ PLAN_MEDIO=d; },                'pm');  // plan medio proceso (colas por línea)
+  B('linea_medio',    d=>{ LINEA_MEDIO=(d&&d.maq)||{}; },  'lm');  // modelo confirmado por el líder en medio proceso
+  B('linea_asy1',     d=>{ LINEA_ASY=d; },                 'la');  // modelo confirmado por el operador en ASSY1
+}
+// Tiempos desde Admin (tv_config/piso); la URL ?sec= / ?secp= tiene prioridad
+function subscribeTvConfig(){
+  onSnapshot(doc(db,'tv_config','piso'), snap=>{
+    if(!snap.exists()) return; const d = snap.data();
+    if(!params.get('secp') && d.plantSec >= 3) PLANT_SEC = Number(d.plantSec);
+    if(!params.get('sec')  && d.lineSec  >= 3) ROTATE_SEC = Number(d.lineSec);
+  }, ()=>{});
+}
+// Horas de cierre de cada corte e inicio de jornada, guardadas desde Break Management (tv_config/cortes)
+function subscribeCortes(){
+  onSnapshot(doc(db,'tv_config','cortes'), snap=>{
+    if(!snap.exists()) return; const d = snap.data();
+    CUTS.forEach(c=>{ if(/^\d{2}:\d{2}$/.test(d[c.id]||'')) c.end = toMin(d[c.id]); });
+    if(/^\d{2}:\d{2}$/.test(d.inicio||'')) CUTS[0].start = toMin(d.inicio);
+    PLANVER++;
+  }, ()=>{});
+}
+function subscribeOT(){
+  if(unsubOT) unsubOT();
+  hayOT=false;
+  unsubOT=onSnapshot(doc(db,'break_overtime_days',todayStr()),
+    snap=>{ hayOT = snap.exists() && snap.data().hayOT===true; },
+    ()=>{ hayOT=false; });
+}
+async function loadConfig(){
+  try{
+    const ts=await getDocs(collection(db,'targets'));
+    ts.docs.forEach(d=>{
+      const x=d.data(); const m=MAQ.find(k=>k.nombre===x.nombre); if(!m) return;
+      const tg=Number(x.target||x.A||0); if(!tg) return;
+      m.target=tg;
+      m.cortes={C1:Math.round(tg*.2),C2:Math.round(tg*.4),C3:Math.round(tg*.4),OT:Number(x.OT)||m.cortes.OT};
+    });
+    const st=await getDocs(collection(db,'maquinas_status'));
+    st.docs.forEach(d=>{ const x=d.data(); const m=MAQ.find(k=>k.nombre===x.nombre); if(m) m.activa = x.activa!==false; });
+    setErr('cfg',null);
+  }catch(e){ setErr('cfg',e); }
+}
+
+/* ═══════════ BREAKS ═══════════ */
+const SHIFT = () => nowDate().getDay()===6 ? 'C' : 'A';
+const isOTBreak = b => { const d=String(b.description||'').toLowerCase(); return d.includes('tiempo extra')||d.includes('overtime')||/\bot\b/.test(d); };
+function kindOf(b){
+  const d=String(b.description||'').toLowerCase();
+  if(d.includes('home')) return 'home';
+  if(isOTBreak(b)) return 'ot';
+  if(d.includes('lunch')||d.includes('almuerzo')) return 'lunch';
+  return 'break';
+}
+function validBreaks(){
+  const sh=SHIFT();
+  return BREAKS.filter(b=>b.shift===sh && b.active!==false && b.start_time && b.end_time
+    && (toMin(b.end_time)-toMin(b.start_time))<=MAX_BREAK_MIN
+    && !(sh==='A' && isOTBreak(b) && !hayOT));
+}
+// Horarios que la pantalla IGNORA por durar más de MAX_BREAK_MIN: se avisan en pantalla para corregirlos en Admin Breaks
+function ignoredBreaks(){
+  const sh=SHIFT();
+  return BREAKS.filter(b=>b.shift===sh && b.active!==false && b.start_time && b.end_time
+    && (toMin(b.end_time)-toMin(b.start_time))>MAX_BREAK_MIN
+    && !(sh==='A' && isOTBreak(b) && !hayOT));
+}
+function showSchedWarn(){
+  const el=document.getElementById('warnbar'); if(!el) return;
+  const l=ignoredBreaks();
+  if(!l.length){ el.style.display='none'; return; }
+  el.textContent='⚠ '+t('sched_ign')+': '+l.map(b=>`${b.description} ${b.start_time}–${b.end_time}`).join(' · ');
+  el.style.display='block';
+}
+function getBreakState(){
+  const list=validBreaks(), ns=nowSec();
+  const cur=list.find(b=>toMin(b.start_time)*60<=ns && ns<toMin(b.end_time)*60);
+  if(cur){
+    const r=toMin(cur.end_time)*60-ns;
+    return {mode:'break', st: r<=RETURN_SEC?'RETURN_NOW':(r<=WARN_SEC?'WARN':'BREAK'), b:cur, r, kind:kindOf(cur)};
+  }
+  const nxt=list.filter(b=>toMin(b.start_time)*60>ns).sort((a,b)=>toMin(a.start_time)-toMin(b.start_time))[0]||null;
+  const over=list.length>0 && ns>=Math.max(...list.map(b=>toMin(b.end_time)))*60;
+  return {mode:'run', next:nxt, over};
+}
+
+/* ═══════════ CÁLCULOS ═══════════ */
+const rProd = r => num(r.prod!==undefined?r.prod:r.qty);
+const rDef  = r => num(r.def!==undefined?r.def:r.defectos);
+function cutState(c,has,now){
+  if(c.id==='OT' && !hayOT && !has) return 'off';
+  if(now>=c.end) return has?'closed':'missing';
+  if(now>=c.start) return 'live';
+  return 'pending';
+}
+function recMs(r){
+  const v=r.ts||r.tsLocal; if(!v) return 0;
+  if(typeof v.toMillis==='function') return v.toMillis();
+  if(typeof v==='number') return v;
+  const p=Date.parse(v); return isNaN(p)?0:p;
+}
+/* ═══ Modelo corriendo / siguiente — misma lógica que piso.html (ASSY1) y piso-medio.html (S1…VC2) ═══ */
+const HORAS_CONF = 12;   // la confirmación del líder/operador vale 12 h
+const confOk = c => !!(c && c.ts && (Date.now()-c.ts) <= HORAS_CONF*36e5);
+const esCB = x => /^CB_/.test((x&&x.k)||'');
+function capDe(c){       // piezas que alcanza el material (igual que piso-medio)
+  const pend=c.pendiente||0, ms=c.materiales||[];
+  if(!ms.length) return c.listo ? pend : 0;
+  const cb=ms.filter(esCB), otros=ms.filter(x=>!esCB(x));
+  const caps=otros.map(x=>x.disp||0);
+  if(cb.length) caps.push(cb.reduce((s,x)=>s+(x.disp||0),0));   // chip board ranurado + virgen se suman
+  return Math.min(...caps);
+}
+// Qué necesita el plan primero: 1) envío más próximo, 2) prioridad, 3) material completo, 4) mayor pendiente
+function recoSort(list){
+  return list.slice().sort((a,b)=>{
+    const fa=a.fecha||'9999', fb=b.fecha||'9999'; if(fa!==fb) return fa<fb?-1:1;
+    if(a.prio!==b.prio) return a.prio-b.prio;
+    const ca=a.cap>=a.pend?1:0, cb=b.cap>=b.pend?1:0; if(ca!==cb) return cb-ca;
+    return b.pend-a.pend;
+  });
+}
+function lineInfo(m){
+  const assy = m.nombre==='ASSY1';
+  let items=[], conf=null;
+  if(assy){
+    const mods=(PLAN_ASSY && Array.isArray(PLAN_ASSY.modelos)) ? PLAN_ASSY.modelos : [];
+    items=mods.map(x=>({modelo:x.sm||'', pn:x.code||'', pend:x.pendiente||0, cap:x.cap||0, ready:!!x.orden, ord:x.orden||999, fecha:x.fecha||'', prio:x.prioridad||999, extra:0}));
+    if(confOk(LINEA_ASY)) conf={key:LINEA_ASY.sm||'', por:LINEA_ASY.por||''};
+  }else{
+    const cola=(PLAN_MEDIO && PLAN_MEDIO.colas && PLAN_MEDIO.colas[m.nombre]) || [];
+    items=cola.map(c=>({modelo:(c.modelos&&c.modelos[0])||c.sm||'', pn:c.pn||'', pend:c.pendiente||0, cap:capDe(c), ready:!!c.listo, ord:999, fecha:c.fecha||'', prio:c.prioridad||999, extra:(c.modelos&&c.modelos.length>1)?c.modelos.length-1:0}));
+    const lc=LINEA_MEDIO[m.nombre];
+    if(confOk(lc)) conf={key:lc.pn||'', por:lc.por||''};
+  }
+  if(!items.length) return null;
+  const runL=items.filter(i=>i.pend>0 && i.ready);
+  const waitL=items.filter(i=>i.pend>0 && !i.ready);
+  let cur=null, tag='plan', terminada=false;
+  if(conf){
+    if(!conf.key) terminada=true;                                   // terminaron la corrida: nada en línea
+    else{ cur=runL.find(i=>(assy?i.modelo:i.pn)===conf.key)||null; if(cur) tag='conf'; }
+  }
+  if(!cur && !terminada && runL.length){ cur=recoSort(runL)[0]; tag='plan'; }   // sugerido por el plan
+  const pool=runL.filter(i=>i!==cur);
+  const orden = assy ? pool.slice().sort((a,b)=>a.ord-b.ord) : recoSort(pool);
+  let next=orden[0]||null, nextReady=!!next;
+  if(!next && waitL.length){ next=recoSort(waitL)[0]; nextReady=false; }          // sin material completo todavía
+  return {cur, tag, terminada, por:conf?conf.por:'', next, nextReady};
+}
+function machineStats(m){
+  const now=nowMin();
+  const recs=REGS.filter(r=>(r.maqNombre||r.maquina)===m.nombre);
+  let last=null;
+  recs.forEach(r=>{ if(!last || recMs(r)>=recMs(last)) last=r; });
+  const prod=sum(recs,rProd), def=sum(recs,rDef), scrap=sum(recs,r=>num(r.scrap)), paro=sum(recs,r=>num(r.minParo));
+  const cuts=CUTS.map(c=>{
+    const rc=recs.filter(r=>r.corte===c.id);
+    const has=rc.length>0;
+    return {id:c.id, prod:sum(rc,rProd), tgt:m.cortes[c.id]||0, has, state:cutState(c,has,now)};
+  }).filter(c=>c.state!=='off');
+  const closed=cuts.filter(c=>c.state==='closed'||c.state==='missing');
+  const cp=sum(closed,c=>c.prod), ct=sum(closed,c=>c.tgt);
+  return {m, last, info:lineInfo(m), prod, def, scrap, paro, cuts, cp, ct,
+    comp: ct>0 ? cp/ct*100 : null,
+    scrapPct: prod>0 ? scrap/prod*100 : null,
+    defPct: prod>0 ? def/prod*100 : null};
+}
+function activeMachines(){ return ORDER.map(n=>MAQ.find(m=>m.nombre===n)).filter(m=>m && m.activa!==false); }
+function plantStats(){
+  const all=activeMachines().map(machineStats);
+  const prod=sum(all,s=>s.prod), tgt=sum(all,s=>s.m.target), scrap=sum(all,s=>s.scrap), def=sum(all,s=>s.def), paro=sum(all,s=>s.paro);
+  const cp=sum(all,s=>s.cp), ct=sum(all,s=>s.ct);
+  return {all, prod, tgt, scrap, def, paro,
+    comp: ct>0 ? cp/ct*100 : null,
+    scrapPct: prod>0 ? scrap/prod*100 : null,
+    defPct: prod>0 ? def/prod*100 : null};
+}
+function lastCutStats(mach){            // mach = una línea; sin parámetro = toda la planta
+  const now=nowMin(); let c=null;
+  CUTS.forEach(x=>{ if(x.end<=now && (x.id!=='OT'||hayOT)) c=x; });
+  if(!c) return null;
+  const ms=mach?[mach]:activeMachines();
+  const recs=REGS.filter(r=>r.corte===c.id && ms.some(m=>m.nombre===(r.maqNombre||r.maquina)));
+  const prod=sum(recs,rProd), scrap=sum(recs,r=>num(r.scrap)), paro=sum(recs,r=>num(r.minParo));
+  const tgt=sum(ms,m=>m.cortes[c.id]||0);
+  return {id:c.id, prod, tgt, scrap, paro, has:recs.length>0,
+    comp: tgt>0 ? prod/tgt*100 : null,
+    scrapPct: prod>0 ? scrap/prod*100 : null};
+}
+const cSem  = p => p===null||p===undefined ? MUTED : (p>=95?GREEN:(p>=80?AMBER:RED));
+const cScrap= v => v===null||v===undefined ? MUTED : (v>5?RED:(v>2?AMBER:GREEN));
+const cDown = v => v<=20?GREEN:(v<=45?AMBER:RED);
+const cDownPlant = v => v>60?RED:(v>30?AMBER:GREEN);
+const pct = v => v===null||v===undefined ? '—' : v.toFixed(1)+'%';
+const longName = m => m.nombre==='Zhongke' ? 'Zhongke (ZK)' : m.nombre;
+const esc = s => String(s==null?'':s).replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+
+/* ═══════════ HTML DE LAS PANTALLAS ═══════════ */
+function nextHTML(li){
+  const n=li&&li.next;
+  if(!n) return `<div class="run nxt none"><div class="lbl">${t('next_model')}</div><div class="rmodel">${t('no_next')}</div></div>`;
+  let st;
+  if(!li.nextReady) st=`<span style="color:${AMBER}">${t('mat_no')}</span>`;
+  else if(n.cap>=n.pend) st=`<span style="color:${GREEN}">✓ ${t('mat_ok')}</span>`;
+  else st=`<span style="color:${AMBER}">${t('mat_par')} ${fmt(n.cap)} / ${fmt(n.pend)}</span>`;
+  return `<div class="run nxt"><div class="lbl">${t('next_model')}</div><div class="rmodel" style="color:var(--amber)">${esc(n.modelo)}${n.extra?' +'+n.extra:''}</div><div class="rpart">${esc(n.pn)}${n.pn?' · ':''}${fmt(n.pend)} ${t('pcs')} · ${st}</div></div>`;
+}
+function runningHTML(s){
+  const li=s.info;
+  if(li && li.terminada) return `<div class="run none"><div class="lbl">${t('running')}</div><div class="rmodel">${t('run_done')}</div></div>`;
+  if(li && li.cur){
+    const c=li.cur, conf=li.tag==='conf';
+    const sub=conf ? (li.por?t('conf_by')+' '+esc(li.por):'') : t('sug_plan');
+    return `<div class="run"><div class="lbl"><span class="rdot" style="background:${conf?GREEN:AMBER}"></span>${conf?t('running'):t('to_run')}</div><div class="rmodel" style="color:${conf?'var(--green)':'var(--amber)'}">${esc(c.modelo)}${c.extra?' +'+c.extra:''}</div><div class="rpart">${esc(c.pn)}${c.pn&&sub?' · ':''}${sub}</div></div>`;
+  }
+  return runningLastHTML(s.last);
+}
+function runningLastHTML(r){
+  if(!r) return `<div class="run none"><div class="lbl">${t('running')}</div><div class="rmodel">${t('no_model')}</div></div>`;
+  const ms=recMs(r); let hh='';
+  if(ms){ const d=new Date(ms); hh=' · '+t('last_rec')+' '+pad(d.getHours())+':'+pad(d.getMinutes()); }
+  const model=esc(r.modelo||r.parte||'—');
+  const part=(r.modelo&&r.parte&&r.parte!==r.modelo)?esc(r.parte):'';
+  return `<div class="run"><div class="lbl"><span class="rdot"></span>${t('running')}</div><div class="rmodel">${model}</div><div class="rpart">${part}${part&&hh?'':''}${hh}</div></div>`;
+}
+function machineHTML(s,n,total){
+  const m=s.m;
+  const prodPct=m.target>0?Math.min(100,s.prod/m.target*100):0;
+  const compTxt=s.comp===null?'—':Math.round(s.comp)+'%';
+  const cc=cSem(s.comp);
+  const tiles=s.cuts.map(c=>{
+    let color=DIM, val='—';
+    if(c.state==='closed'){ color=cSem(c.tgt>0?c.prod/c.tgt*100:null); val=fmt(c.prod); }
+    else if(c.state==='missing'){ color=RED; val='—'; }
+    else if(c.state==='live'){ color=AMBER; val=c.has?fmt(c.prod):'—'; }
+    const vcol = c.state==='pending'?MUTED:color;
+    return `<div class="card" style="--c:${color}">
+      <div class="lbl">${t('cut_'+c.id)}</div>
+      <div class="num m" style="color:${vcol}">${val}</div>
+      <div class="nsub">${t('tgt')} ${fmt(c.tgt)} · ${t('st_'+c.state)}</div>
+    </div>`;
+  }).join('');
+  return `<div class="slide machine">
+    <div class="stitle">
+      <div><div class="lbl">${t('line')} ${n} ${t('of')} ${total}</div>
+      <div class="bigname">${esc(longName(m))} <small>· ${esc(m.tipo)}</small></div></div>
+      <div class="runwrap">${runningHTML(s)}${nextHTML(s.info)}</div>
+    </div>
+    <div class="row2">
+      <div class="card" style="--c:${BLUE}">
+        <div class="lbl">${t('prod_today')}</div>
+        <div class="num" style="color:${BLUE}">${fmt(s.prod)}</div>
+        <div class="nsub">${t('tgt')==='target'?'':''}${fmt(m.target)} ${t('of_target')}</div>
+        <div class="bar"><div style="width:${prodPct}%;background:${BLUE}"></div></div>
+      </div>
+      <div class="card" style="--c:${cc}">
+        <div class="lbl">${t('comp')}</div>
+        <div class="num" style="color:${cc}">${compTxt}</div>
+        <div class="nsub">${s.comp===null?t('no_cut'):t('of_closed')}</div>
+      </div>
+    </div>
+    <div class="cuts" style="grid-template-columns:repeat(${Math.max(1,s.cuts.length)},minmax(0,1fr))">${tiles}</div>
+    <div class="kline">
+      <div class="kmini"><span class="lbl">${t('scrap')}</span><span class="num s" style="color:${cScrap(s.scrapPct)}">${pct(s.scrapPct)}</span></div>
+      <div class="kmini"><span class="lbl">${t('defects')}</span><span class="num s" style="color:${cScrap(s.defPct)}">${pct(s.defPct)}</span></div>
+      <div class="kmini"><span class="lbl">${t('down')}</span><span class="num s" style="color:${cDown(s.paro)}">${s.paro} min</span></div>
+    </div>
+  </div>`;
+}
+function plantHTML(p){
+  const cc=cSem(p.comp);
+  const prodPct=p.tgt>0?Math.min(100,p.prod/p.tgt*100):0;
+  const cards=p.all.map(s=>{
+    const c=cSem(s.comp);
+    const bp=s.m.target>0?Math.min(100,s.prod/s.m.target*100):0;
+    return `<div class="lcard" style="--c:${c}">
+      <div class="lhead"><span class="lname">${esc(SHORT[s.m.nombre]||s.m.nombre)}</span><span class="lpct" style="color:${c}">${s.comp===null?'—':Math.round(s.comp)+'%'}</span></div>
+      <div class="lprod"><b>${fmt(s.prod)}</b> / ${fmt(s.m.target)}</div>
+      <div class="lmodel">${s.info&&s.info.cur?esc(s.info.cur.modelo):(s.last?esc(s.last.modelo||s.last.parte||''):'—')}</div>
+      <div class="bar"><div style="width:${bp}%;background:${c===MUTED?BLUE:c}"></div></div>
+    </div>`;
+  }).join('');
+  return `<div class="slide plant">
+    <div class="stitle"><div class="bigname">${t('plant_title')}</div></div>
+    <div class="row4">
+      <div class="card" style="--c:${BLUE}"><div class="lbl">${t('prod_today')}</div><div class="num m" style="color:${BLUE}">${fmt(p.prod)}</div><div class="nsub">${fmt(p.tgt)} ${t('of_target')}</div><div class="bar"><div style="width:${prodPct}%;background:${BLUE}"></div></div></div>
+      <div class="card" style="--c:${cc}"><div class="lbl">${t('comp')}</div><div class="num m" style="color:${cc}">${p.comp===null?'—':pct(p.comp)}</div><div class="nsub">${p.comp===null?t('no_cut'):t('of_closed')}</div></div>
+      <div class="card" style="--c:${cScrap(p.scrapPct)}"><div class="lbl">${t('scrap')}</div><div class="num m" style="color:${cScrap(p.scrapPct)}">${pct(p.scrapPct)}</div><div class="nsub">${t('tgt')} &lt;3%</div></div>
+      <div class="card" style="--c:${cDownPlant(p.paro)}"><div class="lbl">${t('down')}</div><div class="num m" style="color:${cDownPlant(p.paro)}">${p.paro} min</div><div class="nsub">${t('tgt')} &lt;10 min/${t('line').toLowerCase()}</div></div>
+    </div>
+    <div class="lines">${cards}</div>
+  </div>`;
+}
+const BRK_ROT_SEC = 5;   // la franja de producción del break rota cada 5 s: Planta → S1 → S2 …
+function breakHTML(bs,idx){
+  const b=bs.b, k=bs.kind;
+  const sl=['plant',...activeMachines()], item=sl[idx%sl.length];
+  const isPlant=item==='plant';
+  const nameTxt=isPlant?t('plant'):longName(item);
+  const color = bs.st==='BREAK'?ORANGE:(bs.st==='WARN'?AMBER:RED);
+  const title = bs.st==='BREAK' ? t('t_'+k) : t('w_'+(k==='lunch'?'break':k));
+  const action = k==='home'?t('a_home'):(k==='ot'?t('a_ot'):t('a_break'));
+  const lc=lastCutStats(isPlant?null:item);
+  const dcol = v => isPlant?cDownPlant(v):cDown(v);
+  const kc = (label,val,col,sub)=>`<div class="card" style="--c:${col}"><div class="lbl">${label}</div><div class="num" style="color:${col}">${val}</div><div class="nsub">${sub}</div></div>`;
+  const strip = lc
+    ? kc(t('prod_today').replace(/ .*/,'')+' · '+t('cut_'+lc.id), lc.has?fmt(lc.prod):'—', BLUE, `${t('tgt')} ${fmt(lc.tgt)}`)
+      + kc(t('comp'), lc.has?pct(lc.comp):'—', lc.has?cSem(lc.comp):MUTED, `${t('tgt')} 90%`)
+      + kc(t('scrap'), lc.has?pct(lc.scrapPct):'—', lc.has?cScrap(lc.scrapPct):MUTED, `${t('tgt')} &lt;3%`)
+      + kc(t('down'), lc.has?lc.paro+' min':'—', lc.has?dcol(lc.paro):MUTED, `${t('tgt')} &lt;10 min`)
+    : kc(t('last_cut'),'—',MUTED,t('no_cut_short')) + kc(t('comp'),'—',MUTED,'') + kc(t('scrap'),'—',MUTED,'') + kc(t('down'),'—',MUTED,'');
+  const showTime = bs.st==='BREAK';
+  return `<div class="brkwrap">
+    <div class="brk ${bs.st==='BREAK'?'':'big'}" style="--c:${color}">
+      <div class="t1">${title}</div>
+      <div class="t2">${esc(b.description)}${b.lines?' — '+esc(b.lines):''}</div>
+      ${showTime?`<div class="t3">${action}</div><div class="tm">${esc(b.end_time)}</div><div class="t3">${t('remaining')}</div>`:`<div class="t3">${action} ${esc(b.end_time)}</div>`}
+      <div class="cd" id="cd">${toHMS(bs.r)}</div>
+    </div>
+    <div class="kcap">${t('last_cut')}${lc?': '+t('cut_'+lc.id):''} · <b class="kname">${esc(nameTxt)}</b></div>
+    <div class="kstrip">${strip}</div>
+    <div class="pills kpills">${sl.map((s,i)=>`<span class="pill${s===item?' on':''}">${esc(s==='plant'?t('plant_short'):(SHORT[s.nombre]||s.nombre))}</span>`).join('')}</div>
+  </div>`;
+}
+
+/* ═══════════ RENDER ═══════════ */
+const $ = id => document.getElementById(id);
+function dataSig(){
+  return REGS.length+':'+sum(REGS,r=>rProd(r)+num(r.minParo)+num(r.scrap)+rDef(r))+':'+hayOT+':'+PLANVER+':'
+    +MAQ.map(m=>(m.activa!==false?1:0)+'-'+m.target).join(',');
+}
+function slidesList(){ return ['plant', ...activeMachines()]; }
+
+/* ═══════════ ANUNCIOS (tv_anuncios) y FELICITACIÓN POR META ═══════════ */
+const FORCE_CEL = params.get('forcecel')==='1';          // prueba: simula que todas las líneas cumplieron meta
+let ANN=[], ANNVER=0, annKey='';
+const ANN_COL={info:'#4f8ef7',aviso:'#f1c40f',urgente:'#e74c3c',logro:'#2ecc71'};
+function subscribeAnn(){
+  onSnapshot(collection(db,'tv_anuncios'), snap=>{ ANN=snap.docs.map(d=>({id:d.id,...d.data()})); ANNVER++; }, ()=>{});
+}
+const annText = a => { const x=a.texto||{}; return x[LANG]||x.es||''; };
+const annImg  = a => (a.imagen && String(a.imagen).startsWith('data:image/')) ? a.imagen : '';
+function annActive(a,dest){
+  if(a.activo===false || a.trigger==='meta') return false;
+  if(dest && !(a.destinos && a.destinos[dest])) return false;
+  const n=Date.now();
+  if(a.desde && n<a.desde) return false;
+  if(a.hasta && n>a.hasta) return false;
+  return true;
+}
+const celAnn = linea => ANN.find(a=>a.trigger==='meta' && a.activo!==false && a.linea===linea);
+function rotationSlides(){
+  const out=['plant'];
+  const ps=plantStats(), pc=celAnn('PLANTA');
+  if(pc && (FORCE_CEL || (ps.tgt>0 && ps.prod>=ps.tgt))) out.push({cel:'PLANTA',ann:pc});
+  activeMachines().forEach(m=>{
+    out.push(m);
+    const c=celAnn(m.nombre);
+    if(c){ const s=machineStats(m); if(FORCE_CEL || (m.target>0 && s.prod>=m.target)) out.push({cel:m,ann:c}); }
+  });
+  ANN.filter(a=>annActive(a,'piso') && a.modo==='full').forEach(a=>out.push({ann:a}));
+  return out;
+}
+function slideSecItem(it){
+  if(it==='plant') return PLANT_SEC;
+  if(it && it.ann) return Math.min(120,Math.max(5,Number(it.ann.segFull)||15));
+  return ROTATE_SEC;
+}
+function slideKey(it){ return it==='plant'?'plant':(it.cel?('cel-'+(it.cel==='PLANTA'?'P':it.cel.nombre)):(it.ann?('ann-'+it.ann.id):it.nombre)); }
+function bigHTML(o){
+  const img=o.img?`<div class="bimg"><img src="${o.img}" alt=""></div>`:'';
+  return `<div class="big fade${img?'':' noimg'}" style="--c:${o.c}">${img}<div class="btx"><div class="bt1">${esc(o.title)}</div>${o.name?`<div class="bt2">${esc(o.name)}</div>`:''}${o.line?`<div class="bt3">${o.line}</div>`:''}${o.msg?`<div class="bt4">${esc(o.msg)}</div>`:''}${o.foot?`<div class="bt5">${esc(o.foot)}</div>`:''}</div></div>`;
+}
+function celHTML(it){
+  const isP=it.cel==='PLANTA', s=isP?plantStats():machineStats(it.cel);
+  const tgt=isP?s.tgt:it.cel.target, pct=tgt>0?Math.round(s.prod/tgt*100):0;
+  const name=isP?t('plant_short'):(SHORT[it.cel.nombre]||it.cel.nombre);
+  return bigHTML({c:'#2ecc71', title:t('cel_title'), name, line:`${fmt(s.prod)} / ${fmt(tgt)} ${t('pcs')} · ${pct}%`, msg:annText(it.ann), foot:t('cel_thanks'), img:annImg(it.ann)});
+}
+function annFullHTML(a){
+  return bigHTML({c:ANN_COL[a.tipo]||ANN_COL.info, title:t('ann_'+(a.tipo||'info')), msg:annText(a), img:annImg(a)});
+}
+function renderAnnBar(isBrk){
+  const el=$('annbar');
+  const list=ANN.filter(a=>annActive(a,isBrk?'descanso':'piso') && (isBrk || a.modo!=='full'));
+  if(!list.length){ if(annKey!==''){ el.style.display='none'; el.innerHTML=''; document.body.classList.remove('has-ann'); annKey=''; } return; }
+  const a=list[Math.floor(Date.now()/6000)%list.length];
+  const k=a.id+'|'+LANG+'|'+ANNVER+'|'+(isBrk?'b':'r');
+  if(k!==annKey){
+    const im=annImg(a);
+    el.style.setProperty('--c',ANN_COL[a.tipo]||ANN_COL.info);
+    el.innerHTML=`<span class="atag">${esc(t('ann_'+(a.tipo||'info')))}</span>${im?`<img src="${im}" alt="">`:''}<span class="atx">${esc(annText(a))}</span>`;
+    el.style.display='flex'; document.body.classList.add('has-ann');
+    annKey=k;
+  }
+}
+if(/test/i.test(location.pathname)){
+  const b=document.createElement('button'); b.id='testbadge';
+  b.textContent = '✕ ' + ({es:'SALIR DE PRUEBA',en:'EXIT TEST',ko:'테스트 종료'}[LANG]||'EXIT');
+  b.onclick=()=>{ try{ if(document.fullscreenElement) document.exitFullscreen(); }catch(e){} window.close(); setTimeout(()=>{ location.href='break-management.html'; },300); };
+  document.body.appendChild(b);
+}
+
+function renderHeader(bs){
+  const d=nowDate();
+  $('clock').textContent=`${pad(d.getHours())}:${pad(d.getMinutes())}:${pad(d.getSeconds())}`;
+  $('subttl').textContent=t('sub')+' · Shift '+SHIFT();
+  let color=GREEN, label=t('live');
+  if(bs.mode==='break'){ color = bs.st==='BREAK'?ORANGE:(bs.st==='WARN'?AMBER:RED); label = bs.st==='BREAK'?t('t_'+bs.kind):t('w_'+(bs.kind==='lunch'?'break':bs.kind)); }
+  else if(bs.over){ label=t('shift_over'); }
+  $('acbar').style.background=color;
+  $('clock').style.color=color===GREEN?BLUE:color;
+  const bd=$('badge'); bd.style.color=color; bd.style.borderColor=color+'55'; bd.style.background=color+'14';
+  $('bdot').style.background=color; $('btxt').textContent=label;
+  let chip='';
+  if(bs.mode==='run' && bs.next){
+    chip=`${t('next')}: ${bs.next.description} ${bs.next.start_time} · ${t('in')} ${toHMS(toMin(bs.next.start_time)*60-nowSec())}`;
+  }
+  $('chip').textContent=chip;
+  ['es','en','ko'].forEach(l=>$('fl-'+l).classList.toggle('on',l===LANG));
+}
+function renderRotation(){
+  const sl=rotationSlides();
+  if(slideIdx>=sl.length) slideIdx=0;
+  if((Date.now()-slideStart)/1000>=slideSecItem(sl[slideIdx])){ slideIdx=(slideIdx+1)%sl.length; slideStart=Date.now(); }
+  const cur=sl[slideIdx], ck=slideKey(cur);
+  const key=`R|${slideIdx}|${ck}|${LANG}|${dataSig()}|${ANNVER}|${Math.floor(Date.now()/30000)}|${sl.length}`;
+  if(key!==stageKey){
+    const idxChanged=!stageKey.startsWith('R|'+slideIdx+'|');
+    const item=sl[slideIdx];
+    $('stage').innerHTML = item==='plant' ? plantHTML(plantStats()) : item.cel ? celHTML(item) : item.ann ? annFullHTML(item.ann) : machineHTML(machineStats(item), activeMachines().indexOf(item)+1, activeMachines().length);
+    if(idxChanged && $('stage').firstElementChild) $('stage').firstElementChild.classList.add('fade');
+    stageKey=key;
+  }
+  const base = cur==='plant' ? 'plant' : (cur.cel ? (cur.cel==='PLANTA'?'plant':cur.cel) : (cur.ann ? null : cur));
+  const fk=`${ck}|${LANG}|${activeMachines().length}`;
+  if(fk!==footKey){
+    $('foot').innerHTML=`<div class="pills">${slidesList().map((s,i)=>`<span class="pill${s===base?' on':''}">${esc(s==='plant'?t('plant_short'):(SHORT[s.nombre]||s.nombre))}</span>`).join('')}</div><div class="pbar"><div id="pfill"></div></div>`;
+    footKey=fk;
+  }
+  const pf=$('pfill');
+  if(pf){ const p=Math.min(100,(Date.now()-slideStart)/1000/slideSecItem(sl[slideIdx])*100); pf.style.transition = p<10?'none':'width 1s linear'; pf.style.width=p+'%'; }
+}
+let brkStart=0;
+function renderBreak(bs){
+  const n=slidesList().length, idx=Math.floor((Date.now()-brkStart)/(BRK_ROT_SEC*1000))%n;
+  const key=`B|${bs.st}|${bs.b.id}|${LANG}|${dataSig()}|${idx}`;
+  if(key!==stageKey){ $('stage').innerHTML=breakHTML(bs,idx); stageKey=key; }
+  const cd=$('cd'); if(cd) cd.textContent=toHMS(bs.r);
+}
+function tick(){
+  if(todayStr()!==curDate){ subscribeRegs(); subscribeOT(); }
+  const bs=getBreakState();
+  showSchedWarn();
+  renderHeader(bs);
+  const isBrk=bs.mode==='break';
+  document.body.classList.toggle('mode-break',isBrk);
+  document.body.classList.toggle('fx-warn',isBrk&&bs.st==='WARN');
+  document.body.classList.toggle('fx-flash',isBrk&&bs.st==='RETURN_NOW');
+  renderAnnBar(isBrk);
+  if(isBrk){ if(!wasBreak) brkStart=Date.now(); renderBreak(bs); wasBreak=true; }
+  else{
+    if(wasBreak){ wasBreak=false; slideStart=Date.now(); stageKey=''; }
+    renderRotation();
+  }
+}
+
+/* ═══════════ ARRANQUE ═══════════ */
+['es','en','ko'].forEach(l=>{
+  $('fl-'+l).addEventListener('click',()=>{ LANG=l; localStorage.setItem('bm-lang',l); stageKey=''; footKey=''; showErr(); tick(); });
+});
+document.addEventListener('keydown',e=>{            // pruebas: flechas ← →
+  if(e.key==='ArrowRight'){ slideIdx=(slideIdx+1)%slidesList().length; slideStart=Date.now(); tick(); }
+  if(e.key==='ArrowLeft'){ const n=slidesList().length; slideIdx=(slideIdx-1+n)%n; slideStart=Date.now(); tick(); }
+});
+subscribeRegs(); subscribeBreaks(); subscribeOT(); subscribePlan(); subscribeTvConfig(); subscribeCortes(); subscribeAnn(); loadConfig();
+setInterval(loadConfig, 10*60*1000);   // refresca targets y estado de máquinas cada 10 min
+tick(); setInterval(tick,1000);
+
+/* ═══ Auto-actualización: la TV se recarga sola cuando hay una versión nueva desplegada (y cada 6 h por limpieza) ═══ */
+(function(){
+  let base=null;
+  const check=async()=>{
+    try{
+      const r=await fetch(location.pathname+'?v='+Date.now(),{cache:'no-store'});
+      const txt=await r.text();
+      const sig=txt.length+':'+txt.slice(-300);
+      if(base===null) base=sig;
+      else if(sig!==base) location.reload();
+    }catch(e){}
+  };
+  check(); setInterval(check,5*60*1000);
+  setTimeout(()=>location.reload(),6*60*60*1000);
+})();
+</script>
+</body>
+</html>
