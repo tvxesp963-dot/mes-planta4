@@ -225,14 +225,19 @@ async function guardarRegistroEdit(id, btn) {
     const turno = document.getElementById('er-turno').value;
     const corte = document.getElementById('er-corte').value;
     // Validación de modelo: SM-XXXXXXXXXXX (14 con guión) o CRNXXX (6 sin guión)
-    if (modelo) {
+    // Solo se valida si el modelo fue CAMBIADO. Si queda igual al original (ej. solo se edita cantidad), se acepta.
+    const modeloOriginal = ((window._editRegActual && window._editRegActual.modelo) || '').trim().toUpperCase();
+    if (modelo && modelo !== modeloOriginal) {
       const esSMValido = modelo.startsWith("SM") && modelo.length===14 && modelo.includes("-");
       const esCRNValido = /^CRN-\d+$/.test(modelo);
       const esAssyValido = /^[A-Z]\d{3,4}\s+CRN$/.test(modelo); // ej. S942 CRN, S948 CRN, S911 CRN
       if (!esSMValido && !esCRNValido && !esAssyValido) {
-        showToast('Modelo inválido — SM: 14 chars con guión (SM-XXXXXXXXXXX), CRN-XXXXXX (con guión) o SXXX CRN (ASSY, con espacio)','var(--red)');
-        btn.textContent='💾 Guardar'; btn.disabled=false;
-        return;
+        // En vez de bloquear, se pregunta: el usuario puede aceptar el modelo fuera de formato
+        const seguir = confirm('El modelo "' + modelo + '" no tiene el formato habitual (SM-XXXXXXXXXXX, CRN-XXXXXX o SXXX CRN).\n\n¿Guardar de todos modos?');
+        if (!seguir) {
+          btn.textContent='💾 Guardar'; btn.disabled=false;
+          return;
+        }
       }
     }
     // Bloquear si este registro ya tiene envíos a ShipQR y la nueva cantidad quedaría por debajo de lo ya enviado
@@ -347,7 +352,7 @@ window.abrirNuevoRegistro = function() {
         <select id="nr-tipo" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTipo}</select>
       </div>
       <div>
-        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Defectos</div><input id="er-def" type="number" value="${reg.def||reg.defectos||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Scrap</div><input id="er-scrap" type="number" value="${reg.scrap||0}" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px;box-sizing:border-box"></div><div><div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
+        <div style="font-size:12px;color:var(--muted);margin-bottom:4px">Turno</div>
         <select id="nr-turno" style="width:100%;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;font-size:13px">${opcTurno}</select>
       </div>
       <div>
@@ -477,7 +482,10 @@ window.ejecutarCorregirModelo = ejecutarCorregirModelo;
 // El descuento SIEMPRE sale de ALMACÉN. Si hay otro registro con el mismo PN+descripción en otra
 // ubicación (ej. Línea S1), se ignora; solo se usa si no existe registro en Almacén.
 const esAlmacenIMS = x => { const u = String((x && x.ubicacion) || '').trim().toUpperCase(); return u === '' || u === 'ALMACEN' || u === 'ALMACÉN'; };
-const DESC_DESCUENTO_ENVIO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','PULP TRAY','SET PAD','BACK STICKER','GALLETA'];
+// REGLA (Tavox): al crear la etiqueta de lote / enviar a ShipQR SOLO se descuentan estos 4 artículos.
+// Sheet, Chip Board, Set Pad / Phone Pad, Pulp Tray, Back Sticker y Galleta se descuentan en el IMS
+// al RECIBIR el pallet de medio proceso (Top / Bottom). No repetirlos aquí para no descontar dos veces.
+const DESC_DESCUENTO_ENVIO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE'];
 
 
 /* Vista previa del descuento del envio a ShipQR (no modifica nada). */
@@ -709,7 +717,9 @@ async function calcularCierreJornada() {
       const consumo = defectos + scrap;
       if (!modelo || !consumo) return;
       totalPiezasConsumo += consumo;
-      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE','PULP TRAY','SET PAD','BACK STICKER','GALLETA'];
+      // Cierre de jornada = defectos y scrap de ASSY1: lo que nunca llega a ShipQR. Mismos 4 artículos que el envío
+      // (los demás ya se descontaron al recibir el medio proceso en el IMS).
+      const DESC_DESCUENTO = ['STRIP','GIFT BOX (TOP)','LOWER BOX (BOTTOM)','BUNDLE'];
       const compsModelo = BOM.filter(b => {
         if (!(b.pn && b.sm && b.sm.trim() === modelo)) return false;
         const desc = (b.desc||'').trim().toUpperCase();
@@ -1210,6 +1220,36 @@ function showApp() {
   applyRoleUI(); Promise.all([loadTargetsFromDB(),loadMaquinasStatus()]).then(()=>{initApp(); startListener(); loadEmailsRep(); loadModelos();});
   if(typeof applyTranslations==='function')applyTranslations();
 }
+/* ══ INTERRUPTOR CAPTURA POR OPERADOR (se controla desde Admin) ══ */
+let CAPTURA_OPERADOR_ACTIVA = false; /* por defecto deshabilitada */
+const CAPTURA_CFG_ID = "mes_p4_config";
+function aplicarCapturaUI(){
+  const r=CURRENT_USER?.rol;
+  const mbOp=document.getElementById("mb-op"); if(mbOp) mbOp.style.display=CAPTURA_OPERADOR_ACTIVA?"":"none";
+  const mbDash=document.getElementById("mb-dash"); if(mbDash) mbDash.disabled=(r==="operador"&&CAPTURA_OPERADOR_ACTIVA);
+  const chk=document.getElementById("adm-captura-op"); if(chk) chk.checked=CAPTURA_OPERADOR_ACTIVA;
+  const st=document.getElementById("adm-captura-op-st"); if(st) st.textContent=CAPTURA_OPERADOR_ACTIVA?"✅ ON":"⛔ OFF";
+  const vOp=document.getElementById("view-op");
+  if(!CAPTURA_OPERADOR_ACTIVA && vOp && vOp.classList.contains("active")) setMode("dash");
+}
+window.toggleCapturaOperador=async(chk)=>{
+  try{
+    await setDoc(doc(db,"system_status",CAPTURA_CFG_ID),{captura_operador_activa:chk.checked,actualizadoPor:CURRENT_USER?.email||"",ts:serverTimestamp()},{merge:true});
+  }catch(e){chk.checked=!chk.checked;alert("Error: "+e.message);}
+};
+let _capturaListener=null;
+function iniciarCapturaConfig(){
+  return new Promise((resolve)=>{
+    let primera=true;
+    if(_capturaListener)_capturaListener();
+    _capturaListener=onSnapshot(doc(db,"system_status",CAPTURA_CFG_ID),(snap)=>{
+      CAPTURA_OPERADOR_ACTIVA=!!(snap.exists()&&snap.data().captura_operador_activa===true);
+      aplicarCapturaUI();
+      if(primera){primera=false;resolve();}
+    },(err)=>{console.error("Config captura:",err);if(primera){primera=false;resolve();}});
+  });
+}
+
 function applyRoleUI() {
   const r=CURRENT_USER.rol;
   document.getElementById("user-name").textContent=CURRENT_USER.nombre;
@@ -1222,11 +1262,13 @@ function applyRoleUI() {
   const mbPallet=document.getElementById("mb-pallet");
   if(mbPallet) mbPallet.style.display=(r==="admin"||ASSY_EMAILS.includes((CURRENT_USER.email||"").toLowerCase()))?"":"none";
     const qrM=QR_MACHINE;
-  if(qrM!==null){
-    setMode('op');
-  } else {
-    setMode(r==="operador"?"op":"dash");
-  }
+  iniciarCapturaConfig().then(()=>{
+    if(qrM!==null){
+      setMode('op');
+    } else {
+      setMode((r==="operador"&&CAPTURA_OPERADOR_ACTIVA)?"op":"dash");
+    }
+  });
 }
 
 /* ══ LISTENER TIEMPO REAL ══ */
@@ -1732,12 +1774,90 @@ function mostrarModalMotivoEnvio(){
     btnRemplazo.onclick=()=>{ motivoActual='REMPLAZO'; pintarSeleccion(); };
     const cerrar=(motivo)=>{
       let win=null;
-      if(motivo) win=window.open('','shipqr_window'); // dentro del clic real: no se bloquea
+      if(motivo) win=window.open('','shipqr_'+Date.now()); // dentro del clic real: no se bloquea
       document.body.removeChild(overlay);
       resolve(motivo ? {motivo,win} : null);
     };
     overlay.querySelector('#mm-enviar').onclick=()=>cerrar(motivoActual);
     overlay.querySelector('#mm-cancelar').onclick=()=>cerrar(null);
+  });
+}
+function mostrarAvisoAbrirShipqr(url){
+  const prev=document.getElementById('shipqr-open-banner'); if(prev) prev.remove();
+  const b=document.createElement('div');
+  b.id='shipqr-open-banner';
+  b.style.cssText='position:fixed;bottom:18px;left:50%;transform:translateX(-50%);z-index:99998;background:var(--card,#151a2e);border:1px solid #5BA3FF;border-radius:12px;padding:12px 16px;display:flex;gap:12px;align-items:center;box-shadow:0 8px 30px rgba(0,0,0,.5);max-width:92vw;flex-wrap:wrap;justify-content:center';
+  b.innerHTML='<span style="font-size:13px;color:var(--text,#eaeef7)">✅ Envío guardado. ¿No se abrió ShipQR para crear el label?</span>'
+    +'<a href="'+url+'" target="_blank" rel="noopener" style="background:rgba(77,166,255,.2);border:1px solid #5BA3FF;color:#5BA3FF;font-weight:700;font-size:13px;padding:8px 14px;border-radius:8px;text-decoration:none">🏷️ Abrir ShipQR y crear label</a>'
+    +'<button style="background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:8px;padding:8px 10px;cursor:pointer">✕</button>';
+  b.querySelector('button').onclick=()=>b.remove();
+  document.body.appendChild(b);
+  setTimeout(()=>{ if(b.parentNode) b.remove(); }, 120000);
+}
+
+// Modal único para enviar a ShipQR: cantidad + tipo (Plan/Remplazo) + vista previa del descuento IMS.
+// La ventana de ShipQR se abre DENTRO del clic real del botón "Enviar" (así no la bloquea el navegador).
+function mostrarModalEnvioShipqr({modelo,parte,prod,pendiente,esRemplazoForzado}){
+  return new Promise((resolve)=>{
+    let motivoActual=esRemplazoForzado?'REMPLAZO':'PLAN';
+    const overlay=document.createElement('div');
+    overlay.style.cssText='position:fixed;inset:0;background:rgba(0,0,0,.65);z-index:99999;display:flex;align-items:center;justify-content:center;padding:16px;overflow-y:auto';
+    overlay.innerHTML=`
+      <div style="background:var(--card,#151a2e);border:1px solid var(--border,#2a3050);border-radius:14px;padding:20px;max-width:460px;width:100%;box-shadow:0 10px 40px rgba(0,0,0,.5)">
+        <div style="font-size:15px;font-weight:700;margin-bottom:4px;color:var(--text,#eaeef7)">🚚 Enviar a ShipQR</div>
+        <div style="font-size:12px;color:var(--muted,#7f8c9a);margin-bottom:12px"><span style="font-family:monospace;color:var(--accent,#4f8ef7)">${modelo}</span> · ${parte}<br>Producidas: ${prod.toLocaleString()} · Pendiente: ${pendiente.toLocaleString()}</div>
+        <label style="font-size:12px;color:var(--muted,#7f8c9a)">Cantidad a enviar</label>
+        <input id="se-qty" type="number" min="1" max="${pendiente}" value="${pendiente}" style="width:100%;box-sizing:border-box;margin:4px 0 12px;background:var(--card2,#22263a);border:1px solid var(--border,#2a3050);color:var(--text,#eaeef7);border-radius:8px;padding:10px;font-size:16px;text-align:center">
+        <div style="display:flex;gap:8px;margin-bottom:12px">
+          <button id="se-plan" style="flex:1;padding:10px 6px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer">📦 Producción normal</button>
+          <button id="se-remp" style="flex:1;padding:10px 6px;font-size:13px;font-weight:700;border-radius:10px;cursor:pointer">⚠️ Remplazo</button>
+        </div>
+        <div id="se-prev" style="white-space:pre-wrap;font-size:12px;line-height:1.5;background:var(--card2,#22263a);border:1px solid var(--border,#2a3050);border-radius:8px;padding:10px;margin-bottom:12px;max-height:200px;overflow-y:auto;color:var(--muted,#7f8c9a)">Calculando descuento del IMS…</div>
+        <div id="se-err" style="display:none;color:#e74c3c;font-size:12px;margin-bottom:8px"></div>
+        <button id="se-enviar" style="width:100%;margin-bottom:8px;padding:12px;font-size:14px;font-weight:700;background:rgba(77,166,255,.15);border:1px solid rgba(77,166,255,.4);color:#5BA3FF;border-radius:10px;cursor:pointer">🚚 Enviar</button>
+        <button id="se-cancelar" style="width:100%;padding:10px;font-size:13px;background:transparent;border:1px solid var(--border,#2a3050);color:var(--muted,#7f8c9a);border-radius:10px;cursor:pointer">Cancelar envío</button>
+      </div>`;
+    document.body.appendChild(overlay);
+    const $=(id)=>overlay.querySelector('#'+id);
+    const qtyEl=$('se-qty'), prevEl=$('se-prev'), errEl=$('se-err');
+    const btnPlan=$('se-plan'), btnRemp=$('se-remp');
+    const pintar=()=>{
+      const esPlan=motivoActual==='PLAN';
+      btnPlan.style.background=esPlan?'rgba(46,204,113,.18)':'transparent';
+      btnPlan.style.border=esPlan?'2px solid #2ecc71':'2px solid var(--border,#2a3050)';
+      btnPlan.style.color=esPlan?'#2ecc71':'var(--muted,#7f8c9a)';
+      btnRemp.style.background=!esPlan?'rgba(230,126,34,.18)':'transparent';
+      btnRemp.style.border=!esPlan?'2px solid #e67e22':'2px solid var(--border,#2a3050)';
+      btnRemp.style.color=!esPlan?'#e67e22':'var(--muted,#7f8c9a)';
+    };
+    pintar();
+    if(esRemplazoForzado){ btnPlan.disabled=true; btnPlan.style.opacity='.4'; btnPlan.style.cursor='not-allowed'; }
+    else btnPlan.onclick=()=>{ motivoActual='PLAN'; pintar(); };
+    btnRemp.onclick=()=>{ motivoActual='REMPLAZO'; pintar(); };
+    let seq=0;
+    const cargarPrevia=async()=>{
+      const n=parseInt(qtyEl.value,10)||0;
+      const mi=++seq;
+      if(n<=0){ prevEl.textContent='Escribe una cantidad válida.'; return; }
+      prevEl.textContent='Calculando descuento del IMS…';
+      let r;
+      try{ r=await planDescuentoEnvio(modelo,Math.min(n,pendiente)); }
+      catch(e){ r={lineas:[],intactos:[],problemas:['No se pudo calcular la vista previa: '+e.message]}; }
+      if(mi!==seq) return;
+      prevEl.textContent=textoPlanEnvio(modelo,Math.min(n,pendiente),r).replace(/\n\n¿Confirmar el envío\?$/,'');
+    };
+    qtyEl.addEventListener('change',cargarPrevia);
+    cargarPrevia();
+    const cerrar=(val)=>{ if(overlay.parentNode) overlay.parentNode.removeChild(overlay); resolve(val); };
+    $('se-cancelar').onclick=()=>cerrar(null);
+    $('se-enviar').onclick=()=>{
+      const n=parseInt(qtyEl.value,10)||0;
+      if(n<=0){ errEl.textContent='Cantidad inválida.'; errEl.style.display='block'; return; }
+      if(n>pendiente){ errEl.textContent='Solo quedan '+pendiente.toLocaleString()+' pendientes.'; errEl.style.display='block'; return; }
+      const win=window.open('','shipqr_'+Date.now()); // dentro del clic real: no se bloquea
+      cerrar({cantidad:n,motivo:motivoActual,win});
+    };
+    setTimeout(()=>{ qtyEl.focus(); qtyEl.select(); },50);
   });
 }
 window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemplazoForzado)=>{
@@ -1747,41 +1867,12 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemp
   const yaEnviado=sumEnviadoShipqr(key);
   const pendiente=Math.max(0, Number(prod)-yaEnviado);
   if(pendiente<=0){ alert('Este lote ya fue enviado por completo.'); return; }
-  const entrada=prompt(`Cantidad a enviar a ShipQR\n(pendiente: ${pendiente.toLocaleString()} de ${Number(prod).toLocaleString()} producidas)`, pendiente);
-  if(entrada===null) return; // canceló
-  let cantidad=parseInt(String(entrada).replace(/[^0-9]/g,''),10);
-  if(!cantidad || cantidad<=0){ alert('Cantidad inválida.'); return; }
-  if(cantidad>pendiente){
-    if(!confirm(`Solo quedan ${pendiente.toLocaleString()} pendientes. ¿Enviar ese máximo?`)) return;
-    cantidad=pendiente;
-  }
-  // Si el registro ya viene marcado como Remplazo desde su origen (ej. Salida de
-  // Pallet), el motivo ya quedó decidido allá — no se vuelve a preguntar aquí.
-  // Se abre la ventana de ShipQR de inmediato, todavía dentro del mismo clic
-  // real del botón (sin await de por medio), para no perder el permiso de
-  // ventana emergente del navegador.
-  let motivo, shipqrWin;
-  if(esRemplazoForzado){
-    motivo='REMPLAZO';
-    shipqrWin=window.open('','shipqr_window');
-  } else {
-    // Preguntar si esta cantidad es producción normal (Plan) o Remplazo, con un
-    // modal propio (botones claros) en vez del confirm() confuso del navegador.
-    // La ventana de ShipQR se abre DENTRO del clic real del botón elegido —
-    // así nunca pierde el permiso de ventana emergente, aunque después haya
-    // un await (esto fue justo lo que causó que 2 tarimas / 3,600 pzas se
-    // perdieran antes: el MES las marcaba ENVIADO pero la pestaña bloqueada
-    // nunca llegaba a crear el lote en ShipQR).
-    const seleccion=await mostrarModalMotivoEnvio();
-    if(!seleccion) return; // canceló de verdad, nada se guarda
-    motivo=seleccion.motivo; shipqrWin=seleccion.win;
-  }
-  let _planEnv = null;
-  try { _planEnv = await planDescuentoEnvio(modelo, cantidad); } catch(e) { _planEnv = {lineas:[], intactos:[], problemas:['No se pudo calcular la vista previa: ' + e.message]}; }
-  if (!confirm(textoPlanEnvio(modelo, cantidad, _planEnv))) {
-    if (shipqrWin && !shipqrWin.closed) shipqrWin.close();
-    return;
-  }
+  // Todo el flujo (cantidad, tipo de envío y vista previa del IMS) va en UN solo modal propio.
+  // Ya no se usan prompt()/confirm() del navegador: si el navegador los bloquea
+  // ("Evitar que esta página cree cuadros de diálogo adicionales") el botón parecía no hacer nada.
+  const sel=await mostrarModalEnvioShipqr({modelo,parte,prod:Number(prod),pendiente,esRemplazoForzado});
+  if(!sel) return; // canceló, nada se guarda
+  const cantidad=sel.cantidad, motivo=sel.motivo, shipqrWin=sel.win;
   const docId=key+'||'+Date.now();
   const registro={
     key, modelo, parte, fecha, turno, horaCaptura,
@@ -1805,6 +1896,7 @@ window.enviarShipqr=async(modeloEnc,parteEnc,prod,fecha,turno,horaCaptura,esRemp
     return;
   }
   const url=`https://shipqr-esp.web.app/#/lote/nuevo?modelo=${encodeURIComponent(modelo)}&pn=${encodeURIComponent(parte)}&qty=${cantidad}&motivo=${motivo}&envio=${encodeURIComponent(docId)}`;
+  mostrarAvisoAbrirShipqr(url); // enlace de respaldo siempre visible (clic real = nunca se bloquea)
   if(shipqrWin){
     shipqrWin.location=url;
   } else {
@@ -1878,7 +1970,7 @@ function initApp(){
 }
 function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
-window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
+window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="op"&&!CAPTURA_OPERADOR_ACTIVA)m="dash";if(m==="dash"&&r==="operador"&&CAPTURA_OPERADOR_ACTIVA)return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
@@ -2825,6 +2917,9 @@ const TRANSLATIONS = {
     adm_add_user:  '➕ Crear usuario',
     adm_users:     '👥 Usuarios',
     adm_permisos:  '🔐 Permisos por Rol',
+    adm_capop_h:   '📱 Captura por Operador',
+    adm_capop_d:   'Habilita o deshabilita la pestaña de captura por operador. Si está apagada, todos entran al Dashboard.',
+    adm_capop_l:   'Captura por operador habilitada',
     adm_captura:   '📱 Captura',
     adm_maquinas:  '🖥️ Estado de Máquinas',
     adm_targets:   '🎯 Targets por Máquina',
@@ -2952,6 +3047,9 @@ const TRANSLATIONS = {
     adm_add_user:  '➕ Create user',
     adm_users:     '👥 Users',
     adm_permisos:  '🔐 Role Permissions',
+    adm_capop_h:   '📱 Operator Capture',
+    adm_capop_d:   'Enable or disable the operator capture tab. When off, everyone goes straight to the Dashboard.',
+    adm_capop_l:   'Operator capture enabled',
     adm_captura:   '📱 Capture',
     adm_maquinas:  '🖥️ Machine Status',
     adm_targets:   '🎯 Targets per Machine',
@@ -3078,6 +3176,9 @@ const TRANSLATIONS = {
     adm_add_user:  '➕ 사용자 생성',
     adm_users:     '👥 사용자',
     adm_permisos:  '🔐 역할 권한',
+    adm_capop_h:   '📱 작업자 입력',
+    adm_capop_d:   '작업자 입력 탭을 켜거나 끕니다. 꺼져 있으면 모두 대시보드로 이동합니다.',
+    adm_capop_l:   '작업자 입력 사용',
     adm_captura:   '📱 캡처',
     adm_maquinas:  '🖥️ 기계 상태',
     adm_targets:   '🎯 기계별 목표',
@@ -3194,6 +3295,9 @@ function applyTranslations(){
     'adm-btn-add':   t('adm_add_user'),
     'adm-h-users':   t('adm_users'),
     'adm-h-permisos':t('adm_permisos'),
+    'adm-h-capop':t('adm_capop_h'),
+    'adm-d-capop':t('adm_capop_d'),
+    'adm-l-capop':t('adm_capop_l'),
     'adm-h-maquinas':t('adm_maquinas'),
     'adm-h-targets': t('adm_targets'),
     'adm-h-email':   t('adm_email'),
@@ -3704,6 +3808,15 @@ html{-webkit-text-size-adjust:100%;text-size-adjust:100%;}
       <div style="margin-top:10px;padding:10px;background:var(--card2);border-radius:8px;font-size:.85rem;color:var(--muted);">⚠️ Después de crear el perfil aquí, ve a <strong>Firebase Console → Authentication → Add user</strong> con el mismo correo y contraseña.</div>
     </div>
     <div class="acard"><h3><span id="adm-h-users">👥 Usuarios</span> (<span id="user-count">0</span>)</h3><table><thead><tr><th>Correo</th><th>Nombre</th><th>Rol</th><th>Estado</th><th>Registros</th><th>Acciones</th></tr></thead><tbody id="users-table"></tbody></table></div>
+    <div class="acard">
+      <h3 id="adm-h-capop">📱 Captura por Operador</h3>
+      <div id="adm-d-capop" style="font-size:.85rem;color:var(--muted);margin-bottom:12px">Habilita o deshabilita la pestaña de captura por operador. Si está apagada, todos entran al Dashboard.</div>
+      <label style="display:flex;align-items:center;gap:10px;cursor:pointer;font-weight:600">
+        <input type="checkbox" id="adm-captura-op" onchange="toggleCapturaOperador(this)" style="width:22px;height:22px">
+        <span id="adm-l-capop">Captura por operador habilitada</span>
+        <span id="adm-captura-op-st" style="margin-left:auto">⛔ OFF</span>
+      </label>
+    </div>
     <div class="acard"><h3 id="adm-h-permisos">🔐 Permisos por Rol</h3><table><thead><tr><th>Rol</th><th>📱 Captura</th><th>🖥️ Dashboard</th><th>⚙️ Admin</th></tr></thead><tbody><tr><td><span class="role-badge role-operador">Operador</span></td><td>✅</td><td>❌</td><td>❌</td></tr><tr><td><span class="role-badge role-supervisor">Supervisor</span></td><td>✅</td><td>✅</td><td>❌</td></tr><tr><td><span class="role-badge role-admin">Admin</span></td><td>✅</td><td>✅</td><td>✅</td></tr></tbody></table></div>
     <div class="acard">
       <h3 id="adm-h-maquinas">🖥️ Estado de Máquinas</h3>
