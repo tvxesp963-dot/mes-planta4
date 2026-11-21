@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Pallets de línea · Medio proceso · P3</title>
+<title>Pallets de línea · Medio proceso</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
 <style>
 :root{--bg:#0f1117;--card:#1a1d27;--card2:#22263a;--accent:#4f8ef7;--green:#2ecc71;--yellow:#f1c40f;--red:#e74c3c;--text:#e8eaf0;--muted:#9aa5b5;--border:#2e3347;}
@@ -142,7 +142,7 @@ details.card[open]>summary{margin-bottom:8px;color:var(--text)}
       <div class="note" id="sinPal"></div>
       <label class="lbl" for="qty" id="l-qty"></label><input class="qty" id="qty" type="number" min="1" inputmode="numeric">
       <label class="lbl" for="selDest" id="l-dest"></label>
-      <select id="selDest"><option value="IMS P3">IMS P3</option><option value="IMS P4">IMS P4</option></select>
+      <select id="selDest"><option value="IMS P4">IMS P4</option><option value="IMS P3">IMS P3</option><option value="IMS P1">IMS P1</option></select>
       <button class="btn" id="btnClose" onclick="cerrarPallet()"></button>
   </details>
 
@@ -188,38 +188,10 @@ details.card[open]>summary{margin-bottom:8px;color:var(--text)}
 <script type="module">
 import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
 import { getAuth, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
-import { getFirestore, collection, doc, setDoc, updateDoc, query, where, serverTimestamp,
-         getDoc as fsGetDoc, getDocs as fsGetDocs, onSnapshot as fsOnSnapshot }
+import { getFirestore, collection, doc, setDoc, updateDoc, query, where, serverTimestamp }
   from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
-
-// Contador de lecturas (si el archivo existe en public-p3\); si no existe, usa Firestore normal
-let usoMod = null;
-try { usoMod = await import("./uso-lecturas-mod.js"); } catch(e){}
-const getDoc      = (usoMod && usoMod.getDoc)      || fsGetDoc;
-const getDocs     = (usoMod && usoMod.getDocs)     || fsGetDocs;
-const onSnapshot  = (usoMod && usoMod.onSnapshot)  || fsOnSnapshot;
-const usoApp      = (usoMod && usoMod.usoApp)      || (()=>{});
-usoApp("MES P3 · Pallet Medio");
-
-/* ============================================================
-   CONFIGURACIÓN P3  ← VERIFICAR ESTOS VALORES ANTES DE DESPLEGAR
-   ============================================================ */
-const CFG = {
-  COL_REGISTROS : "registros_p3",        // producción de MES P3 (de ahí salen las piezas "por etiquetar")
-  COL_USUARIOS  : "usuarios_p3",
-  COL_PALLETS   : "pallets_medio_p3",    // pallets de medio proceso de P3 (colección propia, no mezcla con P4)
-  BOM_COL       : "bom_simulator_p4",    // BOM compartido P4/P3
-  BOM_DOC       : "bom_activo",
-  LINEA_DOC     : "linea_medio_p3",      // qué corre en cada máquina (P3)
-  PLAN_DOC      : "plan_piso_medio_p3",  // plan de medio proceso P3 publicado desde BOM Simulator (si no existe, la cola sale vacía)
-};
-// Máquinas de medio proceso que existen en MES P3 (el nombre debe ser igual a maqNombre en registros_p3)
-const MAQS = ['B2','B1','Pre-Folding','Bandita'];   // líneas de LINEAS en el index.html de P3, sin Pre-Kit (esa va en Pallet ASSY)
-// Valor de "planta" en el BOM que corresponde a cada máquina (para listar sus partes)
-const PLANTAS = {};   // P3 no usa la columna 'planta' del BOM: se listan todas las partes del modelo
-const DEST_POR_DEFECTO = 'IMS P3';
-const DEST_DEFAULT = {};                 // excepciones por máquina, ej. { VC1:'IMS P4' }
-/* ============================================================ */
+import { getDoc, getDocs, onSnapshot, usoApp } from "./uso-lecturas-mod.js";
+usoApp("MES · Pallet Medio");
 
 const firebaseConfig = {
   apiKey: "AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",
@@ -232,10 +204,15 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const db = getFirestore(app);
+// La planta sale del nombre del archivo (pallet-xxx-p3.html / -p1.html) o de ?planta=P3|P1; sin nada = P4
+const PLANTA = (()=>{ try{ const p=(new URLSearchParams(location.search).get('planta')||'').toUpperCase(); if(['P1','P3','P4'].includes(p)) return p; const f=location.pathname.toLowerCase(); if(/-p3\.html$/.test(f)) return 'P3'; if(/-p1\.html$/.test(f)) return 'P1'; return 'P4'; }catch(e){ return 'P4'; } })();
+// Cada planta usa sus propias colecciones (P4 queda exactamente como estaba)
+const CFG = { P4:{regs:'registros', users:'usuarios', suf:''}, P3:{regs:'registros_p3', users:'usuarios_p3', suf:'_p3'}, P1:{regs:'registros_p1', users:'usuarios_p1', suf:'_p1'} }[PLANTA];
+
 
 /* ───────── Idiomas ES / EN / KO ───────── */
 const T = {
-  es:{startRun:'▶ Elegir qué corre',changeRun:'▶ Cambiar qué corre',pkT:'Elegir qué va a correr',pkS:'Se muestra parpadeando en la pantalla del piso. Si no eliges, parpadea el que el plan necesita primero (envío más próximo y prioridad).',pkConfirm:m=>'Confirmar: '+m,pkChoose:'Elige un modelo',pkEnd:'⏹ Terminar corrida (ninguno)',pkCancel:'Cancelar',pkSug:'Sugerido',lineRun:'Corriendo en la pantalla del piso: ',lineBy:(n,h)=>'Confirmado por '+n+' · '+h,lineNone:'Sin confirmar: ',lineNoneMsg:'en el piso parpadea el que el plan necesita primero',lineEnded:'Corrida terminada: no parpadea ninguno',onlyMgr:'Solo el gerente o supervisor puede cambiar qué corre',lineOk:m=>'Ahora corre: '+m,lineEnd:'Corrida terminada',lineErr:'No se pudo guardar',pkMiss:'Sin material',title:'Pallets de línea · Medio proceso · P3',sub:'Cierra el pallet, imprime la hoja con QR y recíbelo en IMS',back:'← Volver al MES',
+  es:{startRun:'▶ Elegir qué corre',changeRun:'▶ Cambiar qué corre',pkT:'Elegir qué va a correr',pkS:'Se muestra parpadeando en la pantalla del piso. Si no eliges, parpadea el que el plan necesita primero (envío más próximo y prioridad).',pkConfirm:m=>'Confirmar: '+m,pkChoose:'Elige un modelo',pkEnd:'⏹ Terminar corrida (ninguno)',pkCancel:'Cancelar',pkSug:'Sugerido',lineRun:'Corriendo en la pantalla del piso: ',lineBy:(n,h)=>'Confirmado por '+n+' · '+h,lineNone:'Sin confirmar: ',lineNoneMsg:'en el piso parpadea el que el plan necesita primero',lineEnded:'Corrida terminada: no parpadea ninguno',onlyMgr:'Solo el gerente o supervisor puede cambiar qué corre',lineOk:m=>'Ahora corre: '+m,lineEnd:'Corrida terminada',lineErr:'No se pudo guardar',pkMiss:'Sin material',title:'Pallets de línea · Medio proceso',sub:'Cierra el pallet, imprime la hoja con QR y recíbelo en IMS',back:'← Volver al MES',
     sNum:'Pallets del día',sPz:'Piezas',sPend:'Pendientes de recibir en IMS',cClose:'Cerrar pallet',lModel:'Modelo',lPart:'N° Parte',lQty:'Cantidad del pallet',lDest:'Destino',
     btnClose:'Cerrar pallet e imprimir hoja',cQueue:'Tu cola en ',cList:'Pallets del día',lDate:'Fecha',legend:'Pendiente = hoja impresa, aún sin escanear en IMS. Recibido = ya dio entrada por QR en IMS.',
     verTodas:'Ver todas las líneas',thPallet:'Pallet',thMaq:'Máquina',thModel:'Modelo',thPart:'# Parte',thDesc:'Descripción',thQty:'Cant.',thHora:'Hora',thEstado:'Estado IMS',thHoja:'Hoja',
@@ -246,7 +223,7 @@ const T = {
     noQueue:'No hay cola para esta máquina en el plan publicado.',gateT:'Inicia sesión',gateS:'Entra primero al MES con tu usuario y vuelve a abrir esta pantalla.',gateL:'Ir al MES',
     printB:'Imprimir',closeB:'Cerrar',closed:'Pallet cerrado',err:'Error',qtyBad:'Captura una cantidad válida',pickAll:'Selecciona modelo y N° de parte',
     confirmVoid:'¿Anular este pallet? Solo se puede si aún no se recibe en IMS.',voided:'Pallet anulado',noParts:'Sin partes de esta máquina en el BOM'},
-  en:{startRun:'▶ Choose what runs',changeRun:'▶ Change what runs',pkT:'Choose what will run',pkS:'It blinks on the floor screen. If you do not choose, the one the plan needs first blinks (nearest ship date and priority).',pkConfirm:m=>'Confirm: '+m,pkChoose:'Choose a model',pkEnd:'⏹ End run (none)',pkCancel:'Cancel',pkSug:'Suggested',lineRun:'Running on the floor screen: ',lineBy:(n,h)=>'Confirmed by '+n+' · '+h,lineNone:'Not confirmed: ',lineNoneMsg:'the floor blinks the one the plan needs first',lineEnded:'Run ended: nothing blinks',onlyMgr:'Only the manager or supervisor can change what runs',lineOk:m=>'Now running: '+m,lineEnd:'Run ended',lineErr:'Could not save',pkMiss:'No material',title:'Line Pallets · In-process · P3',sub:'Close the pallet, print the QR sheet and receive it in IMS',back:'← Back to MES',
+  en:{startRun:'▶ Choose what runs',changeRun:'▶ Change what runs',pkT:'Choose what will run',pkS:'It blinks on the floor screen. If you do not choose, the one the plan needs first blinks (nearest ship date and priority).',pkConfirm:m=>'Confirm: '+m,pkChoose:'Choose a model',pkEnd:'⏹ End run (none)',pkCancel:'Cancel',pkSug:'Suggested',lineRun:'Running on the floor screen: ',lineBy:(n,h)=>'Confirmed by '+n+' · '+h,lineNone:'Not confirmed: ',lineNoneMsg:'the floor blinks the one the plan needs first',lineEnded:'Run ended: nothing blinks',onlyMgr:'Only the manager or supervisor can change what runs',lineOk:m=>'Now running: '+m,lineEnd:'Run ended',lineErr:'Could not save',pkMiss:'No material',title:'Line Pallets · In-process',sub:'Close the pallet, print the QR sheet and receive it in IMS',back:'← Back to MES',
     sNum:'Pallets today',sPz:'Pieces',sPend:'Pending receipt in IMS',cClose:'Close pallet',lModel:'Model',lPart:'Part No.',lQty:'Pallet quantity',lDest:'Destination',
     btnClose:'Close pallet and print sheet',cQueue:'Your queue on ',cList:'Pallets of the day',lDate:'Date',legend:'Pending = sheet printed, not yet scanned in IMS. Received = already entered via QR in IMS.',
     verTodas:'Show all lines',thPallet:'Pallet',thMaq:'Machine',thModel:'Model',thPart:'Part #',thDesc:'Description',thQty:'Qty',thHora:'Time',thEstado:'IMS status',thHoja:'Sheet',
@@ -257,7 +234,7 @@ const T = {
     noQueue:'No queue for this machine in the published plan.',gateT:'Sign in',gateS:'Sign in to the MES first, then open this screen again.',gateL:'Go to MES',
     printB:'Print',closeB:'Close',closed:'Pallet closed',err:'Error',qtyBad:'Enter a valid quantity',pickAll:'Select model and part no.',
     confirmVoid:'Void this pallet? Only possible if not yet received in IMS.',voided:'Pallet voided',noParts:'No parts for this machine in the BOM'},
-  ko:{startRun:'▶ 가동 항목 선택',changeRun:'▶ 가동 항목 변경',pkT:'가동할 항목 선택',pkS:'현장 화면에서 점멸합니다. 선택하지 않으면 계획상 가장 먼저 필요한 항목(가까운 출하일, 우선순위)이 점멸합니다.',pkConfirm:m=>'확인: '+m,pkChoose:'모델을 선택하세요',pkEnd:'⏹ 가동 종료 (없음)',pkCancel:'취소',pkSug:'추천',lineRun:'현장 화면 가동 중: ',lineBy:(n,h)=>n+' 확인 · '+h,lineNone:'미확정: ',lineNoneMsg:'현장에서 계획상 가장 먼저 필요한 항목이 점멸합니다',lineEnded:'가동 종료: 점멸 없음',onlyMgr:'관리자 또는 감독자만 변경할 수 있습니다',lineOk:m=>'가동 중: '+m,lineEnd:'가동 종료',lineErr:'저장 실패',pkMiss:'자재 부족',title:'라인 팔레트 · 반제품 · P3',sub:'팔레트를 마감하고 QR 시트를 출력한 뒤 IMS에서 입고하세요',back:'← MES로 돌아가기',
+  ko:{startRun:'▶ 가동 항목 선택',changeRun:'▶ 가동 항목 변경',pkT:'가동할 항목 선택',pkS:'현장 화면에서 점멸합니다. 선택하지 않으면 계획상 가장 먼저 필요한 항목(가까운 출하일, 우선순위)이 점멸합니다.',pkConfirm:m=>'확인: '+m,pkChoose:'모델을 선택하세요',pkEnd:'⏹ 가동 종료 (없음)',pkCancel:'취소',pkSug:'추천',lineRun:'현장 화면 가동 중: ',lineBy:(n,h)=>n+' 확인 · '+h,lineNone:'미확정: ',lineNoneMsg:'현장에서 계획상 가장 먼저 필요한 항목이 점멸합니다',lineEnded:'가동 종료: 점멸 없음',onlyMgr:'관리자 또는 감독자만 변경할 수 있습니다',lineOk:m=>'가동 중: '+m,lineEnd:'가동 종료',lineErr:'저장 실패',pkMiss:'자재 부족',title:'라인 팔레트 · 반제품',sub:'팔레트를 마감하고 QR 시트를 출력한 뒤 IMS에서 입고하세요',back:'← MES로 돌아가기',
     sNum:'오늘 팔레트',sPz:'수량',sPend:'IMS 입고 대기',cClose:'팔레트 마감',lModel:'모델',lPart:'품번',lQty:'팔레트 수량',lDest:'목적지',
     btnClose:'팔레트 마감 및 시트 출력',cQueue:'작업 순서 · ',cList:'오늘의 팔레트',lDate:'날짜',legend:'대기 = 시트 출력됨, IMS 미스캔. 입고 = IMS에서 QR로 입고 완료.',
     verTodas:'전체 라인 보기',thPallet:'팔레트',thMaq:'설비',thModel:'모델',thPart:'품번',thDesc:'품명',thQty:'수량',thHora:'시간',thEstado:'IMS 상태',thHoja:'시트',
@@ -276,8 +253,14 @@ let LANG = (()=>{const l=localStorage.getItem('mes-lang');return T[l]?l:'es';})(
 const t = k => T[LANG][k];
 const fmt = n => (Number(n)||0).toLocaleString('en-US');
 
+/* ───────── Máquinas de medio proceso ───────── */
+const MAQS = PLANTA==='P3' ? ['Pre-Kit','B2','B1','Pre-Folding','Bandita'] : PLANTA==='P1' ? ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'] : ['S1','S2','S3','S4','S5','Zhongke','VC1','VC2'];
+const PLANTAS = { S1:['S1/S2','S3/S4'], S2:['S1/S2','S3/S4'], Zhongke:['S1/S2'], S3:['S1/S2','S3/S4'], S4:['S1/S2','S3/S4'], S5:['S1/S2','S3/S4'], VC1:['VC/Zhongke'], VC2:['VC/Zhongke'] };
+const DEST_DEFAULT = PLANTA==='P4' ? { VC1:'IMS P4', VC2:'IMS P4' } : {};
+const DEST_PLANTA = 'IMS ' + PLANTA;
+
 let USER = null, BOM = [], PLAN = null, PALLETS = [], REGS = [];
-let maq = localStorage.getItem('pm3-maq') || MAQS[0];
+let maq = localStorage.getItem('pm-maq-'+PLANTA) || MAQS[0];
 if (!MAQS.includes(maq)) maq = MAQS[0];
 let unsubPallets = null;
 
@@ -285,14 +268,12 @@ const $ = id => document.getElementById(id);
 function hoyISO(){ const d=new Date(); return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
 function toast(msg){ const e=$('toast'); e.textContent=msg; e.classList.remove('hide'); setTimeout(()=>e.classList.add('hide'),2600); }
 const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
-const destDe = m => DEST_DEFAULT[m] || DEST_POR_DEFECTO;
 
 /* ───────── Textos ───────── */
 function pintarTextos(){
   document.documentElement.lang = LANG;
-  document.title = t('title');
   ['es','en','ko'].forEach(l=>$('f-'+l).classList.toggle('on',l===LANG));
-  $('t-title').textContent=t('title'); $('t-sub').textContent=t('sub'); $('t-back').textContent=t('back');
+  $('t-title').textContent=t('title')+' · '+PLANTA; $('t-sub').textContent=t('sub'); $('t-back').textContent=t('back');
   $('s-n').textContent=t('sNum'); $('s-pz').textContent=t('sPz'); $('s-pe').textContent=t('sPend');
   $('c-close').textContent=t('cClose'); $('l-model').textContent=t('lModel'); $('l-part').textContent=t('lPart'); $('l-qty').textContent=t('lQty'); $('l-dest').textContent=t('lDest');
   $('btnClose').textContent=t('btnClose'); $('c-list').textContent=t('cList'); $('l-date').textContent=t('lDate'); $('legend').textContent=t('legend');
@@ -305,9 +286,11 @@ window.setLang = l => { LANG=l; localStorage.setItem('mes-lang',l); pintarTextos
 
 /* ───────── BOM: partes por máquina ───────── */
 function filasDeMaquina(m){
+  if (PLANTA !== 'P4') return BOM.filter(r => r.pn && r.sm); // P3/P1: sin mapeo por máquina, se elige modelo y parte del BOM
   const pl = PLANTAS[m] || [];
   const porPlanta = BOM.filter(r => r.pn && r.sm && pl.includes(r.planta));
   if (porPlanta.length) return porPlanta;
+  // Respaldo por descripción si el BOM no trae la planta
   return BOM.filter(r => {
     if (!r.pn || !r.sm) return false;
     const d = (r.desc||'').toUpperCase();
@@ -316,12 +299,11 @@ function filasDeMaquina(m){
     return (pl.includes('S1/S2') && top) || (pl.includes('S3/S4') && bot);
   });
 }
-function colaDe(m){ return (PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m] : []; }
+function colaDe(m){ return (PLANTA==='P4' && PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m] : []; }
 
 function modelosDe(m){
   const set = new Set(filasDeMaquina(m).map(r=>r.sm.trim()));
   colaDe(m).forEach(c=>(c.modelos||[c.sm]).forEach(x=>{ if (x) set.add(String(x).trim()); }));
-  if (!set.size) BOM.forEach(r=>{ if (r.sm) set.add(String(r.sm).trim()); });
   const orden = colaDe(m).flatMap(c=>c.modelos||[c.sm]);
   return [...set].sort((a,b)=>{ const ia=orden.indexOf(a), ib=orden.indexOf(b); if(ia>=0&&ib>=0) return ia-ib; if(ia>=0) return -1; if(ib>=0) return 1; return a.localeCompare(b); });
 }
@@ -335,12 +317,15 @@ function partesDe(m, sm){
     out.push({pn, desc:String(desc||'').trim(), familia:String(fam||pn.split('-')[0]||'').trim()});
   };
   const igual = r => norm(r.sm)===norm(sm);
+  // 1) Partes del BOM para este modelo en esta máquina
   filasDeMaquina(m).filter(igual).forEach(r=>add(r.pn, r.desc, r.familia));
+  // 2) La parte que el plan manda correr para este modelo siempre debe aparecer
   colaDe(m).filter(c=>(c.modelos||[c.sm]).map(norm).includes(norm(sm))).forEach(c=>{
     if (!c.pn || out.some(p=>p.pn===norm(c.pn))) return;
     const fila = BOM.find(r=>r.pn && norm(r.pn)===norm(c.pn));
     add(c.pn, fila ? fila.desc : (c.desc||''), fila ? fila.familia : '');
   });
+  // 3) Respaldo: si aún no hay nada, buscar el modelo en todo el BOM
   if (!out.length) BOM.filter(r=>r.pn && r.sm && igual(r)).forEach(r=>add(r.pn, r.desc, r.familia));
   return out;
 }
@@ -349,9 +334,10 @@ function partesDe(m, sm){
 function pintarChips(){
   $('maqChips').innerHTML = MAQS.map(m=>`<button class="chip ${m===maq?'on':''}" onclick="selMaq('${m}')">${m}</button>`).join('');
 }
-window.selMaq = m => { maq=m; localStorage.setItem('pm3-maq',m); pintarChips(); pintarPorEtiquetar(); cargarRegs().then(()=>{ llenarModelos(); pintarCola(); pintarLista(); }); };
+window.selMaq = m => { maq=m; localStorage.setItem('pm-maq-'+PLANTA,m); pintarChips(); pintarPorEtiquetar(); cargarRegs().then(()=>{ llenarModelos(); pintarCola(); pintarLista(); }); };
 
 function llenarModelos(sel){
+  // No reconstruir las listas mientras el usuario las tiene abiertas o está eligiendo
   if (sel && (document.activeElement===$('selModelo') || document.activeElement===$('selParte'))) return;
   const ms = modelosDe(maq);
   const run = enCurso();
@@ -377,13 +363,14 @@ window.onParte = () => {
   const sin = Math.max(0, cap-pal);
   $('sinPal').textContent = (sm&&pn) ? T[LANG].sinPal(fmt(cap),fmt(pal),fmt(sin)) : '';
   $('qty').value = (sm&&pn&&sin>0) ? sin : '';
-  $('selDest').value = destDe(maq);
+  $('selDest').value = DEST_DEFAULT[maq] || DEST_PLANTA;
 };
 
-/* ───────── Qué corre en la máquina ───────── */
-let LINEA = {};
+/* ───────── Qué corre en la máquina (lo confirma el gerente; si no, parpadea el primero de la fila) ───────── */
+let LINEA = {};   // maq -> {pn, sm, por, ts}
 const HORAS_CONF = 12;
 function confDe(m){ const c=LINEA[m]; return (c && c.ts && (Date.now()-c.ts)<=HORAS_CONF*36e5) ? c : null; }
+// Recomendado por el plan: 1) envío más próximo, 2) prioridad del Excel, 3) material completo, 4) mayor pendiente
 function capItem(c){
   const ms=c.materiales||[]; if(!ms.length) return c.listo?(c.pendiente||0):0;
   const cb=ms.filter(x=>/^CB_/.test(x.k)), otros=ms.filter(x=>!/^CB_/.test(x.k));
@@ -402,7 +389,7 @@ function recomendadoDe(m){
 }
 function corriendoDe(m){
   const cola=colaDe(m), c=confDe(m);
-  if (c && !c.pn) return null;
+  if (c && !c.pn) return null;                                   // corrida terminada
   if (c && c.pn){ const it=cola.find(x=>x.pn===c.pn); if (it) return {it, conf:true}; }
   const it=recomendadoDe(m); return it ? {it, conf:false} : null;
 }
@@ -416,7 +403,7 @@ const esGerente = () => USER && ['admin','supervisor'].includes(USER.rol);
 function pintarLinea(){
   const box=$('lineaBox'), btn=$('btnLinea'); if(!box) return;
   const c=confDe(maq), r=corriendoDe(maq);
-  const hora = ts => new Date(ts).toLocaleTimeString(undefined,{hour:'numeric',minute:'2-digit'});
+  const hora = ts => new Date(ts).toLocaleTimeString(T[LANG].dias?undefined:undefined,{hour:'numeric',minute:'2-digit'});
   if (c && !c.pn) box.innerHTML = `<div class="linea warn">${t('lineEnded')}</div>`;
   else if (c && c.pn && r && r.conf) box.innerHTML = `<div class="linea ok">${t('lineRun')}<b>${esc((r.it.modelos||[r.it.sm])[0])} · ${esc(r.it.pn)}</b><small>${t('lineBy')(esc(c.por||'—'),hora(c.ts))}</small></div>`;
   else box.innerHTML = `<div class="linea warn">${t('lineNone')}<b>${r?esc((r.it.modelos||[r.it.sm])[0])+' · '+esc(r.it.pn):'—'}</b><small>${t('lineNoneMsg')}</small></div>`;
@@ -447,7 +434,7 @@ window.elegirItem = pn => { pickSel = pn; renderPicker(); };
 async function guardarLinea(it){
   const data = it ? {pn:it.pn, sm:(it.modelos||[it.sm])[0], modelos:it.modelos||[it.sm]} : {pn:'', sm:'', modelos:[]};
   Object.assign(data,{ por:(USER && (USER.nombre||USER.email))||'', userId:USER?USER.uid:'', ts:Date.now() });
-  try { await setDoc(doc(db,CFG.BOM_COL,CFG.LINEA_DOC), {maq:{[maq]:data}}, {merge:true}); return true; }
+  try { await setDoc(doc(db,'bom_simulator_p4','linea_medio'+CFG.suf), {maq:{[maq]:data}}, {merge:true}); return true; }
   catch(e){ console.warn('linea_medio:',e); toast(t('lineErr')); return false; }
 }
 window.confirmarPicker = async () => {
@@ -500,15 +487,15 @@ function pintarTodo(){ pintarChips(); pintarPorEtiquetar(); llenarModelos($('sel
 function escucharPallets(){
   if (unsubPallets) unsubPallets();
   const f = $('fecha').value || hoyISO();
-  unsubPallets = onSnapshot(query(collection(db,CFG.COL_PALLETS), where('fecha','==',f)), snap=>{
-    PALLETS = snap.docs.map(d=>({id:d.id, ...d.data()}));
+  unsubPallets = onSnapshot(query(collection(db,'pallets_medio'), where('fecha','==',f)), snap=>{
+    PALLETS = snap.docs.map(d=>({id:d.id, ...d.data()})).filter(p=>(p.planta||'P4')===PLANTA);
     pintarLista(); pintarCola(); if ($('selParte').value) onParteSinPisarQty();
   }, e=>{ console.error(e); toast(t('err')+': '+e.message); });
 }
 function onParteSinPisarQty(){ const q=$('qty').value; window.onParte(); if(q) $('qty').value=q; }
 window.onFecha = () => { escucharPallets(); cargarRegs().then(()=>{ pintarCola(); }); };
 async function cargarRegs(){
-  try { const f=$('fecha').value||hoyISO(); const s=await getDocs(query(collection(db,CFG.COL_REGISTROS), where('fecha','==',f))); REGS=s.docs.map(d=>d.data()); }
+  try { const f=$('fecha').value||hoyISO(); const s=await getDocs(query(collection(db,CFG.regs), where('fecha','==',f))); REGS=s.docs.map(d=>d.data()); }
   catch(e){ REGS=[]; console.warn('registros:',e.message); }
 }
 
@@ -519,18 +506,18 @@ async function cargarPrev(){
   const desde=desdeISO(), hoy=hoyISO();
   try {
     const [a,b] = await Promise.all([
-      getDocs(query(collection(db,CFG.COL_REGISTROS), where('fecha','>=',desde), where('fecha','<',hoy))),
-      getDocs(query(collection(db,CFG.COL_PALLETS), where('fecha','>=',desde), where('fecha','<',hoy)))
+      getDocs(query(collection(db,CFG.regs), where('fecha','>=',desde), where('fecha','<',hoy))),
+      getDocs(query(collection(db,'pallets_medio'), where('fecha','>=',desde), where('fecha','<',hoy)))
     ]);
-    PREV = {regs:a.docs.map(d=>d.data()), pals:b.docs.map(d=>({id:d.id,...d.data()}))};
+    PREV = {regs:a.docs.map(d=>d.data()), pals:b.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(p.planta||'P4')===PLANTA)};
   } catch(e){ console.warn('prev:',e.message); }
   pintarPorEtiquetar();
 }
 function escucharHoy(){
   if (unsubRegsHoy) unsubRegsHoy(); if (unsubPalHoy) unsubPalHoy();
   const hoy=hoyISO();
-  unsubRegsHoy = onSnapshot(query(collection(db,CFG.COL_REGISTROS), where('fecha','==',hoy)), sn=>{ REGS_HOY=sn.docs.map(d=>d.data()); pintarPorEtiquetar(); }, e=>console.warn('regs hoy:',e.message));
-  unsubPalHoy  = onSnapshot(query(collection(db,CFG.COL_PALLETS), where('fecha','==',hoy)), sn=>{ PAL_HOY=sn.docs.map(d=>({id:d.id,...d.data()})); pintarPorEtiquetar(); }, e=>console.warn('pallets hoy:',e.message));
+  unsubRegsHoy = onSnapshot(query(collection(db,CFG.regs), where('fecha','==',hoy)), sn=>{ REGS_HOY=sn.docs.map(d=>d.data()); pintarPorEtiquetar(); }, e=>console.warn('regs hoy:',e.message));
+  unsubPalHoy  = onSnapshot(query(collection(db,'pallets_medio'), where('fecha','==',hoy)), sn=>{ PAL_HOY=sn.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(p.planta||'P4')===PLANTA); pintarPorEtiquetar(); }, e=>console.warn('pallets hoy:',e.message));
 }
 function porEtiquetar(m){
   const norm=x=>String(x||'').trim().toUpperCase();
@@ -574,7 +561,7 @@ window.cerrarPorEtiquetar = async i => {
   const qty=parseInt($('pe-q-'+i).value)||0;
   if (qty<=0) { toast(t('qtyBad')); return; }
   const b=$('pe-b-'+i); b.disabled=true;
-  await crearPallet({sm:x._sm, pn:x.pn, qty, dest:destDe(maq), desc:x._desc, familia:x._fam});
+  await crearPallet({sm:x._sm, pn:x.pn, qty, dest:DEST_DEFAULT[maq]||DEST_PLANTA, desc:x._desc, familia:x._fam});
   pintarPorEtiquetar();
 };
 
@@ -596,14 +583,15 @@ async function crearPallet(d){
   try {
     const f = hoyISO(), ymd = f.replace(/-/g,'');
     let n = Math.max(0, ...PALLETS.concat(PAL_HOY).filter(p=>p.maquina===maq && p.fecha===f).map(p=>p.palletNo||0)) + 1;
-    let id = `${ymd}-${maq}-${n}`;
-    while ((await getDoc(doc(db,CFG.COL_PALLETS,id))).exists()) { n++; id = `${ymd}-${maq}-${n}`; }
+    const pre = PLANTA==='P4' ? '' : PLANTA+'-';
+    let id = `${ymd}-${pre}${maq}-${n}`;
+    while ((await getDoc(doc(db,'pallets_medio',id))).exists()) { n++; id = `${ymd}-${pre}${maq}-${n}`; }
     const ahora = new Date();
-    const p = { id, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:d.desc||'', familia:d.familia||'', qty,
-      destino:d.dest, planta:'P3', status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
+    const p = { id, planta:PLANTA, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:d.desc||'', familia:d.familia||'', qty,
+      destino:d.dest, status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
       horaMs:ahora.getTime(), horaTxt:ahora.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), creadoEn:serverTimestamp() };
     p.qr = qrTexto(p);
-    await setDoc(doc(db,CFG.COL_PALLETS,id), p);
+    await setDoc(doc(db,'pallets_medio',id), p);
     toast(t('closed')+': '+id);
     mostrarHoja(p);
     return true;
@@ -613,7 +601,7 @@ async function crearPallet(d){
 window.anular = async id => {
   const p = PALLETS.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
   if (!confirm(t('confirmVoid'))) return;
-  try { await updateDoc(doc(db,CFG.COL_PALLETS,id), {status:'VOID', anuladoPor:(USER&&USER.nombre)||'', anuladoEn:serverTimestamp()}); toast(t('voided')); }
+  try { await updateDoc(doc(db,'pallets_medio',id), {status:'VOID', anuladoPor:(USER&&USER.nombre)||'', anuladoEn:serverTimestamp()}); toast(t('voided')); }
   catch(e){ toast(t('err')+': '+e.message); }
 };
 window.reimprimir = id => { const p = PALLETS.find(x=>x.id===id); if (p) mostrarHoja(p); };
@@ -632,10 +620,10 @@ function mostrarHoja(p){
   const [y,m,d] = p.fecha.split('-');
   $('sheet').innerHTML = `
     <div class="pl">Pallet ${esc(p.palletNo)}</div>
-    <div class="hd"><span class="esp">ESP</span><span class="dst">${esc(p.destino||DEST_POR_DEFECTO)}</span><span class="mq">${esc(p.maquina)}</span></div>
+    <div class="hd"><span class="esp">ESP</span><span class="dst">${esc(p.destino||'IMS P4')}</span><span class="mq">${esc(p.planta||'P4')} · ${esc(p.maquina)}</span></div>
     <div class="row"><div># PART</div><div style="font-size:19px">${esc(p.parte)}</div></div>
     <div class="row"><div>DESC:</div><div style="font-size:12px">${esc(p.desc)}<br>${esc(p.modelo)}</div></div>
-    <div class="row"><div>MACHINE:</div><div style="font-size:15px">${esc(p.maquina)}</div></div>
+    <div class="row"><div>PLANT:</div><div style="font-size:15px">${esc(p.planta||'P4')} · ${esc(p.maquina)}</div></div>
     <div class="row"><div>QTY:</div><div style="font-size:22px">${fmt(p.qty)}</div></div>
     <div class="row" style="border-bottom:1px solid #111"><div>DATE:</div><div style="font-size:15px">${d}.${m}.${y.slice(2)} · ${esc(p.horaTxt||'')}</div></div>
     <div class="qrw"><img alt="QR" src="${qrDataUrl(p.qr || qrTexto(p))}"><span class="idt">${esc(p.id)}</span></div>`;
@@ -646,15 +634,15 @@ window.cerrarModal = () => $('modal').classList.add('hide');
 /* ───────── Arranque ───────── */
 async function iniciar(fireUser){
   try {
-    const us = await getDocs(query(collection(db,CFG.COL_USUARIOS), where('uid','==',fireUser.uid)));
+    const us = await getDocs(query(collection(db,CFG.users), where('uid','==',fireUser.uid)));
     USER = us.empty ? {uid:fireUser.uid, nombre:fireUser.email} : {uid:fireUser.uid, ...us.docs[0].data()};
   } catch(e){ USER = {uid:fireUser.uid, nombre:fireUser.email}; }
   try {
-    const bd = await getDoc(doc(db,CFG.BOM_COL,CFG.BOM_DOC));
+    const bd = await getDoc(doc(db,'bom_simulator_p4','bom_activo'));
     BOM = bd.exists() ? JSON.parse(bd.data().bom||'[]') : [];
   } catch(e){ BOM = []; }
-  onSnapshot(doc(db,CFG.BOM_COL,CFG.LINEA_DOC), q=>{ LINEA = (q.exists() && q.data().maq) ? q.data().maq : {}; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
-  onSnapshot(doc(db,CFG.BOM_COL,CFG.PLAN_DOC), s=>{ PLAN = s.exists()?s.data():null; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
+  onSnapshot(doc(db,'bom_simulator_p4','linea_medio'+CFG.suf), q=>{ LINEA = (q.exists() && q.data().maq) ? q.data().maq : {}; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
+  if (PLANTA==='P4') onSnapshot(doc(db,'bom_simulator_p4','plan_piso_medio'), s=>{ PLAN = s.exists()?s.data():null; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
   $('fecha').value = hoyISO();
   await cargarRegs();
   escucharPallets();

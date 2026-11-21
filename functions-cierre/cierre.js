@@ -15,9 +15,9 @@
 
 const ZONA = 'America/Tijuana';
 const USUARIO = 'Sistema (cierre automático)';
-const DESC_DESCUENTO = ['STRIP', 'GIFT BOX (TOP)', 'LOWER BOX (BOTTOM)', 'BUNDLE',
-  'CHIP BOARD TOP (RANURADO)', 'CHIP BOARD BOTTOM (RANURADO)', 'PULP TRAY', 'SET PAD',
-  'BACK STICKER', 'SHEET TOP BOX', 'SHEET LOWER BOX (BOTTOM)'];
+// SOLO estos 4 artículos (igual que el envío a ShipQR del MES). Sheet, Chip Board, Set Pad / Phone Pad, Pulp Tray,
+// Back Sticker y Galleta NO van aquí: ya se descuentan en el IMS al recibir el pallet de medio proceso (Top / Bottom).
+const DESC_DESCUENTO = ['STRIP', 'GIFT BOX (TOP)', 'LOWER BOX (BOTTOM)', 'BUNDLE'];
 const REGS_POR_LOTE = 20;
 const MAX_ESCRITURAS = 450;   // Firestore permite 500 por transacción
 
