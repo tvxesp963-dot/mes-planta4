@@ -1097,6 +1097,9 @@ const CP1_T={
       help:"수량/일 = 시트당 수량 × 경로에서 가장 느린 공정의 시트/일. ZP5와 ZP6은 대체 설비이므로 함께 선택하면 시트 수가 합산됩니다. 스티커는 ZP5/ZP6에서 두 번째 공정으로 진행되어 ZP 생산능력이 절반이 됩니다. 버 제거와 포장은 모든 경로의 마지막입니다. «—»는 경로의 설비 중 생산능력이 입력되지 않았다는 뜻입니다.",instr:"설명",
       instrTxt:"부품번호당 한 줄. 가동 설비와 스티커 필요 여부에 X 표시 (스티커는 ZP5/ZP6에서 진행). 유형: TOP, BOTTOM, BUNDLE, SET PAD 또는 OTRO. 시트당 수량: 한 장에서 나오는 개수."}
 };
+Object.assign(CP1_T.es,{selPapel:"— Papel (IMS P1) —",est:"Estado",prio:"Prior.",pide:"Pide P1",fecha:"Entrega",ok2:"✅ Completo",falta:"⚠️ Falta capturar",noReq:"Aún no hay plan requerido publicado desde BOM Simulator (usa Publicar TV allá).",reqRes:"Plan requerido: {n} códigos · {c} completos · {f} por capturar (se muestran primero, en orden de prioridad). Publicado: ",nuevos:"Se agregaron al master {n} códigos nuevos del plan."});
+Object.assign(CP1_T.en,{selPapel:"— Paper (IMS P1) —",est:"Status",prio:"Prio.",pide:"P1 needs",fecha:"Due",ok2:"✅ Complete",falta:"⚠️ Missing data",noReq:"No required plan published from BOM Simulator yet (use Publish TV there).",reqRes:"Required plan: {n} codes · {c} complete · {f} to fill (shown first, by priority). Published: ",nuevos:"{n} new codes from the plan were added to the master."});
+Object.assign(CP1_T.ko,{selPapel:"— 용지 (IMS P1) —",est:"상태",prio:"우선",pide:"P1 필요",fecha:"납기",ok2:"✅ 완료",falta:"⚠️ 입력 필요",noReq:"BOM Simulator에서 게시된 요구 계획이 아직 없습니다 (TV 게시 사용).",reqRes:"요구 계획: {n}개 코드 · 완료 {c} · 입력 필요 {f} (우선순위 순으로 먼저 표시). 게시: ",nuevos:"계획의 신규 코드 {n}개가 마스터에 추가되었습니다."});
 const c1=(k)=>((CP1_T[LANG]||CP1_T.es)[k]||CP1_T.es[k]);
 const CP1_PN=/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/;
 // etapa de la ruta: 0 guillotina, 1 impresión, 2 embo, 3 suaje
@@ -1157,13 +1160,51 @@ window.cp1OnParte=()=>{
   if(!sm.value && p.modelos.length===1) sm.value=p.modelos[0];
   const t=cp1TipoDe(p.desc); if(t) document.getElementById("cp1-n-tipo").value=t;
 };
-function cp1Orden(a,b){ const ta=CP1_TIPOS.indexOf(a.tipo), tb=CP1_TIPOS.indexOf(b.tipo); return (ta-tb)||a.pn.localeCompare(b.pn); }
+let CP1_REQ={}, CP1_REQ_META=null, CP1_PAPELES=[];
+async function cp1CargarPapeles(){
+  CP1_PAPELES=[];
+  try{
+    const snap=await getDocs(collection(db,"planta1_papel_inventario")), m={};
+    snap.forEach(d=>{ const x=d.data(); const pn=String(x.pn||"").trim().toUpperCase(); if(!pn) return;
+      const ds=String(x.desc||x.descripcion||"").trim(); if(!m[pn]||(!m[pn].desc&&ds)) m[pn]={pn,desc:ds}; });
+    CP1_PAPELES=Object.values(m).sort((a,b)=>a.pn.localeCompare(b.pn));
+  }catch(e){ console.error("papel IMS:",e); }
+}
+function cp1PapelSel(c){
+  const cur=String(c.papel||"").trim().toUpperCase();
+  const lista=CP1_PAPELES.slice(); if(cur&&!lista.find(p=>p.pn===cur)) lista.unshift({pn:cur,desc:""});
+  return `<select onchange="cp1Campo('${c.id}','papel',this.value)" style="${cp1IN}width:200px"><option value="">${c1("selPapel")}</option>${lista.map(p=>`<option value="${ptEsc(p.pn)}" ${p.pn===cur?"selected":""}>${ptEsc(p.pn+(p.desc?" · "+p.desc:""))}</option>`).join("")}</select>`;
+}
+const cp1Completo=(c)=>(Number(c.formas)||0)>0 && (c.maquinas||[]).length>0;
+function cp1Orden(a,b){ const ra=CP1_REQ[a.pn], rb=CP1_REQ[b.pn]; if(ra||rb){ if(!ra) return 1; if(!rb) return -1; return (ra.prioridad-rb.prioridad)||a.pn.localeCompare(b.pn); }
+  return cp1Orden0(a,b); }
+function cp1Orden0(a,b){ const ta=CP1_TIPOS.indexOf(a.tipo), tb=CP1_TIPOS.indexOf(b.tipo); return (ta-tb)||a.pn.localeCompare(b.pn); }
+async function cp1CargarReq(){
+  CP1_REQ={}; CP1_REQ_META=null; let nuevos=0;
+  try{
+    const d=await getDoc(doc(db,"bom_simulator_p4","plan_p1_requerido"));
+    if(d.exists()){ const x=d.data(); CP1_REQ_META=x;
+      (x.items||[]).forEach(it=>{ const pn=String(it.pn||"").trim().toUpperCase(); if(!pn) return;
+        if(!CP1_REQ[pn]||it.prioridad<CP1_REQ[pn].prioridad) CP1_REQ[pn]=it; });
+      for(const pn of Object.keys(CP1_REQ)){
+        if(CODIGOS_P1.find(c=>c.id===pn)) continue;
+        const it=CP1_REQ[pn], c={id:pn,pn,modelos:[...new Set((it.modelos||[]).map(m=>m.sm))].join(", "),tipo:cp1TipoDe(it.desc)||"OTRO",papel:"",formas:0,sticker:false,maquinas:[]};
+        CODIGOS_P1.push(c); nuevos++;
+        try{ await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:"",formas:0,sticker:false,maquinas:[],actualizadoPor:"auto-plan",tsLocal:new Date().toISOString()}); }catch(e){ console.error("auto p1_codigos:",e); }
+      }
+    }
+  }catch(e){ console.error("plan_p1_requerido:",e); }
+  CODIGOS_P1.sort(cp1Orden);
+  if(nuevos) showToast(c1("nuevos").replace("{n}",nuevos),"var(--green)");
+}
 async function loadCodigosP1(){
   const msg=document.getElementById("cp1-msg");
   try{
     const snap=await getDocs(CP1_COL());
     CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:CP1_TIPOS.includes(x.tipo)?x.tipo:"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,sticker:!!x.sticker,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
     if(msg) msg.textContent="";
+    await cp1CargarPapeles();
+    await cp1CargarReq();
   }catch(e){ console.error("p1_codigos:",e); CODIGOS_P1=[]; if(msg){ msg.style.color="var(--red)"; msg.textContent=c1("errLoad")+e.message; } }
   renderCodigosP1();
 }
@@ -1187,16 +1228,27 @@ window.cp1PoblarSelects=cp1PoblarSelects;
 function cp1RenderTabla(){
   const tb=document.getElementById("cp1-table"); if(!tb) return;
   const th=document.getElementById("cp1-thead");
-  if(th) th.innerHTML=`<tr><th>${c1("pn")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th><th>${c1("stk")}</th>${CP1_MAQS.map(n=>`<th>${n}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
-  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+9}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
+  if(th) th.innerHTML=`<tr><th>${c1("est")}</th><th>${c1("prio")}</th><th>${c1("pide")}</th><th>${c1("fecha")}</th><th>${c1("pn")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th><th>${c1("stk")}</th>${CP1_MAQS.map(n=>`<th>${n}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
+  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+13}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
+  let rs=document.getElementById("cp1-req");
+  if(!rs){ const w0=document.getElementById("cp1-warn"); if(w0){ rs=document.createElement("div"); rs.id="cp1-req"; rs.style.cssText="font-size:.85rem;margin:8px 0"; w0.parentNode.insertBefore(rs,w0); } }
+  if(rs){ const ks=Object.keys(CP1_REQ);
+    if(!CP1_REQ_META) rs.innerHTML=`<span style="color:var(--muted)">${c1("noReq")}</span>`;
+    else { const comp=ks.filter(pn=>{ const c=CODIGOS_P1.find(x=>x.id===pn); return c&&cp1Completo(c); }).length;
+      rs.innerHTML=c1("reqRes").replace("{n}",ks.length).replace("{c}",comp).replace("{f}",ks.length-comp)+ptEsc(String(CP1_REQ_META.publicadoEn||"").replace("T"," ").slice(0,16)); } }
   const sin=[];
   tb.innerHTML=CODIGOS_P1.map(c=>{
     const r=cp1Calc(c,cp1CapDe); if(r.sinMaq) sin.push(c.pn);
-    return `<tr>
+    const rq=CP1_REQ[c.pn], okc=cp1Completo(c);
+    return `<tr${rq&&!okc?' style="background:rgba(241,196,15,.07)"':""}>
+      <td style="white-space:nowrap;font-size:.75rem;color:${okc?"var(--green)":"var(--yellow)"}">${rq?(okc?c1("ok2"):c1("falta")):(okc?c1("ok2"):"—")}</td>
+      <td style="text-align:right">${rq?rq.prioridad:"—"}</td>
+      <td style="text-align:right">${rq?Math.round(rq.pide).toLocaleString():"—"}</td>
+      <td style="white-space:nowrap;font-size:.75rem">${rq&&rq.fecha?rq.fecha:"—"}</td>
       <td style="font-family:monospace;color:var(--accent);white-space:nowrap">${c.pn}</td>
       <td><input value="${ptEsc(c.modelos)}" onchange="cp1Campo('${c.id}','modelos',this.value)" style="${cp1IN}width:150px"></td>
       <td><select onchange="cp1Campo('${c.id}','tipo',this.value)" style="${cp1IN}">${CP1_TIPOS.map(t=>`<option ${t===c.tipo?"selected":""}>${t}</option>`).join("")}</select></td>
-      <td><input value="${ptEsc(c.papel)}" onchange="cp1Campo('${c.id}','papel',this.value)" style="${cp1IN}width:90px"></td>
+      <td>${cp1PapelSel(c)}</td>
       <td><input type="number" min="0" step="any" value="${c.formas||""}" onchange="cp1Campo('${c.id}','formas',this.value)" style="${cp1IN}width:64px;text-align:right"></td>
       <td><input type="checkbox" ${c.sticker?"checked":""} onchange="cp1Sticker('${c.id}',this.checked)" style="width:16px;height:16px"></td>
       ${CP1_MAQS.map(n=>`<td><input type="checkbox" ${c.maquinas.includes(n)?"checked":""} onchange="cp1Chk('${c.id}','${n}',this.checked)" style="width:16px;height:16px"></td>`).join("")}
