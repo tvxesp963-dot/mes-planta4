@@ -1140,7 +1140,7 @@ function cp1BomPartes(){
   return mapa;
 }
 function cp1TipoDe(desc){ const d=String(desc||"").toUpperCase();
-  if(/BUNDLE/.test(d)) return "BUNDLE"; if(/SET\s*PAD/.test(d)) return "SET PAD"; if(/BOT/.test(d)) return "BOTTOM"; if(/TOP/.test(d)) return "TOP"; return ""; }
+  if(/BUNDLE/.test(d)) return "BUNDLE"; if(/SET\s*PAD/.test(d)) return "SET PAD"; if(/BOT/.test(d)) return "BOTTOM"; if(/TOP/.test(d)) return "TOP"; return d.trim().slice(0,40); }
 const cp1Esc=(x)=>String(x==null?"":x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
 function cp1PoblarSelects(){
   const sm=document.getElementById("cp1-n-mod"), sp=document.getElementById("cp1-n-pn"); if(!sm||!sp) return;
@@ -1158,7 +1158,8 @@ window.cp1OnModelo=()=>{ cp1PoblarSelects(); };
 window.cp1OnParte=()=>{
   const sp=document.getElementById("cp1-n-pn"), sm=document.getElementById("cp1-n-mod"); const p=cp1BomPartes()[sp.value]; if(!p) return;
   if(!sm.value && p.modelos.length===1) sm.value=p.modelos[0];
-  const t=cp1TipoDe(p.desc); if(t) document.getElementById("cp1-n-tipo").value=t;
+  const t=cp1TipoDe(p.desc), st=document.getElementById("cp1-n-tipo");
+  if(t){ if(![...st.options].some(o=>o.value===t)){ const op=document.createElement("option"); op.value=t; op.textContent=t; st.appendChild(op); } st.value=t; }
 };
 let CP1_REQ={}, CP1_REQ_META=null, CP1_PAPELES=[];
 const CP1_DIMRE=/\d+(?:[.,]\d+)?\s*(?:x|X|×)\s*\d+(?:[.,]\d+)?/;
@@ -1189,7 +1190,8 @@ function cp1PapelSel(c){
 const cp1Completo=(c)=>(Number(c.formas)||0)>0 && (c.maquinas||[]).length>0;
 function cp1Orden(a,b){ const ra=CP1_REQ[a.pn], rb=CP1_REQ[b.pn]; if(ra||rb){ if(!ra) return 1; if(!rb) return -1; return (ra.prioridad-rb.prioridad)||a.pn.localeCompare(b.pn); }
   return cp1Orden0(a,b); }
-function cp1Orden0(a,b){ const ta=CP1_TIPOS.indexOf(a.tipo), tb=CP1_TIPOS.indexOf(b.tipo); return (ta-tb)||a.pn.localeCompare(b.pn); }
+const cp1TIdx=(t)=>{ const i=CP1_TIPOS.indexOf(t); return i<0?50:i; };
+function cp1Orden0(a,b){ const ta=cp1TIdx(a.tipo), tb=cp1TIdx(b.tipo); return (ta-tb)||a.pn.localeCompare(b.pn); }
 async function cp1CargarReq(){
   CP1_REQ={}; CP1_REQ_META=null; let nuevos=0;
   try{
@@ -1205,6 +1207,10 @@ async function cp1CargarReq(){
       }
     }
   }catch(e){ console.error("plan_p1_requerido:",e); }
+  try{ const bp=cp1BomPartes();
+    for(const c of CODIGOS_P1){ if(c.tipo!=="OTRO") continue;
+      const ds=(CP1_REQ[c.pn]&&CP1_REQ[c.pn].desc)||(bp[c.pn]&&bp[c.pn].desc)||""; const t=cp1TipoDe(ds);
+      if(t){ c.tipo=t; await cp1Persist(c); } } }catch(e){ console.error("tipo desde BOM:",e); }
   CODIGOS_P1.sort(cp1Orden);
   if(nuevos) showToast(c1("nuevos").replace("{n}",nuevos),"var(--green)");
 }
@@ -1212,7 +1218,7 @@ async function loadCodigosP1(){
   const msg=document.getElementById("cp1-msg");
   try{
     const snap=await getDocs(CP1_COL());
-    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:CP1_TIPOS.includes(x.tipo)?x.tipo:"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,sticker:!!x.sticker,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
+    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:String(x.tipo||"").trim()||"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,sticker:!!x.sticker,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
     if(msg) msg.textContent="";
     await cp1CargarPapeles();
     await cp1CargarReq();
@@ -1258,7 +1264,7 @@ function cp1RenderTabla(){
       <td style="white-space:nowrap;font-size:.75rem">${rq&&rq.fecha?rq.fecha:"—"}</td>
       <td style="font-family:monospace;color:var(--accent);white-space:nowrap">${c.pn}</td>
       <td><input value="${ptEsc(c.modelos)}" onchange="cp1Campo('${c.id}','modelos',this.value)" style="${cp1IN}width:150px"></td>
-      <td><select onchange="cp1Campo('${c.id}','tipo',this.value)" style="${cp1IN}">${CP1_TIPOS.map(t=>`<option ${t===c.tipo?"selected":""}>${t}</option>`).join("")}</select></td>
+      <td><select onchange="cp1Campo('${c.id}','tipo',this.value)" style="${cp1IN}">${(CP1_TIPOS.includes(c.tipo)?CP1_TIPOS:[c.tipo,...CP1_TIPOS]).map(t=>`<option value="${cp1Esc(t)}" ${t===c.tipo?"selected":""}>${cp1Esc(t)}</option>`).join("")}</select></td>
       <td>${cp1PapelSel(c)}</td>
       <td><input type="number" min="0" step="any" value="${c.formas||""}" onchange="cp1Campo('${c.id}','formas',this.value)" style="${cp1IN}width:64px;text-align:right"></td>
       <td><input type="checkbox" ${c.sticker?"checked":""} onchange="cp1Sticker('${c.id}',this.checked)" style="width:16px;height:16px"></td>
