@@ -1068,9 +1068,10 @@ window.delCatalogoParte=async(id)=>{
 };
 /* ══ P1: MÁQUINAS POR CÓDIGO (formas por hoja + ruta + capacidad en hojas) ══ */
 const CP1_COL=()=>collection(db,"p1_codigos");
-const CP1_MAQS=["ZP5","ZP6","GA","GB","EMBO","TA","TB","TC"];   // columnas de la pantalla (deben existir en MAQUINAS)
+const CP1_MAQS=["GA","GB","ZP5","ZP6","EMBO","TA","TB","TC"];   // columnas de la pantalla (deben existir en MAQUINAS)
 const CP1_TIPOS=["TOP","BOTTOM","BUNDLE","SET PAD","OTRO"];
 let CODIGOS_P1=[];
+const CP1_COLS=["GA","GB","ZP5","ZP6","STK","FOIL","EMBO","TA","TB","TC"];   // orden del flujo: guillotina → impresión → sticker → foil → embo → suaje
 const CP1_T={
   es:{h:"🗺️ Máquinas por código (P1)",note:"Master por N° de parte: formas por hoja y las máquinas donde corre cada código. La ruta sale de las máquinas marcadas (guillotina → impresión → embo → suaje). La capacidad se captura en hojas por día.",
       cap:"Capacidad por máquina (hojas/día)",capSave:"💾 Guardar capacidades",capOk:"✅ Capacidades guardadas",
@@ -1097,9 +1098,12 @@ const CP1_T={
       help:"수량/일 = 시트당 수량 × 경로에서 가장 느린 공정의 시트/일. ZP5와 ZP6은 대체 설비이므로 함께 선택하면 시트 수가 합산됩니다. 스티커는 ZP5/ZP6에서 두 번째 공정으로 진행되어 ZP 생산능력이 절반이 됩니다. 버 제거와 포장은 모든 경로의 마지막입니다. «—»는 경로의 설비 중 생산능력이 입력되지 않았다는 뜻입니다.",instr:"설명",
       instrTxt:"부품번호당 한 줄. 가동 설비와 스티커 필요 여부에 X 표시 (스티커는 ZP5/ZP6에서 진행). 유형: TOP, BOTTOM, BUNDLE, SET PAD 또는 OTRO. 시트당 수량: 한 장에서 나오는 개수."}
 };
-Object.assign(CP1_T.es,{selPapel:"— Papel (IMS P1) —",est:"Estado",prio:"Prior.",pide:"Pide P1",fecha:"Entrega",ok2:"✅ Completo",falta:"⚠️ Falta capturar",noReq:"Aún no hay plan requerido publicado desde BOM Simulator (usa Publicar TV allá).",reqRes:"Plan requerido: {n} códigos · {c} completos · {f} por capturar (se muestran primero, en orden de prioridad). Publicado: ",nuevos:"Se agregaron al master {n} códigos nuevos del plan."});
-Object.assign(CP1_T.en,{selPapel:"— Paper (IMS P1) —",est:"Status",prio:"Prio.",pide:"P1 needs",fecha:"Due",ok2:"✅ Complete",falta:"⚠️ Missing data",noReq:"No required plan published from BOM Simulator yet (use Publish TV there).",reqRes:"Required plan: {n} codes · {c} complete · {f} to fill (shown first, by priority). Published: ",nuevos:"{n} new codes from the plan were added to the master."});
-Object.assign(CP1_T.ko,{selPapel:"— 용지 (IMS P1) —",est:"상태",prio:"우선",pide:"P1 필요",fecha:"납기",ok2:"✅ 완료",falta:"⚠️ 입력 필요",noReq:"BOM Simulator에서 게시된 요구 계획이 아직 없습니다 (TV 게시 사용).",reqRes:"요구 계획: {n}개 코드 · 완료 {c} · 입력 필요 {f} (우선순위 순으로 먼저 표시). 게시: ",nuevos:"계획의 신규 코드 {n}개가 마스터에 추가되었습니다."});
+Object.assign(CP1_T.es,{foil:"Foil",mat:"Material (BOM)",selPapel:"— Papel (IMS P1) —",est:"Estado",prio:"Prior.",pide:"Pide P1",fecha:"Entrega",ok2:"✅ Completo",falta:"⚠️ Falta capturar",noReq:"Aún no hay plan requerido publicado desde BOM Simulator (usa Publicar TV allá).",reqRes:"Plan requerido: {n} códigos · {c} completos · {f} por capturar (se muestran primero, en orden de prioridad). Publicado: ",nuevos:"Se agregaron al master {n} códigos nuevos del plan."});
+Object.assign(CP1_T.en,{foil:"Foil",mat:"Material (BOM)",selPapel:"— Paper (IMS P1) —",est:"Status",prio:"Prio.",pide:"P1 needs",fecha:"Due",ok2:"✅ Complete",falta:"⚠️ Missing data",noReq:"No required plan published from BOM Simulator yet (use Publish TV there).",reqRes:"Required plan: {n} codes · {c} complete · {f} to fill (shown first, by priority). Published: ",nuevos:"{n} new codes from the plan were added to the master."});
+Object.assign(CP1_T.ko,{foil:"포일",mat:"자재 (BOM)",selPapel:"— 용지 (IMS P1) —",est:"상태",prio:"우선",pide:"P1 필요",fecha:"납기",ok2:"✅ 완료",falta:"⚠️ 입력 필요",noReq:"BOM Simulator에서 게시된 요구 계획이 아직 없습니다 (TV 게시 사용).",reqRes:"요구 계획: {n}개 코드 · 완료 {c} · 입력 필요 {f} (우선순위 순으로 먼저 표시). 게시: ",nuevos:"계획의 신규 코드 {n}개가 마스터에 추가되었습니다."});
+CP1_T.es.help+=" Sticker en: elige la ZP donde se pega; si es la misma que imprime pasa dos veces (capacidad ÷2), si es la otra van en línea (manda la más lenta). Con Sticker no hay guillotina. Foil (ej. 41844A) lo hace la misma máquina del EMBO, entre impresión y embo: es una pasada extra en EMBO, así que con Foil la capacidad del EMBO se divide entre 2.";
+CP1_T.en.help+=" Sticker on: pick the ZP where it is applied; if it is the same one that prints it runs twice (capacity ÷2), if it is the other one they run in line (the slower one rules). With Sticker there is no guillotine. Foil (e.g. 41844A) runs on the same machine as EMBO, between printing and emboss: it is an extra pass on EMBO, so with Foil the EMBO capacity is divided by 2.";
+CP1_T.ko.help+=" 스티커: 부착하는 ZP를 선택합니다. 인쇄하는 설비와 같으면 2회 작업(능력 ÷2), 다른 설비면 직렬로 진행(느린 쪽 기준). 스티커가 있으면 재단기는 없습니다. 포일(예: 41844A)은 EMBO와 같은 설비에서 인쇄와 엠보 사이에 진행됩니다: EMBO에서 추가 1회 작업이므로 포일이 있으면 EMBO 능력을 2로 나눕니다.";
 const c1=(k)=>((CP1_T[LANG]||CP1_T.es)[k]||CP1_T.es[k]);
 const CP1_PN=/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/;
 // etapa de la ruta: 0 guillotina, 1 impresión, 2 embo, 3 suaje
@@ -1109,17 +1113,34 @@ function cp1CapDe(n){
   if(el && el.value!=="") return Math.max(0,parseFloat(el.value)||0);
   const m=MAQUINAS.find(x=>x.nombre===n); return m?(Number(m.hojasDia)||0):0;
 }
-// c = {maquinas:[], formas:n}; capFn(nombre) -> hojas/día de esa máquina
+// Sticker: "ZP5"/"ZP6" = máquina donde se pega. Si es la misma que imprime, pasa dos veces (cap ÷2); si es otra, van en línea (manda la más lenta).
+// Con sticker no hay guillotina. (c.sticker=true sin stickerEn = dato viejo: se toma la primera ZP marcada.)
+function cp1StickerDe(c,sel){
+  let s=String(c.stickerEn||"").toUpperCase(); if(s!=="ZP5"&&s!=="ZP6") s="";
+  if(!s&&c.sticker){ s=sel.find(n=>cp1Etapa(n)===1)||""; }
+  return s;
+}
+// c = {maquinas:[], formas:n, stickerEn, foil}; capFn(nombre) -> hojas/día de esa máquina
 function cp1Calc(c,capFn){
-  const sel=(c.maquinas||[]).filter(n=>CP1_MAQS.includes(n));
+  let sel=(c.maquinas||[]).filter(n=>CP1_MAQS.includes(n));
+  const S=cp1StickerDe(c,sel);
+  if(S) sel=sel.filter(n=>cp1Etapa(n)!==0);                   // con sticker se elimina la guillotina
   const grupos={};
   sel.forEach(n=>{ const e=cp1Etapa(n); (grupos[e]=grupos[e]||[]).push(n); });
+  let P=(grupos[1]||[]).slice(), cap1=null, lbl1="";
+  if(S){
+    if(!P.length) P=[S];
+    grupos[1]=P;
+    const cS=capFn(S)||0, sumP=P.reduce((a,n)=>a+(capFn(n)||0),0);
+    if(P.includes(S)){ cap1=Math.min(cS,sumP/2); lbl1=(P.length===1)?S+" (+sticker)":P.join("/")+" (sticker "+S+")"; }
+    else { cap1=Math.min(cS,sumP); lbl1=P.join("/")+" → "+S+" (sticker)"; }
+  }
   const etapas=Object.keys(grupos).map(Number).sort((a,b)=>a-b);
-  const stk=!!c.sticker && !!grupos[1];                       // sticker = 2ª pasada en ZP5/ZP6
-  const ruta=etapas.map(e=>grupos[e].join("/")+((e===1&&stk)?" +sticker":"")).join(" → ");
+  const foil=!!c.foil && !!grupos[2];                         // foil = pasada extra en la misma máquina del EMBO (entre impresión y embo)
+  const ruta=etapas.map(e=>(e===1&&S)?lbl1:((e===2&&foil)?"FOIL → ":"")+grupos[e].join("/")).join(" → ");
   let hojas=null, falta=false;
   etapas.forEach(e=>{
-    const s=grupos[e].reduce((a,n)=>a+(capFn(n)||0),0)/((e===1&&stk)?2:1);
+    const s=(e===1&&S)?cap1:grupos[e].reduce((a,n)=>a+(capFn(n)||0),0)/((e===2&&foil)?2:1);
     if(!(s>0)){ falta=true; return; }
     hojas=(hojas==null)?s:Math.min(hojas,s);
   });
@@ -1171,6 +1192,8 @@ function cp1DimDe(x,desc){
   for(const k of Object.keys(x)){ if(k==="pn"||k==="desc") continue; const v=x[k]; if(typeof v==="string"&&v.length<40){ const mm=CP1_DIMRE.exec(v); if(mm) return mm[0]; } }
   const m=CP1_DIMRE.exec(desc||""); return m?m[0]:"";
 }
+function cp1StickerCarga(x){ const v=String(x.stickerEn||"").toUpperCase(); if(v==="ZP5"||v==="ZP6") return v;
+  if(x.sticker){ const ms=Array.isArray(x.maquinas)?x.maquinas:[]; return ms.find(n=>/^ZP\d/.test(n))||"ZP5"; } return ""; }
 async function cp1CargarPapeles(){
   CP1_PAPELES=[];
   try{
@@ -1188,6 +1211,7 @@ function cp1PapelSel(c){
   return `<select onchange="cp1Campo('${c.id}','papel',this.value)" style="${cp1IN}width:200px"><option value="">${c1("selPapel")}</option>${lista.map(p=>`<option value="${ptEsc(p.pn)}" ${p.pn===cur?"selected":""}>${ptEsc(cp1PapelTxt(p))}</option>`).join("")}</select>`;
 }
 const cp1Completo=(c)=>(Number(c.formas)||0)>0 && (c.maquinas||[]).length>0;
+function cp1DescDe(c){ let d=(CP1_REQ[c.pn]&&CP1_REQ[c.pn].desc)||""; if(!d){ try{ const p=cp1BomPartes()[c.pn]; d=p?p.desc:""; }catch(e){} } return String(d||"").trim(); }
 function cp1Orden(a,b){ const ra=CP1_REQ[a.pn], rb=CP1_REQ[b.pn]; if(ra||rb){ if(!ra) return 1; if(!rb) return -1; return (ra.prioridad-rb.prioridad)||a.pn.localeCompare(b.pn); }
   return cp1Orden0(a,b); }
 const cp1TIdx=(t)=>{ const i=CP1_TIPOS.indexOf(t); return i<0?50:i; };
@@ -1203,7 +1227,7 @@ async function cp1CargarReq(){
         if(CODIGOS_P1.find(c=>c.id===pn)) continue;
         const it=CP1_REQ[pn], c={id:pn,pn,modelos:[...new Set((it.modelos||[]).map(m=>m.sm))].join(", "),tipo:cp1TipoDe(it.desc)||"OTRO",papel:"",formas:0,sticker:false,maquinas:[]};
         CODIGOS_P1.push(c); nuevos++;
-        try{ await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:"",formas:0,sticker:false,maquinas:[],actualizadoPor:"auto-plan",tsLocal:new Date().toISOString()}); }catch(e){ console.error("auto p1_codigos:",e); }
+        try{ await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:"",formas:0,sticker:false,stickerEn:"",foil:false,maquinas:[],actualizadoPor:"auto-plan",tsLocal:new Date().toISOString()}); }catch(e){ console.error("auto p1_codigos:",e); }
       }
     }
   }catch(e){ console.error("plan_p1_requerido:",e); }
@@ -1218,7 +1242,7 @@ async function loadCodigosP1(){
   const msg=document.getElementById("cp1-msg");
   try{
     const snap=await getDocs(CP1_COL());
-    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:String(x.tipo||"").trim()||"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,sticker:!!x.sticker,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
+    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:String(x.tipo||"").trim()||"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,stickerEn:cp1StickerCarga(x),sticker:!!cp1StickerCarga(x),foil:!!x.foil,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
     if(msg) msg.textContent="";
     await cp1CargarPapeles();
     await cp1CargarReq();
@@ -1245,8 +1269,8 @@ window.cp1PoblarSelects=cp1PoblarSelects;
 function cp1RenderTabla(){
   const tb=document.getElementById("cp1-table"); if(!tb) return;
   const th=document.getElementById("cp1-thead");
-  if(th) th.innerHTML=`<tr><th>${c1("est")}</th><th>${c1("prio")}</th><th>${c1("pide")}</th><th>${c1("fecha")}</th><th>${c1("pn")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th><th>${c1("stk")}</th>${CP1_MAQS.map(n=>`<th>${n}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
-  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+13}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
+  if(th) th.innerHTML=`<tr><th>${c1("est")}</th><th>${c1("prio")}</th><th>${c1("pide")}</th><th>${c1("fecha")}</th><th>${c1("pn")}</th><th>${c1("mat")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th>${CP1_COLS.map(k=>`<th>${k==="STK"?c1("stk"):k==="FOIL"?c1("foil"):k}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
+  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+15}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
   let rs=document.getElementById("cp1-req");
   if(!rs){ const w0=document.getElementById("cp1-warn"); if(w0){ rs=document.createElement("div"); rs.id="cp1-req"; rs.style.cssText="font-size:.85rem;margin:8px 0"; w0.parentNode.insertBefore(rs,w0); } }
   if(rs){ const ks=Object.keys(CP1_REQ);
@@ -1263,12 +1287,12 @@ function cp1RenderTabla(){
       <td style="text-align:right">${rq?Math.round(rq.pide).toLocaleString():"—"}</td>
       <td style="white-space:nowrap;font-size:.75rem">${rq&&rq.fecha?rq.fecha:"—"}</td>
       <td style="font-family:monospace;color:var(--accent);white-space:nowrap">${c.pn}</td>
+      <td style="font-size:.8rem;min-width:170px;font-weight:600">${cp1Esc(cp1DescDe(c))||"—"}</td>
       <td><input value="${ptEsc(c.modelos)}" onchange="cp1Campo('${c.id}','modelos',this.value)" style="${cp1IN}width:150px"></td>
       <td><select onchange="cp1Campo('${c.id}','tipo',this.value)" style="${cp1IN}">${(CP1_TIPOS.includes(c.tipo)?CP1_TIPOS:[c.tipo,...CP1_TIPOS]).map(t=>`<option value="${cp1Esc(t)}" ${t===c.tipo?"selected":""}>${cp1Esc(t)}</option>`).join("")}</select></td>
       <td>${cp1PapelSel(c)}</td>
       <td><input type="number" min="0" step="any" value="${c.formas||""}" onchange="cp1Campo('${c.id}','formas',this.value)" style="${cp1IN}width:64px;text-align:right"></td>
-      <td><input type="checkbox" ${c.sticker?"checked":""} onchange="cp1Sticker('${c.id}',this.checked)" style="width:16px;height:16px"></td>
-      ${CP1_MAQS.map(n=>`<td><input type="checkbox" ${c.maquinas.includes(n)?"checked":""} onchange="cp1Chk('${c.id}','${n}',this.checked)" style="width:16px;height:16px"></td>`).join("")}
+      ${CP1_COLS.map(k=>k==="STK"?`<td><select onchange="cp1Sticker('${c.id}',this.value)" style="${cp1IN}width:64px">${["","ZP5","ZP6"].map(v=>`<option value="${v}" ${v===(c.stickerEn||"")?"selected":""}>${v||"—"}</option>`).join("")}</select></td>`:k==="FOIL"?`<td><input type="checkbox" ${c.foil?"checked":""} onchange="cp1Foil('${c.id}',this.checked)" style="width:16px;height:16px"></td>`:`<td><input type="checkbox" ${c.maquinas.includes(k)?"checked":""} ${(c.stickerEn&&(k==="GA"||k==="GB"))?"disabled":""} onchange="cp1Chk('${c.id}','${k}',this.checked)" style="width:16px;height:16px"></td>`).join("")}
       <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${r.ruta?r.ruta+" → "+c1("fin"):"—"}</td>
       <td style="text-align:right">${cp1Num(r.hojas)}</td>
       <td style="text-align:right;font-weight:700;color:var(--green)">${cp1Num(r.pzas)}</td>
@@ -1279,7 +1303,7 @@ function cp1RenderTabla(){
 window.cp1RenderTabla=cp1RenderTabla;
 async function cp1Persist(c){
   try{
-    await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos||"",tipo:c.tipo||"OTRO",papel:c.papel||"",formas:Number(c.formas)||0,sticker:!!c.sticker,maquinas:c.maquinas||[],actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()});
+    await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos||"",tipo:c.tipo||"OTRO",papel:c.papel||"",formas:Number(c.formas)||0,sticker:!!c.stickerEn,stickerEn:c.stickerEn||"",foil:!!c.foil,maquinas:c.maquinas||[],actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()});
     showToast(c1("ok"),"var(--green)");
   }catch(e){ showToast(c1("err")+e.message,"var(--red)"); }
 }
@@ -1290,7 +1314,13 @@ window.cp1Campo=async(id,campo,val)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if
 window.cp1Chk=async(id,maq,on)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return;
   c.maquinas=on?[...new Set([...c.maquinas,maq])]:c.maquinas.filter(x=>x!==maq);
   await cp1Persist(c); cp1RenderTabla(); };
-window.cp1Sticker=async(id,on)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return; c.sticker=!!on; await cp1Persist(c); cp1RenderTabla(); };
+window.cp1Foil=async(id,on)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return; c.foil=!!on; await cp1Persist(c); cp1RenderTabla(); };
+window.cp1Sticker=async(id,val)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return;
+  let v=(val===true)?(c.maquinas.find(n=>/^ZP\d/.test(n))||"ZP5"):String(val||"").toUpperCase();
+  if(v!=="ZP5"&&v!=="ZP6") v="";
+  c.stickerEn=v; c.sticker=!!v;
+  if(v) c.maquinas=c.maquinas.filter(n=>cp1Etapa(n)!==0);      // con sticker no hay guillotina
+  await cp1Persist(c); cp1RenderTabla(); };
 window.cp1Del=async(id)=>{ if(!confirm(c1("conf"))) return;
   try{ await deleteDoc(doc(db,"p1_codigos",id)); CODIGOS_P1=CODIGOS_P1.filter(x=>x.id!==id); renderCodigosP1(); }
   catch(e){ showToast(c1("err")+e.message,"var(--red)"); } };
@@ -1301,7 +1331,7 @@ window.cp1Add=async()=>{
   let c=CODIGOS_P1.find(x=>x.id===pn);
   const mod=bp.modelos.join(", "), tipo=document.getElementById("cp1-n-tipo").value, f=parseFloat(document.getElementById("cp1-n-formas").value)||0;
   if(c){ if(mod) c.modelos=mod; c.tipo=tipo; if(f) c.formas=f; }
-  else { c={id:pn,pn,modelos:mod,tipo,papel:"",formas:f,sticker:false,maquinas:[]}; CODIGOS_P1.push(c); }
+  else { c={id:pn,pn,modelos:mod,tipo,papel:"",formas:f,sticker:false,stickerEn:"",foil:false,maquinas:[]}; CODIGOS_P1.push(c); }
   CODIGOS_P1.sort(cp1Orden);
   await cp1Persist(c);
   ["cp1-n-pn","cp1-n-mod","cp1-n-formas"].forEach(i=>{ document.getElementById(i).value=""; });
@@ -1321,10 +1351,10 @@ window.cp1GuardarCap=async()=>{
   }catch(e){ showToast(c1("err")+e.message,"var(--red)"); }
 };
 window.cp1Plantilla=()=>{
-  const H=["N° de Parte","Modelos","Tipo","Papel","Formas/hoja","Sticker",...CP1_MAQS];
-  const filas=CODIGOS_P1.length?CODIGOS_P1.map(c=>[c.pn,c.modelos,c.tipo,c.papel,c.formas||"",c.sticker?"X":"",...CP1_MAQS.map(n=>c.maquinas.includes(n)?"X":"")]):[["(ejemplo) GH69-46625A","SM-S741UZKAXAA","TOP","",6,"X","X","","","","X","X","",""]];
+  const H=["N° de Parte","Modelos","Tipo","Papel","Formas/hoja",...CP1_COLS.map(k=>k==="STK"?"Sticker":k==="FOIL"?"Foil":k)];
+  const filas=CODIGOS_P1.length?CODIGOS_P1.map(c=>[c.pn,c.modelos,c.tipo,c.papel,c.formas||"",...CP1_COLS.map(k=>k==="STK"?(c.stickerEn||""):k==="FOIL"?(c.foil?"X":""):(c.maquinas.includes(k)?"X":""))]):[["(ejemplo) GH69-46625A","SM-S741UZKAXAA","TOP","",6,"","","X","","ZP6","","X","X","",""]];
   const ws=XLSX.utils.aoa_to_sheet([H,...filas]);
-  ws["!cols"]=[{wch:16},{wch:34},{wch:10},{wch:14},{wch:12},{wch:8},...CP1_MAQS.map(()=>({wch:6}))];
+  ws["!cols"]=[{wch:16},{wch:34},{wch:10},{wch:14},{wch:12},...CP1_COLS.map(()=>({wch:7}))];
   const wb=XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb,ws,"Maquinas por codigo");
   XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([[c1("instr")],[c1("instrTxt")]]),"Info");
@@ -1341,20 +1371,23 @@ window.cp1Subir=async(inp)=>{
     filas.forEach(fila=>{
       const cel=fila.map(norm);
       const iPn=cel.findIndex(x=>/^(N.{0,2} DE PARTE|PART NO\.?|부품번호)$/.test(x));
-      if(iPn>=0){ cols={pn:iPn,mod:cel.findIndex(x=>/^(MODELOS?|MODELS?|모델)$/.test(x)),tipo:cel.findIndex(x=>/^(TIPO|TYPE|유형)$/.test(x)),papel:cel.findIndex(x=>/^(PAPEL|PAPER|용지)$/.test(x)),formas:cel.findIndex(x=>/^(FORMAS.*|FORMS.*|시트당.*)$/.test(x)),stk:cel.findIndex(x=>/^(STICKER|스티커)$/.test(x)),maq:{}}; CP1_MAQS.forEach(n=>{ const i=cel.indexOf(n); if(i>=0) cols.maq[n]=i; }); return; }
+      if(iPn>=0){ cols={pn:iPn,mod:cel.findIndex(x=>/^(MODELOS?|MODELS?|모델)$/.test(x)),tipo:cel.findIndex(x=>/^(TIPO|TYPE|유형)$/.test(x)),papel:cel.findIndex(x=>/^(PAPEL|PAPER|용지)$/.test(x)),formas:cel.findIndex(x=>/^(FORMAS.*|FORMS.*|시트당.*)$/.test(x)),stk:cel.findIndex(x=>/^(STICKER|스티커)$/.test(x)),foil:cel.findIndex(x=>/^(FOIL|포일)$/.test(x)),maq:{}}; CP1_MAQS.forEach(n=>{ const i=cel.indexOf(n); if(i>=0) cols.maq[n]=i; }); return; }
       if(!cols) return;
       const pn=norm(fila[cols.pn]); if(!CP1_PN.test(pn)) return;
       const g=(i)=>i>=0?String(fila[i]==null?"":fila[i]).trim():"";
       const tipo=norm(g(cols.tipo));
-      lista.push({id:pn,pn,modelos:g(cols.mod),tipo:CP1_TIPOS.includes(tipo)?tipo:"OTRO",papel:g(cols.papel),formas:parseFloat(g(cols.formas))||0,sticker:cols.stk>=0&&!/^(|0|NO|N|-)$/i.test(g(cols.stk)),
+      lista.push({id:pn,pn,modelos:g(cols.mod),tipo:CP1_TIPOS.includes(tipo)?tipo:"OTRO",papel:g(cols.papel),formas:parseFloat(g(cols.formas))||0,stk:cols.stk>=0?norm(g(cols.stk)):"",foil:cols.foil>=0?!/^(|0|NO|N|-)$/i.test(g(cols.foil)):!!((CODIGOS_P1.find(z=>z.id===pn)||{}).foil),
         maquinas:CP1_MAQS.filter(n=>cols.maq[n]!=null && !/^(|0|NO|N|-)$/i.test(g(cols.maq[n])))});
     });
+    lista.forEach(c=>{ let v=c.stk||""; delete c.stk;
+      if(v!=="ZP5"&&v!=="ZP6") v=(v&&!/^(0|NO|N|-|—)$/.test(v))?(c.maquinas.find(n=>/^ZP\d/.test(n))||"ZP5"):"";
+      c.stickerEn=v; c.sticker=!!v; if(v) c.maquinas=c.maquinas.filter(n=>cp1Etapa(n)!==0); });
     const bomMapa=cp1BomPartes(); const fuera=[];
     for(let i=lista.length-1;i>=0;i--){ const bp=bomMapa[lista[i].pn]; if(!bp){ fuera.push(lista[i].pn); lista.splice(i,1); } else lista[i].modelos=bp.modelos.join(", "); }
     if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=(fuera.length?c1("omit")+fuera.join(", "):c1("noRows")); inp.value=""; return; }
     let n=0;
     for(let k=0;k<lista.length;k+=15){
-      const r=await Promise.all(lista.slice(k,k+15).map(c=>setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:c.papel,formas:c.formas,sticker:!!c.sticker,maquinas:c.maquinas,actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()}).then(()=>1).catch(()=>0)));
+      const r=await Promise.all(lista.slice(k,k+15).map(c=>setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:c.papel,formas:c.formas,sticker:!!c.stickerEn,stickerEn:c.stickerEn||"",foil:!!c.foil,maquinas:c.maquinas,actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()}).then(()=>1).catch(()=>0)));
       n+=r.reduce((a,b)=>a+b,0);
     }
     await loadCodigosP1();
