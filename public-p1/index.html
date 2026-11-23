@@ -1161,19 +1161,30 @@ window.cp1OnParte=()=>{
   const t=cp1TipoDe(p.desc); if(t) document.getElementById("cp1-n-tipo").value=t;
 };
 let CP1_REQ={}, CP1_REQ_META=null, CP1_PAPELES=[];
+const CP1_DIMRE=/\d+(?:[.,]\d+)?\s*(?:x|X|×)\s*\d+(?:[.,]\d+)?/;
+function cp1DimDe(x,desc){
+  const claves=["dimension","dimensiones","medida","medidas","tamano","tamaño","size","dim"];
+  for(const k of claves){ const v=x[k]; if(v!=null&&String(v).trim()) return String(v).trim(); }
+  const a=x.ancho??x.width, l=x.largo??x.length;
+  if(a!=null&&l!=null&&a!==""&&l!=="") return a+" X "+l;
+  for(const k of Object.keys(x)){ if(k==="pn"||k==="desc") continue; const v=x[k]; if(typeof v==="string"&&v.length<40){ const mm=CP1_DIMRE.exec(v); if(mm) return mm[0]; } }
+  const m=CP1_DIMRE.exec(desc||""); return m?m[0]:"";
+}
 async function cp1CargarPapeles(){
   CP1_PAPELES=[];
   try{
     const snap=await getDocs(collection(db,"planta1_papel_inventario")), m={};
     snap.forEach(d=>{ const x=d.data(); const pn=String(x.pn||"").trim().toUpperCase(); if(!pn) return;
-      const ds=String(x.desc||x.descripcion||"").trim(); if(!m[pn]||(!m[pn].desc&&ds)) m[pn]={pn,desc:ds}; });
+      const ds=String(x.desc||x.descripcion||"").trim(), dm=cp1DimDe(x,ds);
+      if(!m[pn]) m[pn]={pn,desc:ds,dim:dm}; else { if(!m[pn].desc&&ds) m[pn].desc=ds; if(!m[pn].dim&&dm) m[pn].dim=dm; } });
     CP1_PAPELES=Object.values(m).sort((a,b)=>a.pn.localeCompare(b.pn));
   }catch(e){ console.error("papel IMS:",e); }
 }
+const cp1PapelTxt=(p)=>p.pn+(p.desc?" · "+p.desc:"")+((p.dim&&!(p.desc||"").toUpperCase().replace(/\s/g,"").includes(p.dim.toUpperCase().replace(/\s/g,"")))?" · "+p.dim:"");
 function cp1PapelSel(c){
   const cur=String(c.papel||"").trim().toUpperCase();
   const lista=CP1_PAPELES.slice(); if(cur&&!lista.find(p=>p.pn===cur)) lista.unshift({pn:cur,desc:""});
-  return `<select onchange="cp1Campo('${c.id}','papel',this.value)" style="${cp1IN}width:200px"><option value="">${c1("selPapel")}</option>${lista.map(p=>`<option value="${ptEsc(p.pn)}" ${p.pn===cur?"selected":""}>${ptEsc(p.pn+(p.desc?" · "+p.desc:""))}</option>`).join("")}</select>`;
+  return `<select onchange="cp1Campo('${c.id}','papel',this.value)" style="${cp1IN}width:200px"><option value="">${c1("selPapel")}</option>${lista.map(p=>`<option value="${ptEsc(p.pn)}" ${p.pn===cur?"selected":""}>${ptEsc(cp1PapelTxt(p))}</option>`).join("")}</select>`;
 }
 const cp1Completo=(c)=>(Number(c.formas)||0)>0 && (c.maquinas||[]).length>0;
 function cp1Orden(a,b){ const ra=CP1_REQ[a.pn], rb=CP1_REQ[b.pn]; if(ra||rb){ if(!ra) return 1; if(!rb) return -1; return (ra.prioridad-rb.prioridad)||a.pn.localeCompare(b.pn); }
