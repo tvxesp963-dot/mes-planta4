@@ -539,6 +539,7 @@ function partesP1(){
 }
 function buildModelosDL(){
   if(window._selRefresh) setTimeout(window._selRefresh,0);
+  if(typeof cp1PoblarSelects==='function') cp1PoblarSelects();
   const opts='<option value="">— Seleccionar modelo —</option>'+MODELOS_LIST.map(m=>`<option value="${m}">${m}</option>`).join("");
   const cmBueno=document.getElementById("cm-bueno");
   if(cmBueno)cmBueno.innerHTML=opts;
@@ -1074,7 +1075,7 @@ const CP1_T={
   es:{h:"🗺️ Máquinas por código (P1)",note:"Master por N° de parte: formas por hoja y las máquinas donde corre cada código. La ruta sale de las máquinas marcadas (guillotina → impresión → embo → suaje). La capacidad se captura en hojas por día.",
       cap:"Capacidad por máquina (hojas/día)",capSave:"💾 Guardar capacidades",capOk:"✅ Capacidades guardadas",
       tpl:"📥 Plantilla master (Excel)",load:"📤 Cargar master (Excel)",reading:"Leyendo archivo…",loaded:"✅ Códigos cargados: ",noRows:"No encontré códigos en el archivo (busco N° de parte tipo GH69-46625A)",
-      pn:"N° de parte",mod:"Modelos",tipo:"Tipo",papel:"Papel",formas:"Formas/hoja",stk:"Sticker",fin:"Desbarbe → Empaque",ruta:"Ruta",hojas:"Hojas/día",pzas:"Pzas/día",add:"➕ Agregar código",
+      pn:"N° de parte",mod:"Modelos",tipo:"Tipo",papel:"Papel",formas:"Formas/hoja",stk:"Sticker",selM:"— Modelo —",selP:"— N° de parte (del BOM) —",noBom:"No hay BOM cargado en BOM Simulator: no se pueden agregar códigos",pick:"Elige un N° de parte de la lista del BOM",omit:"Omitidos por no estar en el BOM: ",fin:"Desbarbe → Empaque",ruta:"Ruta",hojas:"Hojas/día",pzas:"Pzas/día",add:"➕ Agregar código",
       empty:"Sin códigos. Agrega uno o carga el master desde Excel.",warn:"Sin ninguna máquina asignada (no tendrán plan): ",bad:"Escribe un N° de parte válido (ej. GH69-46625A)",
       ok:"✅ Guardado",conf:"¿Eliminar este código del master?",err:"Error al guardar: ",errLoad:"No pude leer el master (revisa permisos de Firestore): ",
       help:"Pzas/día = formas × hojas/día de la etapa más lenta de la ruta. ZP5 y ZP6 son alternativas: si marcas las dos, suman sus hojas. Sticker se hace en ZP5/ZP6 como segunda pasada, así que con Sticker la capacidad de ZP se divide entre 2. Desbarbe y empaque van al final de todas las rutas. Con «—» falta capturar capacidad de alguna máquina de la ruta.",instr:"Instrucciones",
@@ -1082,7 +1083,7 @@ const CP1_T={
   en:{h:"🗺️ Machines per code (P1)",note:"Master per part number: forms per sheet and the machines each code runs on. The route comes from the checked machines (guillotine → printing → emboss → die-cut). Capacity is entered in sheets per day.",
       cap:"Capacity per machine (sheets/day)",capSave:"💾 Save capacities",capOk:"✅ Capacities saved",
       tpl:"📥 Master template (Excel)",load:"📤 Load master (Excel)",reading:"Reading file…",loaded:"✅ Codes loaded: ",noRows:"No codes found in the file (I look for part numbers like GH69-46625A)",
-      pn:"Part No.",mod:"Models",tipo:"Type",papel:"Paper",formas:"Forms/sheet",stk:"Sticker",fin:"Deburring → Packing",ruta:"Route",hojas:"Sheets/day",pzas:"Pcs/day",add:"➕ Add code",
+      pn:"Part No.",mod:"Models",tipo:"Type",papel:"Paper",formas:"Forms/sheet",stk:"Sticker",selM:"— Model —",selP:"— Part No. (from BOM) —",noBom:"No BOM loaded in BOM Simulator: codes cannot be added",pick:"Choose a part number from the BOM list",omit:"Skipped (not in the BOM): ",fin:"Deburring → Packing",ruta:"Route",hojas:"Sheets/day",pzas:"Pcs/day",add:"➕ Add code",
       empty:"No codes. Add one or load the master from Excel.",warn:"No machine assigned (no plan will be made): ",bad:"Enter a valid part number (e.g. GH69-46625A)",
       ok:"✅ Saved",conf:"Delete this code from the master?",err:"Save error: ",errLoad:"Could not read the master (check Firestore permissions): ",
       help:"Pcs/day = forms × sheets/day of the slowest step in the route. ZP5 and ZP6 are alternatives: if both are checked, their sheets add up. Sticker runs on ZP5/ZP6 as a second pass, so with Sticker the ZP capacity is halved. Deburring and packing close every route. «—» means a machine in the route has no capacity entered.",instr:"Instructions",
@@ -1090,7 +1091,7 @@ const CP1_T={
   ko:{h:"🗺️ 코드별 설비 (P1)",note:"부품번호별 마스터: 시트당 수량과 각 코드가 가동되는 설비. 선택한 설비로 경로(재단 → 인쇄 → 엠보 → 타발)가 만들어집니다. 생산능력은 일일 시트 수로 입력합니다.",
       cap:"설비별 생산능력 (시트/일)",capSave:"💾 생산능력 저장",capOk:"✅ 생산능력 저장됨",
       tpl:"📥 마스터 양식 (Excel)",load:"📤 마스터 불러오기 (Excel)",reading:"파일 읽는 중…",loaded:"✅ 불러온 코드: ",noRows:"파일에서 코드를 찾지 못했습니다 (GH69-46625A 형식의 부품번호)",
-      pn:"부품번호",mod:"모델",tipo:"유형",papel:"용지",formas:"시트당 수량",stk:"스티커",fin:"버 제거 → 포장",ruta:"경로",hojas:"시트/일",pzas:"수량/일",add:"➕ 코드 추가",
+      pn:"부품번호",mod:"모델",tipo:"유형",papel:"용지",formas:"시트당 수량",stk:"스티커",selM:"— 모델 —",selP:"— 부품번호 (BOM) —",noBom:"BOM Simulator에 BOM이 없어 코드를 추가할 수 없습니다",pick:"BOM 목록에서 부품번호를 선택하세요",omit:"BOM에 없어 제외됨: ",fin:"버 제거 → 포장",ruta:"경로",hojas:"시트/일",pzas:"수량/일",add:"➕ 코드 추가",
       empty:"코드가 없습니다. 추가하거나 Excel로 마스터를 불러오세요.",warn:"설비 미지정 (계획 없음): ",bad:"올바른 부품번호를 입력하세요 (예: GH69-46625A)",
       ok:"✅ 저장됨",conf:"마스터에서 이 코드를 삭제할까요?",err:"저장 오류: ",errLoad:"마스터를 읽을 수 없습니다 (Firestore 권한 확인): ",
       help:"수량/일 = 시트당 수량 × 경로에서 가장 느린 공정의 시트/일. ZP5와 ZP6은 대체 설비이므로 함께 선택하면 시트 수가 합산됩니다. 스티커는 ZP5/ZP6에서 두 번째 공정으로 진행되어 ZP 생산능력이 절반이 됩니다. 버 제거와 포장은 모든 경로의 마지막입니다. «—»는 경로의 설비 중 생산능력이 입력되지 않았다는 뜻입니다.",instr:"설명",
@@ -1125,6 +1126,37 @@ function cp1Calc(c,capFn){
 }
 const cp1Num=(v)=>v==null?"—":Math.round(v).toLocaleString();
 const cp1IN="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 6px;font-size:.8rem;box-sizing:border-box;";
+function cp1BomPartes(){
+  let filas=BOM_ACTIVO.filter(r=>r.pn&&r.sm&&esFilaP1(r));
+  if(!filas.length) filas=BOM_ACTIVO.filter(r=>r.pn&&r.sm);
+  const mapa={};
+  filas.forEach(r=>{ const pn=String(r.pn).trim().toUpperCase(), m=String(r.sm).trim().toUpperCase();
+    if(!mapa[pn]) mapa[pn]={pn,modelos:[],desc:String(r.desc||"")};
+    if(!mapa[pn].modelos.includes(m)) mapa[pn].modelos.push(m); });
+  CATALOGO_P1.forEach(c=>{ if(!mapa[c.pn]) mapa[c.pn]={pn:c.pn,modelos:[c.desc].filter(Boolean),desc:c.descMat||c.desc}; });
+  return mapa;
+}
+function cp1TipoDe(desc){ const d=String(desc||"").toUpperCase();
+  if(/BUNDLE/.test(d)) return "BUNDLE"; if(/SET\s*PAD/.test(d)) return "SET PAD"; if(/BOT/.test(d)) return "BOTTOM"; if(/TOP/.test(d)) return "TOP"; return ""; }
+const cp1Esc=(x)=>String(x==null?"":x).replace(/&/g,"&amp;").replace(/"/g,"&quot;").replace(/</g,"&lt;");
+function cp1PoblarSelects(){
+  const sm=document.getElementById("cp1-n-mod"), sp=document.getElementById("cp1-n-pn"); if(!sm||!sp) return;
+  const mapa=cp1BomPartes(), lista=Object.values(mapa);
+  const mSel=sm.value, pSel=sp.value;
+  if(!lista.length){ sm.innerHTML=`<option value="">${c1("noBom")}</option>`; sp.innerHTML=`<option value="">${c1("noBom")}</option>`; return; }
+  const modelos=[...new Set(lista.flatMap(p=>p.modelos))].sort();
+  sm.innerHTML=`<option value="">${c1("selM")}</option>`+modelos.map(m=>`<option value="${cp1Esc(m)}">${cp1Esc(m)}</option>`).join("");
+  if(modelos.includes(mSel)) sm.value=mSel;
+  const filtradas=lista.filter(p=>!sm.value||p.modelos.includes(sm.value)).sort((a,b)=>a.pn.localeCompare(b.pn));
+  sp.innerHTML=`<option value="">${c1("selP")}</option>`+filtradas.map(p=>`<option value="${p.pn}">${p.pn} · ${cp1Esc((p.desc||p.modelos.join(", ")).slice(0,48))}</option>`).join("");
+  if(filtradas.some(p=>p.pn===pSel)) sp.value=pSel;
+}
+window.cp1OnModelo=()=>{ cp1PoblarSelects(); };
+window.cp1OnParte=()=>{
+  const sp=document.getElementById("cp1-n-pn"), sm=document.getElementById("cp1-n-mod"); const p=cp1BomPartes()[sp.value]; if(!p) return;
+  if(!sm.value && p.modelos.length===1) sm.value=p.modelos[0];
+  const t=cp1TipoDe(p.desc); if(t) document.getElementById("cp1-n-tipo").value=t;
+};
 function cp1Orden(a,b){ const ta=CP1_TIPOS.indexOf(a.tipo), tb=CP1_TIPOS.indexOf(b.tipo); return (ta-tb)||a.pn.localeCompare(b.pn); }
 async function loadCodigosP1(){
   const msg=document.getElementById("cp1-msg");
@@ -1139,7 +1171,7 @@ function renderCodigosP1(){
   const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
   set("cp1-h",c1("h")+" ("+CODIGOS_P1.length+")"); set("cp1-note",c1("note")); set("cp1-cap-t",c1("cap")); set("cp1-btn-cap",c1("capSave"));
   set("cp1-btn-tpl",c1("tpl")); set("cp1-btn-file",c1("load")); set("cp1-btn-add",c1("add")); set("cp1-help",c1("help"));
-  const ph={ "cp1-n-pn":c1("pn"), "cp1-n-mod":c1("mod"), "cp1-n-formas":c1("formas") };
+  const ph={ "cp1-n-formas":c1("formas") };
   Object.entries(ph).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.placeholder=v; });
   const capEl=document.getElementById("cp1-cap");
   if(capEl){
@@ -1147,9 +1179,11 @@ function renderCodigosP1(){
     capEl.innerHTML=CP1_MAQS.map(n=>{ const m=MAQUINAS.find(x=>x.nombre===n); const v=(n in vals)?vals[n]:(m&&m.hojasDia?m.hojasDia:"");
       return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">${n}${m?` <span class="tbadge ${m.tipo}">${m.tipo}</span>`:""}</div><input type="number" min="0" id="cp1-cap-${n}" value="${v}" placeholder="0" oninput="cp1RenderTabla()" style="${cp1IN}width:100%;text-align:right"></div>`; }).join("");
   }
+  cp1PoblarSelects();
   cp1RenderTabla();
 }
 window.renderCodigosP1=renderCodigosP1;
+window.cp1PoblarSelects=cp1PoblarSelects;
 function cp1RenderTabla(){
   const tb=document.getElementById("cp1-table"); if(!tb) return;
   const th=document.getElementById("cp1-thead");
@@ -1193,9 +1227,10 @@ window.cp1Del=async(id)=>{ if(!confirm(c1("conf"))) return;
   catch(e){ showToast(c1("err")+e.message,"var(--red)"); } };
 window.cp1Add=async()=>{
   const pn=(document.getElementById("cp1-n-pn").value||"").trim().toUpperCase();
-  if(!CP1_PN.test(pn)){ showToast(c1("bad"),"var(--red)"); return; }
+  const bp=cp1BomPartes()[pn];
+  if(!pn||!bp){ showToast(c1("pick"),"var(--red)"); return; }
   let c=CODIGOS_P1.find(x=>x.id===pn);
-  const mod=(document.getElementById("cp1-n-mod").value||"").trim(), tipo=document.getElementById("cp1-n-tipo").value, f=parseFloat(document.getElementById("cp1-n-formas").value)||0;
+  const mod=bp.modelos.join(", "), tipo=document.getElementById("cp1-n-tipo").value, f=parseFloat(document.getElementById("cp1-n-formas").value)||0;
   if(c){ if(mod) c.modelos=mod; c.tipo=tipo; if(f) c.formas=f; }
   else { c={id:pn,pn,modelos:mod,tipo,papel:"",formas:f,sticker:false,maquinas:[]}; CODIGOS_P1.push(c); }
   CODIGOS_P1.sort(cp1Orden);
@@ -1245,14 +1280,16 @@ window.cp1Subir=async(inp)=>{
       lista.push({id:pn,pn,modelos:g(cols.mod),tipo:CP1_TIPOS.includes(tipo)?tipo:"OTRO",papel:g(cols.papel),formas:parseFloat(g(cols.formas))||0,sticker:cols.stk>=0&&!/^(|0|NO|N|-)$/i.test(g(cols.stk)),
         maquinas:CP1_MAQS.filter(n=>cols.maq[n]!=null && !/^(|0|NO|N|-)$/i.test(g(cols.maq[n])))});
     });
-    if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=c1("noRows"); inp.value=""; return; }
+    const bomMapa=cp1BomPartes(); const fuera=[];
+    for(let i=lista.length-1;i>=0;i--){ const bp=bomMapa[lista[i].pn]; if(!bp){ fuera.push(lista[i].pn); lista.splice(i,1); } else lista[i].modelos=bp.modelos.join(", "); }
+    if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=(fuera.length?c1("omit")+fuera.join(", "):c1("noRows")); inp.value=""; return; }
     let n=0;
     for(let k=0;k<lista.length;k+=15){
       const r=await Promise.all(lista.slice(k,k+15).map(c=>setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:c.papel,formas:c.formas,sticker:!!c.sticker,maquinas:c.maquinas,actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()}).then(()=>1).catch(()=>0)));
       n+=r.reduce((a,b)=>a+b,0);
     }
     await loadCodigosP1();
-    msg.style.color="var(--green)"; msg.textContent=c1("loaded")+n;
+    msg.style.color=fuera.length?"var(--yellow)":"var(--green)"; msg.textContent=c1("loaded")+n+(fuera.length?" · "+c1("omit")+fuera.join(", "):"");
   }catch(e){ msg.style.color="var(--red)"; msg.textContent=c1("err")+e.message; }
   inp.value="";
 };
@@ -3774,8 +3811,8 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
         <button class="abtn abtn-add" id="cp1-btn-file" onclick="document.getElementById('cp1-file').click()"></button>
       </div>
       <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
-        <input id="cp1-n-pn" oninput="this.value=this.value.toUpperCase()" autocomplete="off" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;width:140px">
-        <input id="cp1-n-mod" autocomplete="off" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;flex:1;min-width:150px">
+        <select id="cp1-n-mod" onchange="cp1OnModelo()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;min-width:170px"></select>
+        <select id="cp1-n-pn" onchange="cp1OnParte()" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;flex:1;min-width:260px"></select>
         <select id="cp1-n-tipo" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px"><option>TOP</option><option>BOTTOM</option><option>BUNDLE</option><option>SET PAD</option><option>OTRO</option></select>
         <input id="cp1-n-formas" type="number" min="0" step="any" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;width:100px">
         <button class="abtn abtn-add" id="cp1-btn-add" onclick="cp1Add()"></button>
