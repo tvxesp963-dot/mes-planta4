@@ -104,7 +104,7 @@ async function buscarRegistrosEdit() {
     if (!regs.length) { tabla.innerHTML = '<div style="color:var(--muted);font-size:12px">Sin registros para esa fecha</div>'; return; }
     regs.sort((a,b) => (b.ts?.seconds||0)-(a.ts?.seconds||0));
     // Ordenar igual que Production Summary
-    const ordenMaqEdit = ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'];
+    const ordenMaqEdit = ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','EMBO','TA','TB','TC','E1','E2','A','B','P1','P2'];
     const getOrdenEdit = n => { const i = ordenMaqEdit.findIndex(o=>(n||'').toUpperCase().includes(o.toUpperCase())); return i>=0?i:ordenMaqEdit.length; };
     regs.sort((a,b) => {
       const om = getOrdenEdit(a.maquina||a.maqNombre) - getOrdenEdit(b.maquina||b.maqNombre);
@@ -155,10 +155,10 @@ async function editarRegistro(id) {
     snap.forEach(d => { if(d.id===id) reg = {id:d.id,...d.data()}; });
     if (!reg) return;
     const hora = reg.ts ? new Date(reg.ts.seconds*1000).toLocaleTimeString('es-MX',{hour:'2-digit',minute:'2-digit'}) : '—';
-    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'];
+    const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','EMBO','TA','TB','TC','E1','E2','A','B','P1','P2'];
     const opcMaq = maqList.map(m=>`<option value="${m}" ${reg.maquina===m?'selected':''}>${m}</option>`).join('');
     const opcTurno = ['A','B','C'].map(t=>`<option value="${t}" ${reg.turno===t?'selected':''}>${t}</option>`).join('');
-    const opcTipo = ['Printing','Folding','Cutting','Finished','DieCut','Stitching','Label','GlueLine'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
+    const opcTipo = ['Printing','Folding','Cutting','Finished','DieCut','Embossing','Stitching','Label','GlueLine'].map(t=>`<option value="${t}" ${reg.tipo===t?'selected':''}>${t}</option>`).join('');
     const opcCorte = [{id:'C2',label:'Lunch (6:54–11:15 AM)'},{id:'C3',label:'Home (12:00–4:30 PM)'},{id:'OT',label:'OT (4:45–6:25 PM)'}].map(c=>`<option value="${c.id}" ${reg.corte===c.id?'selected':''}>${c.label}</option>`).join('');
     const modal = document.createElement('div');
     modal.style.cssText = 'position:fixed;inset:0;background:rgba(0,0,0,.7);z-index:9999;display:flex;align-items:center;justify-content:center';
@@ -251,10 +251,10 @@ window.eliminarRegistroEdit=eliminarRegistroEdit;
 // ── AGREGAR REGISTRO MANUAL ──
 window.abrirNuevoRegistro = function() {
   const fecha = document.getElementById('edit-reg-fecha').value || fechaLocal();
-  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'];
+  const maqList = Array.isArray(MAQUINAS) ? MAQUINAS.map(m=>m.nombre) : ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','EMBO','TA','TB','TC','E1','E2','A','B','P1','P2'];
   const opcMaq = maqList.map(m=>`<option value="${m}">${m}</option>`).join('');
   const opcTurno = ['A','B','C'].map(t=>`<option value="${t}">${t}</option>`).join('');
-  const opcTipo = ['Printing','Folding','Cutting','Finished','DieCut','Stitching','Label','GlueLine'].map(t=>`<option value="${t}">${t}</option>`).join('');
+  const opcTipo = ['Printing','Folding','Cutting','Finished','DieCut','Embossing','Stitching','Label','GlueLine'].map(t=>`<option value="${t}">${t}</option>`).join('');
   const opcCorte = [
     {id:'C2',label:'Lunch (6:54–11:15 AM)'},
     {id:'C3',label:'Home (12:00–4:30 PM)'},
@@ -420,6 +420,8 @@ async function loadTargetsFromDB(){
       const data=d.data();
       const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
       if(idx<0)return;
+      MAQUINAS[idx].hojasDia=Number(data.hojasDia)||0;
+      MAQUINAS[idx]._dbId=d.id;
       const t=Number(data.target||data.A||0);
       if(!t)return;
       MAQUINAS[idx].target=t;
@@ -1063,6 +1065,199 @@ window.delCatalogoParte=async(id)=>{
   try{ await deleteDoc(doc(db,"catalogo_partes_p1",id)); await loadCatalogo(); }
   catch(e){ showToast("Error: "+e.message,"var(--red)"); }
 };
+/* ══ P1: MÁQUINAS POR CÓDIGO (formas por hoja + ruta + capacidad en hojas) ══ */
+const CP1_COL=()=>collection(db,"p1_codigos");
+const CP1_MAQS=["ZP5","ZP6","GA","GB","EMBO","TA","TB","TC"];   // columnas de la pantalla (deben existir en MAQUINAS)
+const CP1_TIPOS=["TOP","BOTTOM","BUNDLE","SET PAD","OTRO"];
+let CODIGOS_P1=[];
+const CP1_T={
+  es:{h:"🗺️ Máquinas por código (P1)",note:"Master por N° de parte: formas por hoja y las máquinas donde corre cada código. La ruta sale de las máquinas marcadas (guillotina → impresión → embo → suaje). La capacidad se captura en hojas por día.",
+      cap:"Capacidad por máquina (hojas/día)",capSave:"💾 Guardar capacidades",capOk:"✅ Capacidades guardadas",
+      tpl:"📥 Plantilla master (Excel)",load:"📤 Cargar master (Excel)",reading:"Leyendo archivo…",loaded:"✅ Códigos cargados: ",noRows:"No encontré códigos en el archivo (busco N° de parte tipo GH69-46625A)",
+      pn:"N° de parte",mod:"Modelos",tipo:"Tipo",papel:"Papel",formas:"Formas/hoja",stk:"Sticker",fin:"Desbarbe → Empaque",ruta:"Ruta",hojas:"Hojas/día",pzas:"Pzas/día",add:"➕ Agregar código",
+      empty:"Sin códigos. Agrega uno o carga el master desde Excel.",warn:"Sin ninguna máquina asignada (no tendrán plan): ",bad:"Escribe un N° de parte válido (ej. GH69-46625A)",
+      ok:"✅ Guardado",conf:"¿Eliminar este código del master?",err:"Error al guardar: ",errLoad:"No pude leer el master (revisa permisos de Firestore): ",
+      help:"Pzas/día = formas × hojas/día de la etapa más lenta de la ruta. ZP5 y ZP6 son alternativas: si marcas las dos, suman sus hojas. Sticker se hace en ZP5/ZP6 como segunda pasada, así que con Sticker la capacidad de ZP se divide entre 2. Desbarbe y empaque van al final de todas las rutas. Con «—» falta capturar capacidad de alguna máquina de la ruta.",instr:"Instrucciones",
+      instrTxt:"Una fila por N° de parte. Marca con X las máquinas donde corre y Sticker si lleva sticker (se hace en ZP5/ZP6). Tipo: TOP, BOTTOM, BUNDLE, SET PAD u OTRO. Formas/hoja: cuántas piezas salen de una hoja."},
+  en:{h:"🗺️ Machines per code (P1)",note:"Master per part number: forms per sheet and the machines each code runs on. The route comes from the checked machines (guillotine → printing → emboss → die-cut). Capacity is entered in sheets per day.",
+      cap:"Capacity per machine (sheets/day)",capSave:"💾 Save capacities",capOk:"✅ Capacities saved",
+      tpl:"📥 Master template (Excel)",load:"📤 Load master (Excel)",reading:"Reading file…",loaded:"✅ Codes loaded: ",noRows:"No codes found in the file (I look for part numbers like GH69-46625A)",
+      pn:"Part No.",mod:"Models",tipo:"Type",papel:"Paper",formas:"Forms/sheet",stk:"Sticker",fin:"Deburring → Packing",ruta:"Route",hojas:"Sheets/day",pzas:"Pcs/day",add:"➕ Add code",
+      empty:"No codes. Add one or load the master from Excel.",warn:"No machine assigned (no plan will be made): ",bad:"Enter a valid part number (e.g. GH69-46625A)",
+      ok:"✅ Saved",conf:"Delete this code from the master?",err:"Save error: ",errLoad:"Could not read the master (check Firestore permissions): ",
+      help:"Pcs/day = forms × sheets/day of the slowest step in the route. ZP5 and ZP6 are alternatives: if both are checked, their sheets add up. Sticker runs on ZP5/ZP6 as a second pass, so with Sticker the ZP capacity is halved. Deburring and packing close every route. «—» means a machine in the route has no capacity entered.",instr:"Instructions",
+      instrTxt:"One row per part number. Mark with X the machines it runs on, and Sticker if it needs a sticker (done on ZP5/ZP6). Type: TOP, BOTTOM, BUNDLE, SET PAD or OTRO. Forms/sheet: how many pieces come out of one sheet."},
+  ko:{h:"🗺️ 코드별 설비 (P1)",note:"부품번호별 마스터: 시트당 수량과 각 코드가 가동되는 설비. 선택한 설비로 경로(재단 → 인쇄 → 엠보 → 타발)가 만들어집니다. 생산능력은 일일 시트 수로 입력합니다.",
+      cap:"설비별 생산능력 (시트/일)",capSave:"💾 생산능력 저장",capOk:"✅ 생산능력 저장됨",
+      tpl:"📥 마스터 양식 (Excel)",load:"📤 마스터 불러오기 (Excel)",reading:"파일 읽는 중…",loaded:"✅ 불러온 코드: ",noRows:"파일에서 코드를 찾지 못했습니다 (GH69-46625A 형식의 부품번호)",
+      pn:"부품번호",mod:"모델",tipo:"유형",papel:"용지",formas:"시트당 수량",stk:"스티커",fin:"버 제거 → 포장",ruta:"경로",hojas:"시트/일",pzas:"수량/일",add:"➕ 코드 추가",
+      empty:"코드가 없습니다. 추가하거나 Excel로 마스터를 불러오세요.",warn:"설비 미지정 (계획 없음): ",bad:"올바른 부품번호를 입력하세요 (예: GH69-46625A)",
+      ok:"✅ 저장됨",conf:"마스터에서 이 코드를 삭제할까요?",err:"저장 오류: ",errLoad:"마스터를 읽을 수 없습니다 (Firestore 권한 확인): ",
+      help:"수량/일 = 시트당 수량 × 경로에서 가장 느린 공정의 시트/일. ZP5와 ZP6은 대체 설비이므로 함께 선택하면 시트 수가 합산됩니다. 스티커는 ZP5/ZP6에서 두 번째 공정으로 진행되어 ZP 생산능력이 절반이 됩니다. 버 제거와 포장은 모든 경로의 마지막입니다. «—»는 경로의 설비 중 생산능력이 입력되지 않았다는 뜻입니다.",instr:"설명",
+      instrTxt:"부품번호당 한 줄. 가동 설비와 스티커 필요 여부에 X 표시 (스티커는 ZP5/ZP6에서 진행). 유형: TOP, BOTTOM, BUNDLE, SET PAD 또는 OTRO. 시트당 수량: 한 장에서 나오는 개수."}
+};
+const c1=(k)=>((CP1_T[LANG]||CP1_T.es)[k]||CP1_T.es[k]);
+const CP1_PN=/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/;
+// etapa de la ruta: 0 guillotina, 1 impresión, 2 embo, 3 suaje
+function cp1Etapa(n){ n=String(n||"").toUpperCase(); if(/^G[A-Z]$/.test(n)) return 0; if(/^ZP\d/.test(n)) return 1; if(n==="EMBO") return 2; if(/^T[A-Z]$/.test(n)) return 3; return 9; }
+function cp1CapDe(n){
+  const el=document.getElementById("cp1-cap-"+n);
+  if(el && el.value!=="") return Math.max(0,parseFloat(el.value)||0);
+  const m=MAQUINAS.find(x=>x.nombre===n); return m?(Number(m.hojasDia)||0):0;
+}
+// c = {maquinas:[], formas:n}; capFn(nombre) -> hojas/día de esa máquina
+function cp1Calc(c,capFn){
+  const sel=(c.maquinas||[]).filter(n=>CP1_MAQS.includes(n));
+  const grupos={};
+  sel.forEach(n=>{ const e=cp1Etapa(n); (grupos[e]=grupos[e]||[]).push(n); });
+  const etapas=Object.keys(grupos).map(Number).sort((a,b)=>a-b);
+  const stk=!!c.sticker && !!grupos[1];                       // sticker = 2ª pasada en ZP5/ZP6
+  const ruta=etapas.map(e=>grupos[e].join("/")+((e===1&&stk)?" +sticker":"")).join(" → ");
+  let hojas=null, falta=false;
+  etapas.forEach(e=>{
+    const s=grupos[e].reduce((a,n)=>a+(capFn(n)||0),0)/((e===1&&stk)?2:1);
+    if(!(s>0)){ falta=true; return; }
+    hojas=(hojas==null)?s:Math.min(hojas,s);
+  });
+  if(falta||!etapas.length) hojas=null;
+  const f=Number(c.formas)||0;
+  return {ruta, hojas, pzas:(hojas!=null&&f>0)?Math.round(hojas*f):null, sinMaq:!etapas.length};
+}
+const cp1Num=(v)=>v==null?"—":Math.round(v).toLocaleString();
+const cp1IN="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 6px;font-size:.8rem;box-sizing:border-box;";
+function cp1Orden(a,b){ const ta=CP1_TIPOS.indexOf(a.tipo), tb=CP1_TIPOS.indexOf(b.tipo); return (ta-tb)||a.pn.localeCompare(b.pn); }
+async function loadCodigosP1(){
+  const msg=document.getElementById("cp1-msg");
+  try{
+    const snap=await getDocs(CP1_COL());
+    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:CP1_TIPOS.includes(x.tipo)?x.tipo:"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,sticker:!!x.sticker,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
+    if(msg) msg.textContent="";
+  }catch(e){ console.error("p1_codigos:",e); CODIGOS_P1=[]; if(msg){ msg.style.color="var(--red)"; msg.textContent=c1("errLoad")+e.message; } }
+  renderCodigosP1();
+}
+function renderCodigosP1(){
+  const set=(id,v)=>{ const el=document.getElementById(id); if(el) el.textContent=v; };
+  set("cp1-h",c1("h")+" ("+CODIGOS_P1.length+")"); set("cp1-note",c1("note")); set("cp1-cap-t",c1("cap")); set("cp1-btn-cap",c1("capSave"));
+  set("cp1-btn-tpl",c1("tpl")); set("cp1-btn-file",c1("load")); set("cp1-btn-add",c1("add")); set("cp1-help",c1("help"));
+  const ph={ "cp1-n-pn":c1("pn"), "cp1-n-mod":c1("mod"), "cp1-n-formas":c1("formas") };
+  Object.entries(ph).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.placeholder=v; });
+  const capEl=document.getElementById("cp1-cap");
+  if(capEl){
+    const vals={}; CP1_MAQS.forEach(n=>{ const el=document.getElementById("cp1-cap-"+n); if(el) vals[n]=el.value; });
+    capEl.innerHTML=CP1_MAQS.map(n=>{ const m=MAQUINAS.find(x=>x.nombre===n); const v=(n in vals)?vals[n]:(m&&m.hojasDia?m.hojasDia:"");
+      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">${n}${m?` <span class="tbadge ${m.tipo}">${m.tipo}</span>`:""}</div><input type="number" min="0" id="cp1-cap-${n}" value="${v}" placeholder="0" oninput="cp1RenderTabla()" style="${cp1IN}width:100%;text-align:right"></div>`; }).join("");
+  }
+  cp1RenderTabla();
+}
+window.renderCodigosP1=renderCodigosP1;
+function cp1RenderTabla(){
+  const tb=document.getElementById("cp1-table"); if(!tb) return;
+  const th=document.getElementById("cp1-thead");
+  if(th) th.innerHTML=`<tr><th>${c1("pn")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th><th>${c1("stk")}</th>${CP1_MAQS.map(n=>`<th>${n}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
+  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+9}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
+  const sin=[];
+  tb.innerHTML=CODIGOS_P1.map(c=>{
+    const r=cp1Calc(c,cp1CapDe); if(r.sinMaq) sin.push(c.pn);
+    return `<tr>
+      <td style="font-family:monospace;color:var(--accent);white-space:nowrap">${c.pn}</td>
+      <td><input value="${ptEsc(c.modelos)}" onchange="cp1Campo('${c.id}','modelos',this.value)" style="${cp1IN}width:150px"></td>
+      <td><select onchange="cp1Campo('${c.id}','tipo',this.value)" style="${cp1IN}">${CP1_TIPOS.map(t=>`<option ${t===c.tipo?"selected":""}>${t}</option>`).join("")}</select></td>
+      <td><input value="${ptEsc(c.papel)}" onchange="cp1Campo('${c.id}','papel',this.value)" style="${cp1IN}width:90px"></td>
+      <td><input type="number" min="0" step="any" value="${c.formas||""}" onchange="cp1Campo('${c.id}','formas',this.value)" style="${cp1IN}width:64px;text-align:right"></td>
+      <td><input type="checkbox" ${c.sticker?"checked":""} onchange="cp1Sticker('${c.id}',this.checked)" style="width:16px;height:16px"></td>
+      ${CP1_MAQS.map(n=>`<td><input type="checkbox" ${c.maquinas.includes(n)?"checked":""} onchange="cp1Chk('${c.id}','${n}',this.checked)" style="width:16px;height:16px"></td>`).join("")}
+      <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${r.ruta?r.ruta+" → "+c1("fin"):"—"}</td>
+      <td style="text-align:right">${cp1Num(r.hojas)}</td>
+      <td style="text-align:right;font-weight:700;color:var(--green)">${cp1Num(r.pzas)}</td>
+      <td><button class="abtn abtn-del" onclick="cp1Del('${c.id}')">✕</button></td></tr>`; }).join("");
+  const w=document.getElementById("cp1-warn");
+  if(w){ if(sin.length){ w.style.display="block"; w.textContent="⚠️ "+c1("warn")+sin.join(", "); } else w.style.display="none"; }
+}
+window.cp1RenderTabla=cp1RenderTabla;
+async function cp1Persist(c){
+  try{
+    await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos||"",tipo:c.tipo||"OTRO",papel:c.papel||"",formas:Number(c.formas)||0,sticker:!!c.sticker,maquinas:c.maquinas||[],actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()});
+    showToast(c1("ok"),"var(--green)");
+  }catch(e){ showToast(c1("err")+e.message,"var(--red)"); }
+}
+window.cp1Campo=async(id,campo,val)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return;
+  c[campo]=(campo==="formas")?(parseFloat(val)||0):String(val||"").trim();
+  if(campo==="tipo") CODIGOS_P1.sort(cp1Orden);
+  await cp1Persist(c); cp1RenderTabla(); };
+window.cp1Chk=async(id,maq,on)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return;
+  c.maquinas=on?[...new Set([...c.maquinas,maq])]:c.maquinas.filter(x=>x!==maq);
+  await cp1Persist(c); cp1RenderTabla(); };
+window.cp1Sticker=async(id,on)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return; c.sticker=!!on; await cp1Persist(c); cp1RenderTabla(); };
+window.cp1Del=async(id)=>{ if(!confirm(c1("conf"))) return;
+  try{ await deleteDoc(doc(db,"p1_codigos",id)); CODIGOS_P1=CODIGOS_P1.filter(x=>x.id!==id); renderCodigosP1(); }
+  catch(e){ showToast(c1("err")+e.message,"var(--red)"); } };
+window.cp1Add=async()=>{
+  const pn=(document.getElementById("cp1-n-pn").value||"").trim().toUpperCase();
+  if(!CP1_PN.test(pn)){ showToast(c1("bad"),"var(--red)"); return; }
+  let c=CODIGOS_P1.find(x=>x.id===pn);
+  const mod=(document.getElementById("cp1-n-mod").value||"").trim(), tipo=document.getElementById("cp1-n-tipo").value, f=parseFloat(document.getElementById("cp1-n-formas").value)||0;
+  if(c){ if(mod) c.modelos=mod; c.tipo=tipo; if(f) c.formas=f; }
+  else { c={id:pn,pn,modelos:mod,tipo,papel:"",formas:f,sticker:false,maquinas:[]}; CODIGOS_P1.push(c); }
+  CODIGOS_P1.sort(cp1Orden);
+  await cp1Persist(c);
+  ["cp1-n-pn","cp1-n-mod","cp1-n-formas"].forEach(i=>{ document.getElementById(i).value=""; });
+  renderCodigosP1();
+};
+window.cp1GuardarCap=async()=>{
+  try{
+    for(const n of CP1_MAQS){
+      const m=MAQUINAS.find(x=>x.nombre===n); if(!m) continue;
+      const el=document.getElementById("cp1-cap-"+n); if(!el||el.value==="") continue;
+      const v=Math.max(0,parseFloat(el.value)||0);
+      if(m._dbId){ await updateDoc(doc(db,"targets_p1",m._dbId),{hojasDia:v,updatedAt:serverTimestamp()}); }
+      else { const ref=await addDoc(TGTS_COL(),{nombre:m.nombre,target:m.target,C2:m.cortes.C2,C3:m.cortes.C3,OT:m.cortes.OT,hojasDia:v,updatedAt:serverTimestamp()}); m._dbId=ref.id; }
+      m.hojasDia=v;
+    }
+    showToast(c1("capOk"),"var(--green)"); cp1RenderTabla();
+  }catch(e){ showToast(c1("err")+e.message,"var(--red)"); }
+};
+window.cp1Plantilla=()=>{
+  const H=["N° de Parte","Modelos","Tipo","Papel","Formas/hoja","Sticker",...CP1_MAQS];
+  const filas=CODIGOS_P1.length?CODIGOS_P1.map(c=>[c.pn,c.modelos,c.tipo,c.papel,c.formas||"",c.sticker?"X":"",...CP1_MAQS.map(n=>c.maquinas.includes(n)?"X":"")]):[["(ejemplo) GH69-46625A","SM-S741UZKAXAA","TOP","",6,"X","X","","","","X","X","",""]];
+  const ws=XLSX.utils.aoa_to_sheet([H,...filas]);
+  ws["!cols"]=[{wch:16},{wch:34},{wch:10},{wch:14},{wch:12},{wch:8},...CP1_MAQS.map(()=>({wch:6}))];
+  const wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,ws,"Maquinas por codigo");
+  XLSX.utils.book_append_sheet(wb,XLSX.utils.aoa_to_sheet([[c1("instr")],[c1("instrTxt")]]),"Info");
+  XLSX.writeFile(wb,`Plantilla_Maquinas_por_Codigo_P1_${fechaLocal()}.xlsx`);
+};
+window.cp1Subir=async(inp)=>{
+  const f=inp.files&&inp.files[0]; if(!f) return;
+  const msg=document.getElementById("cp1-msg"); msg.style.color="var(--muted)"; msg.textContent=c1("reading");
+  try{
+    const wb=XLSX.read(await f.arrayBuffer(),{type:"array"});
+    const filas=XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]],{header:1,defval:""});
+    const norm=(x)=>String(x==null?"":x).trim().toUpperCase();
+    let cols=null; const lista=[];
+    filas.forEach(fila=>{
+      const cel=fila.map(norm);
+      const iPn=cel.findIndex(x=>/^(N.{0,2} DE PARTE|PART NO\.?|부품번호)$/.test(x));
+      if(iPn>=0){ cols={pn:iPn,mod:cel.findIndex(x=>/^(MODELOS?|MODELS?|모델)$/.test(x)),tipo:cel.findIndex(x=>/^(TIPO|TYPE|유형)$/.test(x)),papel:cel.findIndex(x=>/^(PAPEL|PAPER|용지)$/.test(x)),formas:cel.findIndex(x=>/^(FORMAS.*|FORMS.*|시트당.*)$/.test(x)),stk:cel.findIndex(x=>/^(STICKER|스티커)$/.test(x)),maq:{}}; CP1_MAQS.forEach(n=>{ const i=cel.indexOf(n); if(i>=0) cols.maq[n]=i; }); return; }
+      if(!cols) return;
+      const pn=norm(fila[cols.pn]); if(!CP1_PN.test(pn)) return;
+      const g=(i)=>i>=0?String(fila[i]==null?"":fila[i]).trim():"";
+      const tipo=norm(g(cols.tipo));
+      lista.push({id:pn,pn,modelos:g(cols.mod),tipo:CP1_TIPOS.includes(tipo)?tipo:"OTRO",papel:g(cols.papel),formas:parseFloat(g(cols.formas))||0,sticker:cols.stk>=0&&!/^(|0|NO|N|-)$/i.test(g(cols.stk)),
+        maquinas:CP1_MAQS.filter(n=>cols.maq[n]!=null && !/^(|0|NO|N|-)$/i.test(g(cols.maq[n])))});
+    });
+    if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=c1("noRows"); inp.value=""; return; }
+    let n=0;
+    for(let k=0;k<lista.length;k+=15){
+      const r=await Promise.all(lista.slice(k,k+15).map(c=>setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:c.papel,formas:c.formas,sticker:!!c.sticker,maquinas:c.maquinas,actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()}).then(()=>1).catch(()=>0)));
+      n+=r.reduce((a,b)=>a+b,0);
+    }
+    await loadCodigosP1();
+    msg.style.color="var(--green)"; msg.textContent=c1("loaded")+n;
+  }catch(e){ msg.style.color="var(--red)"; msg.textContent=c1("err")+e.message; }
+  inp.value="";
+};
+window.loadCodigosP1=loadCodigosP1;
+
 const USERS_COL = () => collection(db, "usuarios_p1");
 
 const CAUSAS_PARO_DEFAULT = [
@@ -1124,6 +1319,7 @@ const MAQUINAS = [
   {nombre:"B",  tipo:"Label", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
   {nombre:"P1", tipo:"GlueLine", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
   {nombre:"P2", tipo:"GlueLine", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
+  {nombre:"EMBO", tipo:"Embossing", target:8000, cortes:{C2:4800,C3:3200,OT:2000}},
 ];
 
 let REGISTROS=[], USUARIOS=[], CURRENT_USER=null, unsubRegs=null;
@@ -1432,9 +1628,9 @@ function renderMesPlan() {
   document.getElementById('mesPlanTitulo').textContent = 'Plan — ' + (mesPlanActivo.semana||'');
   document.getElementById('mesPlanFecha').textContent = 'Publicado: ' + new Date(mesPlanActivo.publicadoEn).toLocaleString('es-MX');
 
-  const colores = {'ZP1':'#FFBA00','ZP2':'#FFBA00','ZP3':'#FFBA00','ZP4':'#FFBA00','ZP5':'#FFBA00','ZP6':'#FFBA00','DA':'#4da6ff','DE':'#4da6ff','DB':'#4da6ff','DF':'#4da6ff','DG':'#4da6ff','GA':'#00B8A0','GB':'#00B8A0','LAMI':'#9B7FE0','LINER':'#9B7FE0','FOIL':'#9B7FE0','UV':'#9B7FE0','TA':'#e07be0','TB':'#e07be0','TC':'#e07be0','E1':'#00e676','E2':'#00e676','A':'#ff6b6b','B':'#ff6b6b','P1':'#f1c40f','P2':'#f1c40f'};
-  const iconos = {'ZP1':'🖨️','ZP2':'🖨️','ZP3':'🖨️','ZP4':'🖨️','ZP5':'🖨️','ZP6':'🖨️','DA':'📐','DE':'📐','DB':'📐','DF':'📐','DG':'📐','GA':'✂️','GB':'✂️','LAMI':'🎞️','LINER':'🎞️','FOIL':'🎞️','UV':'🎞️','TA':'🔪','TB':'🔪','TC':'🔪','E1':'🧵','E2':'🧵','A':'🏷️','B':'🏷️','P1':'🧴','P2':'🧴'};
-  const ordenLineas = ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'];
+  const colores = {'ZP1':'#FFBA00','ZP2':'#FFBA00','ZP3':'#FFBA00','ZP4':'#FFBA00','ZP5':'#FFBA00','ZP6':'#FFBA00','DA':'#4da6ff','DE':'#4da6ff','DB':'#4da6ff','DF':'#4da6ff','DG':'#4da6ff','GA':'#00B8A0','GB':'#00B8A0','LAMI':'#9B7FE0','LINER':'#9B7FE0','FOIL':'#9B7FE0','UV':'#9B7FE0','EMBO':'#1abc9c','TA':'#e07be0','TB':'#e07be0','TC':'#e07be0','E1':'#00e676','E2':'#00e676','A':'#ff6b6b','B':'#ff6b6b','P1':'#f1c40f','P2':'#f1c40f'};
+  const iconos = {'ZP1':'🖨️','ZP2':'🖨️','ZP3':'🖨️','ZP4':'🖨️','ZP5':'🖨️','ZP6':'🖨️','DA':'📐','DE':'📐','DB':'📐','DF':'📐','DG':'📐','GA':'✂️','GB':'✂️','LAMI':'🎞️','LINER':'🎞️','FOIL':'🎞️','UV':'🎞️','EMBO':'🔳','TA':'🔪','TB':'🔪','TC':'🔪','E1':'🧵','E2':'🧵','A':'🏷️','B':'🏷️','P1':'🧴','P2':'🧴'};
+  const ordenLineas = ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','EMBO','TA','TB','TC','E1','E2','A','B','P1','P2'];
   const lineas = mesPlanActivo.lineas || {};
   const todasLineas = [...ordenLineas, ...Object.keys(lineas).filter(k=>!ordenLineas.includes(k))];
 
@@ -1850,7 +2046,7 @@ function initApp(){
 }
 function buildMaqGrid(){const g=document.getElementById("mgrid");g.innerHTML="";MAQUINAS.forEach((m,i)=>{const t=opCorte&&m.cortes?m.cortes[opCorte]:m.target;const parteActual=document.getElementById("ip-parte")?document.getElementById("ip-parte").value.trim().toUpperCase():"";const dup=opCorte&&opTurno&&parteActual&&REGISTROS.find(r=>r.fecha===HOY&&parseInt(r.maqIdx)===i&&r.corte===opCorte&&r.turno===opTurno&&(r.parte||"").toUpperCase()===parteActual);const d=document.createElement("div");d.className="mc"+(dup?" mc-done":"");d.id=`mc${i}`;d.innerHTML=`<div class="mn">${m.nombre}${dup?"<span style='font-size:.75rem;color:#2ecc71;margin-left:4px'>✓</span>":""}</div><div><span class="tbadge ${m.tipo}">${m.tipo}</span></div><div style="font-size:.8rem;color:var(--muted);margin-top:4px">${dup?"Already recorded":"Target: "+(t||m.target).toLocaleString()}</div>`;d.onclick=()=>dup?showToast(`⛔ ${m.nombre} · ${opCorte} · same part already recorded today`,"var(--red)"):selM(i);g.appendChild(d);});}
 function buildSelects(){const s1=document.getElementById("smaq"),s2=document.getElementById("mreg");s1.innerHTML="";s2.innerHTML="<option value='todos'>Todas las máquinas</option>";MAQUINAS.forEach((m,i)=>{s1.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));s2.appendChild(new Option(`${m.nombre} (${m.tipo})`,i));});}
-window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
+window.setMode=(m)=>{const r=CURRENT_USER?.rol;if(m==="dash"&&r==="operador")return;if(m==="admin"&&r!=="admin")return;document.querySelectorAll(".view").forEach(v=>v.classList.remove("active"));document.querySelectorAll(".mbtn").forEach(b=>b.classList.remove("active"));document.getElementById("view-"+m).classList.add("active");document.getElementById("mb-"+m).classList.add("active");if(m==="dash"){const d=new Date();const HOY=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;["fhoy","ffeed","freg"].forEach(id=>{const el=document.getElementById(id);if(el)el.value=HOY;});dRefresh();if(typeof applyTranslations==='function')applyTranslations();}if(m==="admin"){loadUsuarios();loadEmailsRep();loadCodigosP1();setTimeout(()=>{renderAdminTargets();renderAdminMaquinas();},100);}};
 window.selT=(t)=>{opTurno=t;["A","B","C"].forEach(x=>document.getElementById(`tc-${x}`).className="tc");document.getElementById(`tc-${t}`).classList.add(`sel${t}`);};
 window.selCorte=(c)=>{opCorte=c;CORTES.forEach(x=>document.getElementById(`cc-${x.id}`).classList.remove("selCorte"));document.getElementById(`cc-${c}`).classList.add("selCorte");if(opMaq!==null)updateTargetCorte();};
 function updateTargetCorte(){if(opMaq===null||!opCorte)return;const m=MAQUINAS[opMaq];const t=m.cortes[opCorte]||m.target;document.getElementById("ip-target")&&(document.getElementById("ip-target").value=t);updK();}
@@ -2019,7 +2215,7 @@ function rHoy(){
         if(r.parte&&r.parte!=="—")maqModelMap[key].parte=r.parte;
       });
       // Ordenar por proceso: Printing → Folding → Cutting → Finished → DieCut → Stitching → Label → GlueLine
-      const ordenMaq = ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','TA','TB','TC','E1','E2','A','B','P1','P2'];
+      const ordenMaq = ['ZP1','ZP2','ZP3','ZP4','ZP5','ZP6','DA','DE','DB','DF','DG','GA','GB','LAMI','LINER','FOIL','UV','EMBO','TA','TB','TC','E1','E2','A','B','P1','P2'];
       const getOrden = nombre => {
         const idx = ordenMaq.findIndex(o => (nombre||'').toUpperCase().includes(o.toUpperCase()));
         return idx >= 0 ? idx : ordenMaq.length;
@@ -2950,6 +3146,7 @@ window.setLang = function(lang){
   applyTranslations();
   if(typeof catTexts==='function')catTexts(); if(typeof renderPalletTipos==='function')renderPalletTipos();
   if(typeof renderCatalogo==='function')renderCatalogo();
+  if(typeof renderCodigosP1==='function')renderCodigosP1();
   if(window._selRefresh)window._selRefresh();
 };
 
@@ -3173,7 +3370,7 @@ body{font-family:'Segoe UI',Arial,sans-serif;background:var(--bg);color:var(--te
 .mc{background:var(--card2);border:2px solid var(--border);border-radius:10px;padding:10px;text-align:center;cursor:pointer;}
 .mc.sel{border-color:var(--accent);background:#0d1f35;}.mc-done{opacity:0.5;border-color:#2ecc71!important;cursor:not-allowed!important;}.mn{font-size:.86rem;font-weight:700;}
 .tbadge{display:inline-block;padding:2px 7px;border-radius:20px;font-size:.75rem;font-weight:600;margin-top:3px;}
-.Printing{background:#3d2f1a;color:#FFBA00;}.Folding{background:#1a3a5c;color:#4f8ef7;}.Cutting{background:#1a3d2b;color:#2ecc71;}.Finished{background:#2b1a3d;color:#9B7FE0;}.DieCut{background:#3d1a3a;color:#e07be0;}.Stitching{background:#1a3d33;color:#00e676;}.Label{background:#3d1a1a;color:#ff6b6b;}.GlueLine{background:#3d3617;color:#f1c40f;}
+.Printing{background:#3d2f1a;color:#FFBA00;}.Folding{background:#1a3a5c;color:#4f8ef7;}.Cutting{background:#1a3d2b;color:#2ecc71;}.Finished{background:#2b1a3d;color:#9B7FE0;}.DieCut{background:#3d1a3a;color:#e07be0;}.Stitching{background:#1a3d33;color:#00e676;}.Label{background:#3d1a1a;color:#ff6b6b;}.GlueLine{background:#3d3617;color:#f1c40f;}.Embossing{background:#143d3a;color:#1abc9c;}
 .krow{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-bottom:9px;}
 .km{background:var(--card2);border-radius:8px;padding:7px;text-align:center;}
 .km .v{font-size:1.05rem;font-weight:700;}.km .l{font-size:.75rem;color:var(--muted);margin-top:1px;}
@@ -3564,6 +3761,29 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
       </details>
       <input type="text" id="cat-filter" oninput="renderCatalogo()" placeholder="Buscar…" style="width:100%;margin:12px 0 8px;background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px;box-sizing:border-box">
       <div id="cat-table-wrap" style="overflow-x:auto"><table><thead><tr><th id="cat-th-pn">N° de Parte</th><th id="cat-th-desc">Modelo</th><th id="cat-th-mat">Descripción del material</th><th id="cat-th-tipo">TYPE</th><th id="cat-th-fsc">FSC type</th><th id="cat-th-rev">Rev</th><th id="cat-th-pcs" style="display:none">Pcs/caja</th><th id="cat-th-peso">Peso</th><th id="cat-th-cpp" style="display:none">Cajas/pallet</th><th id="cat-th-dim">Dim</th><th id="cat-th-precio">Precio</th><th id="cat-th-acc">Acciones</th></tr></thead><tbody id="cat-table"></tbody></table></div>
+    </div>
+    <div class="acard">
+      <h3 id="cp1-h">🗺️ Máquinas por código (P1)</h3>
+      <div id="cp1-note" style="font-size:.85rem;color:var(--muted);margin-bottom:12px"></div>
+      <div id="cp1-cap-t" style="font-size:.8rem;color:var(--muted);margin-bottom:6px"></div>
+      <div id="cp1-cap" style="display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:8px;margin-bottom:8px"></div>
+      <button class="abtn abtn-add" id="cp1-btn-cap" onclick="cp1GuardarCap()">💾</button>
+      <div style="display:flex;gap:8px;flex-wrap:wrap;margin:14px 0 8px">
+        <button class="abtn" id="cp1-btn-tpl" onclick="cp1Plantilla()" style="background:rgba(255,186,0,.12);color:#FFBA00;border:1px solid rgba(255,186,0,.4)"></button>
+        <input type="file" id="cp1-file" accept=".xlsx,.xls,.csv" style="display:none" onchange="cp1Subir(this)">
+        <button class="abtn abtn-add" id="cp1-btn-file" onclick="document.getElementById('cp1-file').click()"></button>
+      </div>
+      <div style="display:flex;gap:6px;flex-wrap:wrap;margin-bottom:8px;align-items:center">
+        <input id="cp1-n-pn" oninput="this.value=this.value.toUpperCase()" autocomplete="off" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;width:140px">
+        <input id="cp1-n-mod" autocomplete="off" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;flex:1;min-width:150px">
+        <select id="cp1-n-tipo" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px"><option>TOP</option><option>BOTTOM</option><option>BUNDLE</option><option>SET PAD</option><option>OTRO</option></select>
+        <input id="cp1-n-formas" type="number" min="0" step="any" style="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:8px;padding:7px 9px;width:100px">
+        <button class="abtn abtn-add" id="cp1-btn-add" onclick="cp1Add()"></button>
+      </div>
+      <div id="cp1-msg" style="font-size:.85rem;margin-bottom:8px"></div>
+      <div id="cp1-warn" style="display:none;font-size:.85rem;color:var(--yellow);background:rgba(241,196,15,.08);border:1px solid rgba(241,196,15,.3);border-radius:8px;padding:8px 10px;margin-bottom:8px"></div>
+      <div style="overflow-x:auto;max-height:420px;overflow-y:auto;border:1px solid var(--border);border-radius:8px"><table><thead id="cp1-thead"></thead><tbody id="cp1-table"></tbody></table></div>
+      <div id="cp1-help" style="font-size:.8rem;color:var(--muted);margin-top:8px"></div>
     </div>
     <div class="acard">
       <h3 id="pt-h">📏 Tipos de pallet y peso Cross Pad</h3>
