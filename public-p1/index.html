@@ -1068,15 +1068,15 @@ window.delCatalogoParte=async(id)=>{
 };
 /* ══ P1: MÁQUINAS POR CÓDIGO (formas por hoja + ruta + capacidad en hojas) ══ */
 const CP1_COL=()=>collection(db,"p1_codigos");
-const CP1_MAQS=["GA","GB","ZP5","ZP6","EMBO","TA","TB","TC"];   // columnas de la pantalla (deben existir en MAQUINAS)
+const CP1_MAQS=["GA","GB","ZP5","ZP6","EMBO","TA","TB","TC","P1","P2"];   // columnas de la pantalla (deben existir en MAQUINAS)
 const CP1_TIPOS=["TOP","BOTTOM","BUNDLE","SET PAD","OTRO"];
 let CODIGOS_P1=[];
-const CP1_COLS=["GA","GB","ZP5","ZP6","STK","FOIL","EMBO","TA","TB","TC"];   // orden del flujo: guillotina → impresión → sticker → foil → embo → suaje
+const CP1_COLS=["GA","GB","ZP5","ZP6","STK","FOIL","EMBO","TA","TB","TC","P1","P2"];   // orden del flujo: guillotina → impresión → sticker → foil → embo → suaje
 const CP1_T={
   es:{h:"🗺️ Máquinas por código (P1)",note:"Master por N° de parte: formas por hoja y las máquinas donde corre cada código. La ruta sale de las máquinas marcadas (guillotina → impresión → embo → suaje). La capacidad se captura en hojas por día.",
       cap:"Capacidad por máquina (hojas/día)",capSave:"💾 Guardar capacidades",capOk:"✅ Capacidades guardadas",
       tpl:"📥 Plantilla master (Excel)",load:"📤 Cargar master (Excel)",reading:"Leyendo archivo…",loaded:"✅ Códigos cargados: ",noRows:"No encontré códigos en el archivo (busco N° de parte tipo GH69-46625A)",
-      pn:"N° de parte",mod:"Modelos",tipo:"Tipo",papel:"Papel",formas:"Formas/hoja",stk:"Sticker",selM:"— Modelo —",selP:"— N° de parte (del BOM) —",noBom:"No hay BOM cargado en BOM Simulator: no se pueden agregar códigos",pick:"Elige un N° de parte de la lista del BOM",omit:"Omitidos por no estar en el BOM: ",fin:"Desbarbe → Empaque",ruta:"Ruta",hojas:"Hojas/día",pzas:"Pzas/día",add:"➕ Agregar código",
+      pn:"N° de parte",mod:"Modelos",tipo:"Tipo",papel:"Papel",formas:"Formas/hoja",stk:"Sticker",selM:"— Modelo —",selP:"— N° de parte (del BOM) —",noBom:"No hay BOM cargado en BOM Simulator: no se pueden agregar códigos",pick:"Elige un N° de parte de la lista del BOM",omit:"Omitidos por no estar en el BOM: ",fin:"Desbarbe → Empaque",desb:"Desbarbe",emp:"Empaque",pegTxt:"pegado",ruta:"Ruta",hojas:"Hojas/día",pzas:"Pzas/día",add:"➕ Agregar código",
       empty:"Sin códigos. Agrega uno o carga el master desde Excel.",warn:"Sin ninguna máquina asignada (no tendrán plan): ",bad:"Escribe un N° de parte válido (ej. GH69-46625A)",
       ok:"✅ Guardado",conf:"¿Eliminar este código del master?",err:"Error al guardar: ",errLoad:"No pude leer el master (revisa permisos de Firestore): ",
       help:"Pzas/día = formas × hojas/día de la etapa más lenta de la ruta. ZP5 y ZP6 son alternativas: si marcas las dos, suman sus hojas. Sticker se hace en ZP5/ZP6 como segunda pasada, así que con Sticker la capacidad de ZP se divide entre 2. Desbarbe y empaque van al final de todas las rutas. Con «—» falta capturar capacidad de alguna máquina de la ruta.",instr:"Instrucciones",
@@ -1084,7 +1084,7 @@ const CP1_T={
   en:{h:"🗺️ Machines per code (P1)",note:"Master per part number: forms per sheet and the machines each code runs on. The route comes from the checked machines (guillotine → printing → emboss → die-cut). Capacity is entered in sheets per day.",
       cap:"Capacity per machine (sheets/day)",capSave:"💾 Save capacities",capOk:"✅ Capacities saved",
       tpl:"📥 Master template (Excel)",load:"📤 Load master (Excel)",reading:"Reading file…",loaded:"✅ Codes loaded: ",noRows:"No codes found in the file (I look for part numbers like GH69-46625A)",
-      pn:"Part No.",mod:"Models",tipo:"Type",papel:"Paper",formas:"Forms/sheet",stk:"Sticker",selM:"— Model —",selP:"— Part No. (from BOM) —",noBom:"No BOM loaded in BOM Simulator: codes cannot be added",pick:"Choose a part number from the BOM list",omit:"Skipped (not in the BOM): ",fin:"Deburring → Packing",ruta:"Route",hojas:"Sheets/day",pzas:"Pcs/day",add:"➕ Add code",
+      pn:"Part No.",mod:"Models",tipo:"Type",papel:"Paper",formas:"Forms/sheet",stk:"Sticker",selM:"— Model —",selP:"— Part No. (from BOM) —",noBom:"No BOM loaded in BOM Simulator: codes cannot be added",pick:"Choose a part number from the BOM list",omit:"Skipped (not in the BOM): ",fin:"Deburring → Packing",desb:"Deburring",emp:"Packing",pegTxt:"gluing",ruta:"Route",hojas:"Sheets/day",pzas:"Pcs/day",add:"➕ Add code",
       empty:"No codes. Add one or load the master from Excel.",warn:"No machine assigned (no plan will be made): ",bad:"Enter a valid part number (e.g. GH69-46625A)",
       ok:"✅ Saved",conf:"Delete this code from the master?",err:"Save error: ",errLoad:"Could not read the master (check Firestore permissions): ",
       help:"Pcs/day = forms × sheets/day of the slowest step in the route. ZP5 and ZP6 are alternatives: if both are checked, their sheets add up. Sticker runs on ZP5/ZP6 as a second pass, so with Sticker the ZP capacity is halved. Deburring and packing close every route. «—» means a machine in the route has no capacity entered.",instr:"Instructions",
@@ -1092,22 +1092,22 @@ const CP1_T={
   ko:{h:"🗺️ 코드별 설비 (P1)",note:"부품번호별 마스터: 시트당 수량과 각 코드가 가동되는 설비. 선택한 설비로 경로(재단 → 인쇄 → 엠보 → 타발)가 만들어집니다. 생산능력은 일일 시트 수로 입력합니다.",
       cap:"설비별 생산능력 (시트/일)",capSave:"💾 생산능력 저장",capOk:"✅ 생산능력 저장됨",
       tpl:"📥 마스터 양식 (Excel)",load:"📤 마스터 불러오기 (Excel)",reading:"파일 읽는 중…",loaded:"✅ 불러온 코드: ",noRows:"파일에서 코드를 찾지 못했습니다 (GH69-46625A 형식의 부품번호)",
-      pn:"부품번호",mod:"모델",tipo:"유형",papel:"용지",formas:"시트당 수량",stk:"스티커",selM:"— 모델 —",selP:"— 부품번호 (BOM) —",noBom:"BOM Simulator에 BOM이 없어 코드를 추가할 수 없습니다",pick:"BOM 목록에서 부품번호를 선택하세요",omit:"BOM에 없어 제외됨: ",fin:"버 제거 → 포장",ruta:"경로",hojas:"시트/일",pzas:"수량/일",add:"➕ 코드 추가",
+      pn:"부품번호",mod:"모델",tipo:"유형",papel:"용지",formas:"시트당 수량",stk:"스티커",selM:"— 모델 —",selP:"— 부품번호 (BOM) —",noBom:"BOM Simulator에 BOM이 없어 코드를 추가할 수 없습니다",pick:"BOM 목록에서 부품번호를 선택하세요",omit:"BOM에 없어 제외됨: ",fin:"버 제거 → 포장",desb:"버 제거",emp:"포장",pegTxt:"접착",ruta:"경로",hojas:"시트/일",pzas:"수량/일",add:"➕ 코드 추가",
       empty:"코드가 없습니다. 추가하거나 Excel로 마스터를 불러오세요.",warn:"설비 미지정 (계획 없음): ",bad:"올바른 부품번호를 입력하세요 (예: GH69-46625A)",
       ok:"✅ 저장됨",conf:"마스터에서 이 코드를 삭제할까요?",err:"저장 오류: ",errLoad:"마스터를 읽을 수 없습니다 (Firestore 권한 확인): ",
       help:"수량/일 = 시트당 수량 × 경로에서 가장 느린 공정의 시트/일. ZP5와 ZP6은 대체 설비이므로 함께 선택하면 시트 수가 합산됩니다. 스티커는 ZP5/ZP6에서 두 번째 공정으로 진행되어 ZP 생산능력이 절반이 됩니다. 버 제거와 포장은 모든 경로의 마지막입니다. «—»는 경로의 설비 중 생산능력이 입력되지 않았다는 뜻입니다.",instr:"설명",
       instrTxt:"부품번호당 한 줄. 가동 설비와 스티커 필요 여부에 X 표시 (스티커는 ZP5/ZP6에서 진행). 유형: TOP, BOTTOM, BUNDLE, SET PAD 또는 OTRO. 시트당 수량: 한 장에서 나오는 개수."}
 };
-Object.assign(CP1_T.es,{foil:"Foil",mat:"Material (BOM)",selPapel:"— Papel (IMS P1) —",est:"Estado",prio:"Prior.",pide:"Pide P1",fecha:"Entrega",ok2:"✅ Completo",falta:"⚠️ Falta capturar",noReq:"Aún no hay plan requerido publicado desde BOM Simulator (usa Publicar TV allá).",reqRes:"Plan requerido: {n} códigos · {c} completos · {f} por capturar (se muestran primero, en orden de prioridad). Publicado: ",nuevos:"Se agregaron al master {n} códigos nuevos del plan."});
-Object.assign(CP1_T.en,{foil:"Foil",mat:"Material (BOM)",selPapel:"— Paper (IMS P1) —",est:"Status",prio:"Prio.",pide:"P1 needs",fecha:"Due",ok2:"✅ Complete",falta:"⚠️ Missing data",noReq:"No required plan published from BOM Simulator yet (use Publish TV there).",reqRes:"Required plan: {n} codes · {c} complete · {f} to fill (shown first, by priority). Published: ",nuevos:"{n} new codes from the plan were added to the master."});
-Object.assign(CP1_T.ko,{foil:"포일",mat:"자재 (BOM)",selPapel:"— 용지 (IMS P1) —",est:"상태",prio:"우선",pide:"P1 필요",fecha:"납기",ok2:"✅ 완료",falta:"⚠️ 입력 필요",noReq:"BOM Simulator에서 게시된 요구 계획이 아직 없습니다 (TV 게시 사용).",reqRes:"요구 계획: {n}개 코드 · 완료 {c} · 입력 필요 {f} (우선순위 순으로 먼저 표시). 게시: ",nuevos:"계획의 신규 코드 {n}개가 마스터에 추가되었습니다."});
-CP1_T.es.help+=" Sticker en: elige la ZP donde se pega; si es la misma que imprime pasa dos veces (capacidad ÷2), si es la otra van en línea (manda la más lenta). Con Sticker no hay guillotina. Foil (ej. 41844A) lo hace la misma máquina del EMBO, entre impresión y embo: es una pasada extra en EMBO, así que con Foil la capacidad del EMBO se divide entre 2.";
-CP1_T.en.help+=" Sticker on: pick the ZP where it is applied; if it is the same one that prints it runs twice (capacity ÷2), if it is the other one they run in line (the slower one rules). With Sticker there is no guillotine. Foil (e.g. 41844A) runs on the same machine as EMBO, between printing and emboss: it is an extra pass on EMBO, so with Foil the EMBO capacity is divided by 2.";
-CP1_T.ko.help+=" 스티커: 부착하는 ZP를 선택합니다. 인쇄하는 설비와 같으면 2회 작업(능력 ÷2), 다른 설비면 직렬로 진행(느린 쪽 기준). 스티커가 있으면 재단기는 없습니다. 포일(예: 41844A)은 EMBO와 같은 설비에서 인쇄와 엠보 사이에 진행됩니다: EMBO에서 추가 1회 작업이므로 포일이 있으면 EMBO 능력을 2로 나눕니다.";
+Object.assign(CP1_T.es,{pzDia:"pzas/día",foil:"Foil",mat:"Material (BOM)",selPapel:"— Papel (IMS P1) —",est:"Estado",prio:"Prior.",pide:"Pide P1",fecha:"Entrega",ok2:"✅ Completo",falta:"⚠️ Falta capturar",noReq:"Aún no hay plan requerido publicado desde BOM Simulator (usa Publicar TV allá).",reqRes:"Plan requerido: {n} códigos · {c} completos · {f} por capturar (se muestran primero, en orden de prioridad). Publicado: ",nuevos:"Se agregaron al master {n} códigos nuevos del plan."});
+Object.assign(CP1_T.en,{pzDia:"pcs/day",foil:"Foil",mat:"Material (BOM)",selPapel:"— Paper (IMS P1) —",est:"Status",prio:"Prio.",pide:"P1 needs",fecha:"Due",ok2:"✅ Complete",falta:"⚠️ Missing data",noReq:"No required plan published from BOM Simulator yet (use Publish TV there).",reqRes:"Required plan: {n} codes · {c} complete · {f} to fill (shown first, by priority). Published: ",nuevos:"{n} new codes from the plan were added to the master."});
+Object.assign(CP1_T.ko,{pzDia:"수량/일",foil:"포일",mat:"자재 (BOM)",selPapel:"— 용지 (IMS P1) —",est:"상태",prio:"우선",pide:"P1 필요",fecha:"납기",ok2:"✅ 완료",falta:"⚠️ 입력 필요",noReq:"BOM Simulator에서 게시된 요구 계획이 아직 없습니다 (TV 게시 사용).",reqRes:"요구 계획: {n}개 코드 · 완료 {c} · 입력 필요 {f} (우선순위 순으로 먼저 표시). 게시: ",nuevos:"계획의 신규 코드 {n}개가 마스터에 추가되었습니다."});
+CP1_T.es.help+=" Pegado lineal (Set Pad, P1/P2): va después del desbarbe y su capacidad se captura en piezas por día; P1 y P2 son alternativas y suman. Sticker en: elige la ZP donde se pega; si es la misma que imprime pasa dos veces (capacidad ÷2), si es la otra van en línea (manda la más lenta). Con Sticker no hay guillotina. Foil (ej. 41844A) lo hace la misma máquina del EMBO, entre impresión y embo: es una pasada extra en EMBO, así que con Foil la capacidad del EMBO se divide entre 2.";
+CP1_T.en.help+=" Line gluing (Set Pad, P1/P2): comes after deburring and its capacity is entered in pieces per day; P1 and P2 are alternatives and add up. Sticker on: pick the ZP where it is applied; if it is the same one that prints it runs twice (capacity ÷2), if it is the other one they run in line (the slower one rules). With Sticker there is no guillotine. Foil (e.g. 41844A) runs on the same machine as EMBO, between printing and emboss: it is an extra pass on EMBO, so with Foil the EMBO capacity is divided by 2.";
+CP1_T.ko.help+=" 라인 접착(세트 패드, P1/P2): 버 제거 후에 진행되며 능력은 일 수량으로 입력합니다. P1과 P2는 대체 설비로 합산됩니다. 스티커: 부착하는 ZP를 선택합니다. 인쇄하는 설비와 같으면 2회 작업(능력 ÷2), 다른 설비면 직렬로 진행(느린 쪽 기준). 스티커가 있으면 재단기는 없습니다. 포일(예: 41844A)은 EMBO와 같은 설비에서 인쇄와 엠보 사이에 진행됩니다: EMBO에서 추가 1회 작업이므로 포일이 있으면 EMBO 능력을 2로 나눕니다.";
 const c1=(k)=>((CP1_T[LANG]||CP1_T.es)[k]||CP1_T.es[k]);
 const CP1_PN=/^[A-Z]{2}\d{2}-\d{4,}[A-Z]?$/;
-// etapa de la ruta: 0 guillotina, 1 impresión, 2 embo, 3 suaje
-function cp1Etapa(n){ n=String(n||"").toUpperCase(); if(/^G[A-Z]$/.test(n)) return 0; if(/^ZP\d/.test(n)) return 1; if(n==="EMBO") return 2; if(/^T[A-Z]$/.test(n)) return 3; return 9; }
+// etapa de la ruta: 0 guillotina, 1 impresión, 2 embo, 3 suaje, (desbarbe automático), 4 pegado lineal P1/P2 (Set Pad; capacidad en piezas/día), luego empaque
+function cp1Etapa(n){ n=String(n||"").toUpperCase(); if(/^G[A-Z]$/.test(n)) return 0; if(/^ZP\d/.test(n)) return 1; if(n==="EMBO") return 2; if(/^T[A-Z]$/.test(n)) return 3; if(/^P[12]$/.test(n)) return 4; return 9; }
 function cp1CapDe(n){
   const el=document.getElementById("cp1-cap-"+n);
   if(el && el.value!=="") return Math.max(0,parseFloat(el.value)||0);
@@ -1123,6 +1123,8 @@ function cp1StickerDe(c,sel){
 // c = {maquinas:[], formas:n, stickerEn, foil}; capFn(nombre) -> hojas/día de esa máquina
 function cp1Calc(c,capFn){
   let sel=(c.maquinas||[]).filter(n=>CP1_MAQS.includes(n));
+  const peg=sel.filter(n=>cp1Etapa(n)===4);                    // pegado lineal (Set Pad): va después del desbarbe, capacidad en piezas/día
+  sel=sel.filter(n=>cp1Etapa(n)!==4);
   const S=cp1StickerDe(c,sel);
   if(S) sel=sel.filter(n=>cp1Etapa(n)!==0);                   // con sticker se elimina la guillotina
   const grupos={};
@@ -1144,9 +1146,15 @@ function cp1Calc(c,capFn){
     if(!(s>0)){ falta=true; return; }
     hojas=(hojas==null)?s:Math.min(hojas,s);
   });
-  if(falta||!etapas.length) hojas=null;
   const f=Number(c.formas)||0;
-  return {ruta, hojas, pzas:(hojas!=null&&f>0)?Math.round(hojas*f):null, sinMaq:!etapas.length};
+  if(peg.length){
+    const pc=peg.reduce((a,n)=>a+(capFn(n)||0),0);
+    if(!(pc>0)) falta=true;
+    else if(f>0){ const hp=pc/f; hojas=(hojas==null||!etapas.length)?hp:Math.min(hojas,hp); }
+    else if(!etapas.length) falta=true;
+  }
+  if(falta||(!etapas.length&&!peg.length)) hojas=null;
+  return {ruta, pegado:peg.join("/"), hojas, pzas:(hojas!=null&&f>0)?Math.round(hojas*f):null, sinMaq:!etapas.length&&!peg.length};
 }
 const cp1Num=(v)=>v==null?"—":Math.round(v).toLocaleString();
 const cp1IN="background:var(--card2);border:1px solid var(--border);color:var(--text);border-radius:6px;padding:5px 6px;font-size:.8rem;box-sizing:border-box;";
@@ -1259,7 +1267,7 @@ function renderCodigosP1(){
   if(capEl){
     const vals={}; CP1_MAQS.forEach(n=>{ const el=document.getElementById("cp1-cap-"+n); if(el) vals[n]=el.value; });
     capEl.innerHTML=CP1_MAQS.map(n=>{ const m=MAQUINAS.find(x=>x.nombre===n); const v=(n in vals)?vals[n]:(m&&m.hojasDia?m.hojasDia:"");
-      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">${n}${m?` <span class="tbadge ${m.tipo}">${m.tipo}</span>`:""}</div><input type="number" min="0" id="cp1-cap-${n}" value="${v}" placeholder="0" oninput="cp1RenderTabla()" style="${cp1IN}width:100%;text-align:right"></div>`; }).join("");
+      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">${n}${m?` <span class="tbadge ${m.tipo}">${m.tipo}</span>`:""}${cp1Etapa(n)===4?` <span style="font-size:.7rem;font-weight:400;color:var(--muted)">${c1("pzDia")}</span>`:""}</div><input type="number" min="0" id="cp1-cap-${n}" value="${v}" placeholder="0" oninput="cp1RenderTabla()" style="${cp1IN}width:100%;text-align:right"></div>`; }).join("");
   }
   cp1PoblarSelects();
   cp1RenderTabla();
@@ -1270,7 +1278,7 @@ function cp1RenderTabla(){
   const tb=document.getElementById("cp1-table"); if(!tb) return;
   const th=document.getElementById("cp1-thead");
   if(th) th.innerHTML=`<tr><th>${c1("est")}</th><th>${c1("prio")}</th><th>${c1("pide")}</th><th>${c1("fecha")}</th><th>${c1("pn")}</th><th>${c1("mat")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th>${CP1_COLS.map(k=>`<th>${k==="STK"?c1("stk"):k==="FOIL"?c1("foil"):k}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
-  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+15}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
+  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+16}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
   let rs=document.getElementById("cp1-req");
   if(!rs){ const w0=document.getElementById("cp1-warn"); if(w0){ rs=document.createElement("div"); rs.id="cp1-req"; rs.style.cssText="font-size:.85rem;margin:8px 0"; w0.parentNode.insertBefore(rs,w0); } }
   if(rs){ const ks=Object.keys(CP1_REQ);
@@ -1293,7 +1301,7 @@ function cp1RenderTabla(){
       <td>${cp1PapelSel(c)}</td>
       <td><input type="number" min="0" step="any" value="${c.formas||""}" onchange="cp1Campo('${c.id}','formas',this.value)" style="${cp1IN}width:64px;text-align:right"></td>
       ${CP1_COLS.map(k=>k==="STK"?`<td><select onchange="cp1Sticker('${c.id}',this.value)" style="${cp1IN}width:64px">${["","ZP5","ZP6"].map(v=>`<option value="${v}" ${v===(c.stickerEn||"")?"selected":""}>${v||"—"}</option>`).join("")}</select></td>`:k==="FOIL"?`<td><input type="checkbox" ${c.foil?"checked":""} onchange="cp1Foil('${c.id}',this.checked)" style="width:16px;height:16px"></td>`:`<td><input type="checkbox" ${c.maquinas.includes(k)?"checked":""} ${(c.stickerEn&&(k==="GA"||k==="GB"))?"disabled":""} onchange="cp1Chk('${c.id}','${k}',this.checked)" style="width:16px;height:16px"></td>`).join("")}
-      <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${r.ruta?r.ruta+" → "+c1("fin"):"—"}</td>
+      <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${(r.ruta||r.pegado)?(r.ruta?r.ruta+" → ":"")+c1("desb")+(r.pegado?" → "+r.pegado+" ("+c1("pegTxt")+")":"")+" → "+c1("emp"):"—"}</td>
       <td style="text-align:right">${cp1Num(r.hojas)}</td>
       <td style="text-align:right;font-weight:700;color:var(--green)">${cp1Num(r.pzas)}</td>
       <td><button class="abtn abtn-del" onclick="cp1Del('${c.id}')">✕</button></td></tr>`; }).join("");
@@ -1352,7 +1360,7 @@ window.cp1GuardarCap=async()=>{
 };
 window.cp1Plantilla=()=>{
   const H=["N° de Parte","Modelos","Tipo","Papel","Formas/hoja",...CP1_COLS.map(k=>k==="STK"?"Sticker":k==="FOIL"?"Foil":k)];
-  const filas=CODIGOS_P1.length?CODIGOS_P1.map(c=>[c.pn,c.modelos,c.tipo,c.papel,c.formas||"",...CP1_COLS.map(k=>k==="STK"?(c.stickerEn||""):k==="FOIL"?(c.foil?"X":""):(c.maquinas.includes(k)?"X":""))]):[["(ejemplo) GH69-46625A","SM-S741UZKAXAA","TOP","",6,"","","X","","ZP6","","X","X","",""]];
+  const filas=CODIGOS_P1.length?CODIGOS_P1.map(c=>[c.pn,c.modelos,c.tipo,c.papel,c.formas||"",...CP1_COLS.map(k=>k==="STK"?(c.stickerEn||""):k==="FOIL"?(c.foil?"X":""):(c.maquinas.includes(k)?"X":""))]):[["(ejemplo) GH69-46625A","SM-S741UZKAXAA","TOP","",6,"","","X","","ZP6","","X","X","","","",""]];
   const ws=XLSX.utils.aoa_to_sheet([H,...filas]);
   ws["!cols"]=[{wch:16},{wch:34},{wch:10},{wch:14},{wch:12},...CP1_COLS.map(()=>({wch:7}))];
   const wb=XLSX.utils.book_new();
