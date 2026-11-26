@@ -964,6 +964,7 @@ function arrancar(){
     if(pc && pc>visto) window._planVisto=pc;
     plan=nuevo; escucharPallets(); pintar(); },
     function(e){ arrancado=false; console.warn('plan_piso_p1:',e); });
+  db.collection('bom_simulator_p4').doc('linea_medio_p1').onSnapshot(function(d){ lineaConf=(d.exists && d.data().maq) ? d.data().maq : {}; pintar(); }, function(e){ console.warn('linea_medio_p1:',e); });
   escucharPallets(); ponerAuto(); pintar();
 }
 firebase.auth().onAuthStateChanged(function(u){
