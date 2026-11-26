@@ -246,6 +246,7 @@ const T = {
     printB:'출력',closeB:'닫기',closed:'팔레트 마감됨',err:'오류',qtyBad:'올바른 수량을 입력하세요',pickAll:'모델과 품번을 선택하세요',
     confirmVoid:'이 팔레트를 취소하시겠습니까? IMS에서 아직 입고되지 않은 경우에만 가능합니다.',voided:'팔레트 취소됨',noParts:'BOM에 이 설비의 품목이 없습니다'}
 };
+Object.assign(T.es,{uHojas:'hojas'}); Object.assign(T.en,{uHojas:'sheets'}); Object.assign(T.ko,{uHojas:'시트'});
 Object.assign(T.es,{pxT:'Por etiquetar',pxSub:'Piezas registradas en el MES que todavía no tienen etiqueta (últimos 3 días)',pxVacio:'✅ Todo está etiquetado',pxBtn:'🖨️ Imprimir etiqueta',pxAnt:'⚠ día anterior',pxManual:'Otra cantidad o captura manual',pxCola:'Qué corre en la línea y cola del plan',pxPzs:'pzs',pxSinModelo:'Sin modelo: usa "Otra cantidad o captura manual"',pxTotal:(n,m)=>`Faltan ${n} pzs en ${m} parte(s)`,pxCant:'Cantidad de esta etiqueta'});
 Object.assign(T.en,{pxT:'To label',pxSub:'Pieces logged in MES that do not have a label yet (last 3 days)',pxVacio:'✅ Everything is labeled',pxBtn:'🖨️ Print label',pxAnt:'⚠ previous day',pxManual:'Other quantity or manual entry',pxCola:'What runs on the line and plan queue',pxPzs:'pcs',pxSinModelo:'No model: use "Other quantity or manual entry"',pxTotal:(n,m)=>`${n} pcs missing in ${m} part(s)`,pxCant:'Quantity for this label'});
 Object.assign(T.ko,{pxT:'라벨 필요',pxSub:'MES에 등록되었지만 아직 라벨이 없는 수량 (최근 3일)',pxVacio:'✅ 모두 라벨 완료',pxBtn:'🖨️ 라벨 출력',pxAnt:'⚠ 전일',pxManual:'다른 수량 또는 수동 입력',pxCola:'라인 가동 항목 및 계획 순서',pxPzs:'pcs',pxSinModelo:'모델 없음: "다른 수량 또는 수동 입력"을 사용하세요',pxTotal:(n,m)=>`${m}개 품번에서 ${n} pcs 부족`,pxCant:'이 라벨의 수량'});
@@ -299,7 +300,30 @@ function filasDeMaquina(m){
     return (pl.includes('S1/S2') && top) || (pl.includes('S3/S4') && bot);
   });
 }
-function colaDe(m){ return (PLANTA==='P4' && PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m] : []; }
+function _regsP1(m,pn,soloHoy){
+  const src = soloHoy ? REGS_HOY : PREV.regs.concat(REGS_HOY); let q=0;
+  src.forEach(r=>{ if((r.maqNombre||r.maquina)!==m) return; if(String(r.parte||'').trim().toUpperCase()!==pn) return; q+=Number(r.prod!=null?r.prod:r.qty)||0; });
+  return q;
+}
+function _rawP1(m,pn){ const l=(PLAN&&PLAN.colas&&PLAN.colas[m])||[]; return l.find(x=>x.pn===pn)||null; }
+// Los registros de P1 vienen en piezas: en las etapas de hojas se divide entre las formas por hoja
+function _prodP1(m,pn,soloHoy){ const e=_rawP1(m,pn); let q=_regsP1(m,String(pn).toUpperCase(),soloHoy); if(e && e.un==='hojas' && e.formas>0) q=q/e.formas; return Math.round(q); }
+function adaptarP1(m,e){
+  const pap=e.papel||{}; const hecho=_prodP1(m,e.pn,false); const req=Math.max(0,e.target-hecho);
+  let ok;
+  if (e.primera) ok = !!pap.asignado && pap.e!=='no';
+  else {
+    let prev=0; (e.viene||[]).forEach(v=>{ prev+=_prodP1(v,e.pn,false); });
+    if (e.un==='pzas' && e.formas>0) prev=prev*e.formas;
+    ok = req>0 && Math.max(0,Math.round(prev-hecho))>0;
+  }
+  return { pn:e.pn, desc:e.desc, sm:(e.modelos&&e.modelos[0])||'', modelos:e.modelos||[], prioridad:e.prioridad, fecha:e.fecha, orden:e.orden,
+    pendiente:Math.max(0,e.target-_prodP1(m,e.pn,true)), listo:ok, materiales:[], dias:e.dias, un:e.un };
+}
+function colaDe(m){
+  if (PLANTA==='P1') return (PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m].map(e=>adaptarP1(m,e)) : [];
+  return (PLANTA==='P4' && PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m] : [];
+}
 
 function modelosDe(m){
   const set = new Set(filasDeMaquina(m).map(r=>r.sm.trim()));
@@ -424,7 +448,7 @@ function renderPicker(){
   const cola=colaDe(maq);
   $('pk-list').innerHTML = cola.length ? cola.map((c,i)=>{
     const mods=(c.modelos||[c.sm]);
-    return `<div class="opt ${c.listo?'':'wait'} ${pickSel===c.pn?'sel':''}" onclick="elegirItem('${esc(c.pn)}')"><div class="n">${c.listo?(c.orden||i+1):'⏳'}</div><div><div class="m">${esc(mods.slice(0,2).join(', '))}${mods.length>2?' +'+(mods.length-2):''}${(recomendadoDe(maq)&&recomendadoDe(maq).pn===c.pn)?` <span class="tag ok">${t('pkSug')}</span>`:''}</div><div class="d">${esc(c.pn)} · ${t('pendQ')} ${fmt(c.pendiente)}${c.listo?'':' · '+t('pkMiss')}</div></div></div>`;
+    return `<div class="opt ${c.listo?'':'wait'} ${pickSel===c.pn?'sel':''}" onclick="elegirItem('${esc(c.pn)}')"><div class="n">${c.listo?(c.orden||i+1):'⏳'}</div><div><div class="m">${esc(mods.slice(0,2).join(', '))}${mods.length>2?' +'+(mods.length-2):''}${(recomendadoDe(maq)&&recomendadoDe(maq).pn===c.pn)?` <span class="tag ok">${t('pkSug')}</span>`:''}</div><div class="d">${esc(c.pn)} · ${t('pendQ')} ${fmt(c.pendiente)}${c.un==='hojas'?' '+t('uHojas'):(c.un==='pzas'?' '+t('pxPzs'):'')}${c.listo?'':' · '+t('pkMiss')}</div></div></div>`;
   }).join('') : `<div class="note">${PLAN?t('noQueue'):t('noPlan')}</div>`;
   const it=cola.find(c=>c.pn===pickSel);
   $('pk-ok').textContent = it ? t('pkConfirm')((it.modelos||[it.sm])[0]) : t('pkChoose');
@@ -455,7 +479,7 @@ function pintarCola(){
     const isRun = esRun(c);
     const cls = isRun?'run':(i===nextIdx?'next':'');
     const tag = isRun ? `<span class="tag run">${t('run')}</span>` : (c.listo ? `<span class="tag ok">${t('listo')}</span>` : `<span class="tag no">${t('nomat')}</span>`);
-    return `<div class="q ${cls}"><div class="n">${c.orden||i+1}</div><div class="t">${i===nextIdx?`<span style="color:var(--green);font-weight:800;font-size:.7rem">${t('next')}</span>`:''}<b>${esc((c.modelos||[c.sm]).slice(0,2).join(', '))}${(c.modelos||[]).length>2?' +'+((c.modelos.length)-2):''} · ${esc(c.pn)}</b><span>${t('pendQ')} ${fmt(c.pendiente)}${c.dias?` · ~${c.dias} ${t('dias')}`:''}</span></div>${tag}</div>`;
+    return `<div class="q ${cls}"><div class="n">${c.orden||i+1}</div><div class="t">${i===nextIdx?`<span style="color:var(--green);font-weight:800;font-size:.7rem">${t('next')}</span>`:''}<b>${esc((c.modelos||[c.sm]).slice(0,2).join(', '))}${(c.modelos||[]).length>2?' +'+((c.modelos.length)-2):''} · ${esc(c.pn)}</b><span>${t('pendQ')} ${fmt(c.pendiente)}${c.un==='hojas'?' '+t('uHojas'):(c.un==='pzas'?' '+t('pxPzs'):'')}${c.dias?` · ~${c.dias} ${t('dias')}`:''}</span></div>${tag}</div>`;
   }).join('') : `<div class="note">${PLAN?t('noQueue'):t('noPlan')}</div>`;
   const pubMs = PLAN ? (PLAN.publicadoMs || Date.parse(PLAN.publicadoEn)) : 0;
   if (PLAN && pubMs) {
@@ -511,12 +535,12 @@ async function cargarPrev(){
     ]);
     PREV = {regs:a.docs.map(d=>d.data()), pals:b.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(p.planta||'P4')===PLANTA)};
   } catch(e){ console.warn('prev:',e.message); }
-  pintarPorEtiquetar();
+  pintarPorEtiquetar(); if(PLANTA==='P1') pintarCola();
 }
 function escucharHoy(){
   if (unsubRegsHoy) unsubRegsHoy(); if (unsubPalHoy) unsubPalHoy();
   const hoy=hoyISO();
-  unsubRegsHoy = onSnapshot(query(collection(db,CFG.regs), where('fecha','==',hoy)), sn=>{ REGS_HOY=sn.docs.map(d=>d.data()); pintarPorEtiquetar(); }, e=>console.warn('regs hoy:',e.message));
+  unsubRegsHoy = onSnapshot(query(collection(db,CFG.regs), where('fecha','==',hoy)), sn=>{ REGS_HOY=sn.docs.map(d=>d.data()); pintarPorEtiquetar(); if(PLANTA==='P1') pintarCola(); }, e=>console.warn('regs hoy:',e.message));
   unsubPalHoy  = onSnapshot(query(collection(db,'pallets_medio'), where('fecha','==',hoy)), sn=>{ PAL_HOY=sn.docs.map(d=>({id:d.id,...d.data()})).filter(p=>(p.planta||'P4')===PLANTA); pintarPorEtiquetar(); }, e=>console.warn('pallets hoy:',e.message));
 }
 function porEtiquetar(m){
@@ -643,6 +667,7 @@ async function iniciar(fireUser){
   } catch(e){ BOM = []; }
   onSnapshot(doc(db,'bom_simulator_p4','linea_medio'+CFG.suf), q=>{ LINEA = (q.exists() && q.data().maq) ? q.data().maq : {}; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
   if (PLANTA==='P4') onSnapshot(doc(db,'bom_simulator_p4','plan_piso_medio'), s=>{ PLAN = s.exists()?s.data():null; pintarCola(); llenarModelos($('selModelo').value||null); }, ()=>{});
+  if (PLANTA==='P1') onSnapshot(doc(db,'bom_simulator_p4','plan_piso_p1'), s=>{ PLAN = s.exists()?s.data():null; pintarCola(); pintarPorEtiquetar(); llenarModelos($('selModelo').value||null); }, ()=>{});
   $('fecha').value = hoyISO();
   await cargarRegs();
   escucharPallets();
