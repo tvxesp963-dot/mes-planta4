@@ -250,6 +250,12 @@ Object.assign(T.es,{uHojas:'hojas'}); Object.assign(T.en,{uHojas:'sheets'}); Obj
 Object.assign(T.es,{pxT:'Por etiquetar',pxSub:'Piezas registradas en el MES que todavía no tienen etiqueta (últimos 3 días)',pxVacio:'✅ Todo está etiquetado',pxBtn:'🖨️ Imprimir etiqueta',pxAnt:'⚠ día anterior',pxManual:'Otra cantidad o captura manual',pxCola:'Qué corre en la línea y cola del plan',pxPzs:'pzs',pxSinModelo:'Sin modelo: usa "Otra cantidad o captura manual"',pxTotal:(n,m)=>`Faltan ${n} pzs en ${m} parte(s)`,pxCant:'Cantidad de esta etiqueta'});
 Object.assign(T.en,{pxT:'To label',pxSub:'Pieces logged in MES that do not have a label yet (last 3 days)',pxVacio:'✅ Everything is labeled',pxBtn:'🖨️ Print label',pxAnt:'⚠ previous day',pxManual:'Other quantity or manual entry',pxCola:'What runs on the line and plan queue',pxPzs:'pcs',pxSinModelo:'No model: use "Other quantity or manual entry"',pxTotal:(n,m)=>`${n} pcs missing in ${m} part(s)`,pxCant:'Quantity for this label'});
 Object.assign(T.ko,{pxT:'라벨 필요',pxSub:'MES에 등록되었지만 아직 라벨이 없는 수량 (최근 3일)',pxVacio:'✅ 모두 라벨 완료',pxBtn:'🖨️ 라벨 출력',pxAnt:'⚠ 전일',pxManual:'다른 수량 또는 수동 입력',pxCola:'라인 가동 항목 및 계획 순서',pxPzs:'pcs',pxSinModelo:'모델 없음: "다른 수량 또는 수동 입력"을 사용하세요',pxTotal:(n,m)=>`${m}개 품번에서 ${n} pcs 부족`,pxCant:'이 라벨의 수량'});
+Object.assign(T.es,{restore:'Restaurar',confirmRestore:'¿Restaurar este pallet? Volverá a Pendiente y podrá recibirse en IMS con la misma etiqueta.',restoreDup:(a,b,c)=>`⚠ Ojo: ya hay ${a} pzs en pallets vigentes de esta parte y el MES registró ${b} pzs. Al restaurar quedarían ${c} pzs en pallets (posible duplicado).\n\n¿Restaurar de todas formas?`,restored:'Pallet restaurado',onlyMgrRestore:'Solo el gerente o supervisor puede restaurar un pallet',voidBy:'Anulado por'});
+Object.assign(T.en,{restore:'Restore',confirmRestore:'Restore this pallet? It goes back to Pending and can be received in IMS with the same label.',restoreDup:(a,b,c)=>`⚠ Warning: there are already ${a} pcs in active pallets for this part and MES logged ${b} pcs. Restoring would leave ${c} pcs in pallets (possible duplicate).\n\nRestore anyway?`,restored:'Pallet restored',onlyMgrRestore:'Only the manager or supervisor can restore a pallet',voidBy:'Voided by'});
+Object.assign(T.ko,{restore:'복원',confirmRestore:'이 팔레트를 복원하시겠습니까? 대기 상태로 돌아가며 동일한 라벨로 IMS에서 입고할 수 있습니다.',restoreDup:(a,b,c)=>`⚠ 주의: 이 품번의 유효 팔레트에 이미 ${a} pcs가 있고 MES 기록은 ${b} pcs입니다. 복원하면 팔레트가 ${c} pcs가 됩니다 (중복 가능).\n\n그래도 복원하시겠습니까?`,restored:'팔레트 복원됨',onlyMgrRestore:'관리자 또는 감독자만 팔레트를 복원할 수 있습니다',voidBy:'취소자'});
+Object.assign(T.es,{voidReason:'Motivo de la anulación (obligatorio):',voidReasonReq:'Escribe el motivo para anular el pallet',reasonLbl:'Motivo'});
+Object.assign(T.en,{voidReason:'Reason for voiding (required):',voidReasonReq:'Enter the reason to void the pallet',reasonLbl:'Reason'});
+Object.assign(T.ko,{voidReason:'취소 사유 (필수):',voidReasonReq:'팔레트를 취소하려면 사유를 입력하세요',reasonLbl:'사유'});
 let LANG = (()=>{const l=localStorage.getItem('mes-lang');return T[l]?l:'es';})();
 const t = k => T[LANG][k];
 const fmt = n => (Number(n)||0).toLocaleString('en-US');
@@ -499,8 +505,8 @@ function pintarLista(){
   $('v-pe').textContent = fmt(vivos.filter(p=>p.status==='PENDING').length);
   const filas = [...ambito].sort((a,b)=>(b.horaMs||0)-(a.horaMs||0));
   $('tbody').innerHTML = filas.map(p=>{
-    const est = p.status==='RECEIVED' ? `<span class="tag rec">${t('rec')}${p.recibidoEn?' '+esc(p.recibidoEn):''}</span>` : p.status==='VOID' ? `<span class="tag void">${t('void')}</span>` : `<span class="tag pend">${t('pend')}</span>`;
-    const acc = p.status==='VOID' ? '' : `<button class="btn sec" onclick="reimprimir('${esc(p.id)}')">${t('reprint')}</button>` + (p.status==='PENDING' ? ` <button class="btn sec warn" onclick="anular('${esc(p.id)}')">${t('anular')}</button>` : '');
+    const est = p.status==='RECEIVED' ? `<span class="tag rec">${t('rec')}${p.recibidoEn?' '+esc(p.recibidoEn):''}</span>` : p.status==='VOID' ? `<span class="tag void" title="${esc(t('voidBy'))}: ${esc(p.anuladoPor||'—')}">${t('void')}</span><div class="note" style="margin:3px 0 0">${esc(p.anuladoPor||'—')}${(p.anuladoEn&&p.anuladoEn.toDate)?' · '+p.anuladoEn.toDate().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${p.motivoAnulacion?`<br>${esc(t('reasonLbl'))}: ${esc(p.motivoAnulacion)}`:''}</div>` : `<span class="tag pend">${t('pend')}</span>`;
+    const acc = p.status==='VOID' ? (esGerente() ? `<button class="btn sec" onclick="restaurar('${esc(p.id)}')">${t('restore')}</button>` : '') : `<button class="btn sec" onclick="reimprimir('${esc(p.id)}')">${t('reprint')}</button>` + (p.status==='PENDING' ? ` <button class="btn sec warn" onclick="anular('${esc(p.id)}')">${t('anular')}</button>` : '');
     return `<tr style="${p.maquina===maq?'':'opacity:.85'}"><td><b>${esc(p.id)}</b></td><td>${esc(p.maquina)}</td><td>${esc(p.modelo)}</td><td class="pn">${esc(p.parte)}</td><td>${esc(p.desc)}</td><td class="r"><b>${fmt(p.qty)}</b></td><td>${esc(p.horaTxt||'')}</td><td>${est}</td><td>${acc}</td></tr>`;
   }).join('') || `<tr><td colspan="9" class="note" style="padding:14px">—</td></tr>`;
 }
@@ -624,8 +630,22 @@ async function crearPallet(d){
 
 window.anular = async id => {
   const p = PALLETS.find(x=>x.id===id); if(!p || p.status!=='PENDING') return;
-  if (!confirm(t('confirmVoid'))) return;
-  try { await updateDoc(doc(db,'pallets_medio',id), {status:'VOID', anuladoPor:(USER&&USER.nombre)||'', anuladoEn:serverTimestamp()}); toast(t('voided')); }
+  const motivo = prompt(t('confirmVoid')+'\n\n'+t('voidReason'), '');
+  if (motivo === null) return;
+  if (motivo.trim().length < 3) { toast(t('voidReasonReq')); return; }
+  try { await updateDoc(doc(db,'pallets_medio',id), {status:'VOID', anuladoPor:(USER&&USER.nombre)||'', anuladoEn:serverTimestamp(), motivoAnulacion:motivo.trim()}); toast(t('voided')); }
+  catch(e){ toast(t('err')+': '+e.message); }
+};
+window.restaurar = async id => {
+  const p = PALLETS.find(x=>x.id===id); if(!p || p.status!=='VOID') return;
+  if (!esGerente()) { toast(t('onlyMgrRestore')); return; }
+  const norm = x=>String(x||'').trim().toUpperCase();
+  const cap = REGS.filter(r=>(r.maqNombre||r.maquina)===p.maquina && norm(r.parte)===norm(p.parte)).reduce((a,r)=>a+(Number(r.prod!=null?r.prod:r.qty)||0),0);
+  const pal = PALLETS.filter(x=>x.maquina===p.maquina && norm(x.parte)===norm(p.parte) && x.status!=='VOID').reduce((a,x)=>a+(Number(x.qty)||0),0);
+  const total = pal + (Number(p.qty)||0);
+  const msg = (cap>0 && total>cap) ? T[LANG].restoreDup(fmt(pal),fmt(cap),fmt(total)) : t('confirmRestore');
+  if (!confirm(msg)) return;
+  try { await updateDoc(doc(db,'pallets_medio',id), {status:'PENDING', restauradoPor:(USER&&USER.nombre)||'', restauradoEn:serverTimestamp()}); toast(t('restored')); }
   catch(e){ toast(t('err')+': '+e.message); }
 };
 window.reimprimir = id => { const p = PALLETS.find(x=>x.id===id); if (p) mostrarHoja(p); };
