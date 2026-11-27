@@ -421,6 +421,7 @@ async function loadTargetsFromDB(){
       const idx=MAQUINAS.findIndex(m=>m.nombre===data.nombre);
       if(idx<0)return;
       MAQUINAS[idx].hojasDia=Number(data.hojasDia)||0;
+      MAQUINAS[idx].cambioMin=Number(data.cambioModeloMin)||0;
       MAQUINAS[idx]._dbId=d.id;
       const t=Number(data.target||data.A||0);
       if(!t)return;
@@ -1098,6 +1099,9 @@ const CP1_T={
       help:"수량/일 = 시트당 수량 × 경로에서 가장 느린 공정의 시트/일. ZP5와 ZP6은 대체 설비이므로 함께 선택하면 시트 수가 합산됩니다. 스티커는 ZP5/ZP6에서 두 번째 공정으로 진행되어 ZP 생산능력이 절반이 됩니다. 버 제거와 포장은 모든 경로의 마지막입니다. «—»는 경로의 설비 중 생산능력이 입력되지 않았다는 뜻입니다.",instr:"설명",
       instrTxt:"부품번호당 한 줄. 가동 설비와 스티커 필요 여부에 X 표시 (스티커는 ZP5/ZP6에서 진행). 유형: TOP, BOTTOM, BUNDLE, SET PAD 또는 OTRO. 시트당 수량: 한 장에서 나오는 개수."}
 };
+Object.assign(CP1_T.es,{cam:"Min. cambio",camT:"Minutos que se pierden cada vez que la máquina cambia de código. El plan los descuenta de la capacidad del día.",proc:"Hojas en proceso",procT:"Hojas ya cortadas o impresas de este código (primera etapa). El plan las descuenta de lo que hay que producir."});
+Object.assign(CP1_T.en,{cam:"Changeover min",camT:"Minutes lost each time the machine changes code. The plan subtracts them from the day capacity.",proc:"Sheets in process",procT:"Sheets of this code already cut or printed (first stage). The plan subtracts them from what must be produced."});
+Object.assign(CP1_T.ko,{cam:"교체 시간(분)",camT:"설비가 코드를 바꿀 때마다 손실되는 시간(분). 계획은 일일 생산능력에서 차감합니다.",proc:"진행 중 시트",procT:"이 코드의 이미 재단 또는 인쇄된 시트(첫 공정). 계획은 생산해야 할 수량에서 차감합니다."});
 Object.assign(CP1_T.es,{pzDia:"pzas/día",foil:"Foil",mat:"Material (BOM)",selPapel:"— Papel (IMS P1) —",est:"Estado",prio:"Prior.",pide:"Pide P1",fecha:"Entrega",ok2:"✅ Completo",falta:"⚠️ Falta capturar",noReq:"Aún no hay plan requerido publicado desde BOM Simulator (usa Publicar TV allá).",reqRes:"Plan requerido: {n} códigos · {c} completos · {f} por capturar (se muestran primero, en orden de prioridad). Publicado: ",nuevos:"Se agregaron al master {n} códigos nuevos del plan."});
 Object.assign(CP1_T.en,{pzDia:"pcs/day",foil:"Foil",mat:"Material (BOM)",selPapel:"— Paper (IMS P1) —",est:"Status",prio:"Prio.",pide:"P1 needs",fecha:"Due",ok2:"✅ Complete",falta:"⚠️ Missing data",noReq:"No required plan published from BOM Simulator yet (use Publish TV there).",reqRes:"Required plan: {n} codes · {c} complete · {f} to fill (shown first, by priority). Published: ",nuevos:"{n} new codes from the plan were added to the master."});
 Object.assign(CP1_T.ko,{pzDia:"수량/일",foil:"포일",mat:"자재 (BOM)",selPapel:"— 용지 (IMS P1) —",est:"상태",prio:"우선",pide:"P1 필요",fecha:"납기",ok2:"✅ 완료",falta:"⚠️ 입력 필요",noReq:"BOM Simulator에서 게시된 요구 계획이 아직 없습니다 (TV 게시 사용).",reqRes:"요구 계획: {n}개 코드 · 완료 {c} · 입력 필요 {f} (우선순위 순으로 먼저 표시). 게시: ",nuevos:"계획의 신규 코드 {n}개가 마스터에 추가되었습니다."});
@@ -1235,7 +1239,7 @@ async function cp1CargarReq(){
         if(CODIGOS_P1.find(c=>c.id===pn)) continue;
         const it=CP1_REQ[pn], c={id:pn,pn,modelos:[...new Set((it.modelos||[]).map(m=>m.sm))].join(", "),tipo:cp1TipoDe(it.desc)||"OTRO",papel:"",formas:0,sticker:false,maquinas:[]};
         CODIGOS_P1.push(c); nuevos++;
-        try{ await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:"",formas:0,sticker:false,stickerEn:"",foil:false,maquinas:[],actualizadoPor:"auto-plan",tsLocal:new Date().toISOString()}); }catch(e){ console.error("auto p1_codigos:",e); }
+        try{ await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:"",formas:0,hojasProceso:0,sticker:false,stickerEn:"",foil:false,maquinas:[],actualizadoPor:"auto-plan",tsLocal:new Date().toISOString()}); }catch(e){ console.error("auto p1_codigos:",e); }
       }
     }
   }catch(e){ console.error("plan_p1_requerido:",e); }
@@ -1250,7 +1254,7 @@ async function loadCodigosP1(){
   const msg=document.getElementById("cp1-msg");
   try{
     const snap=await getDocs(CP1_COL());
-    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:String(x.tipo||"").trim()||"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,stickerEn:cp1StickerCarga(x),sticker:!!cp1StickerCarga(x),foil:!!x.foil,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
+    CODIGOS_P1=snap.docs.map(d=>{ const x=d.data(); return {id:d.id,pn:String(x.pn||d.id).toUpperCase(),modelos:String(x.modelos||""),tipo:String(x.tipo||"").trim()||"OTRO",papel:String(x.papel||""),formas:Number(x.formas)||0,hojasProceso:Number(x.hojasProceso)||0,stickerEn:cp1StickerCarga(x),sticker:!!cp1StickerCarga(x),foil:!!x.foil,maquinas:Array.isArray(x.maquinas)?x.maquinas:[]}; }).sort(cp1Orden);
     if(msg) msg.textContent="";
     await cp1CargarPapeles();
     await cp1CargarReq();
@@ -1265,9 +1269,9 @@ function renderCodigosP1(){
   Object.entries(ph).forEach(([id,v])=>{ const el=document.getElementById(id); if(el) el.placeholder=v; });
   const capEl=document.getElementById("cp1-cap");
   if(capEl){
-    const vals={}; CP1_MAQS.forEach(n=>{ const el=document.getElementById("cp1-cap-"+n); if(el) vals[n]=el.value; });
+    const vals={}, vcam={}; CP1_MAQS.forEach(n=>{ const el=document.getElementById("cp1-cap-"+n); if(el) vals[n]=el.value; const ec=document.getElementById("cp1-cam-"+n); if(ec) vcam[n]=ec.value; });
     capEl.innerHTML=CP1_MAQS.map(n=>{ const m=MAQUINAS.find(x=>x.nombre===n); const v=(n in vals)?vals[n]:(m&&m.hojasDia?m.hojasDia:"");
-      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">${n}${m?` <span class="tbadge ${m.tipo}">${m.tipo}</span>`:""}${cp1Etapa(n)===4?` <span style="font-size:.7rem;font-weight:400;color:var(--muted)">${c1("pzDia")}</span>`:""}</div><input type="number" min="0" id="cp1-cap-${n}" value="${v}" placeholder="0" oninput="cp1RenderTabla()" style="${cp1IN}width:100%;text-align:right"></div>`; }).join("");
+      return `<div style="background:var(--card2);border:1px solid var(--border);border-radius:8px;padding:8px"><div style="font-size:.8rem;font-weight:700;margin-bottom:4px">${n}${m?` <span class="tbadge ${m.tipo}">${m.tipo}</span>`:""}${cp1Etapa(n)===4?` <span style="font-size:.7rem;font-weight:400;color:var(--muted)">${c1("pzDia")}</span>`:""}</div><input type="number" min="0" id="cp1-cap-${n}" value="${v}" placeholder="0" oninput="cp1RenderTabla()" style="${cp1IN}width:100%;text-align:right"><div style="font-size:.7rem;color:var(--muted);margin:6px 0 2px" title="${cp1Esc(c1("camT"))}">${c1("cam")}</div><input type="number" min="0" id="cp1-cam-${n}" value="${(n in vcam)?vcam[n]:(m&&m.cambioMin?m.cambioMin:"")}" placeholder="0" title="${cp1Esc(c1("camT"))}" style="${cp1IN}width:100%;text-align:right"></div>`; }).join("");
   }
   cp1PoblarSelects();
   cp1RenderTabla();
@@ -1277,8 +1281,8 @@ window.cp1PoblarSelects=cp1PoblarSelects;
 function cp1RenderTabla(){
   const tb=document.getElementById("cp1-table"); if(!tb) return;
   const th=document.getElementById("cp1-thead");
-  if(th) th.innerHTML=`<tr><th>${c1("est")}</th><th>${c1("prio")}</th><th>${c1("pide")}</th><th>${c1("fecha")}</th><th>${c1("pn")}</th><th>${c1("mat")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th>${CP1_COLS.map(k=>`<th>${k==="STK"?c1("stk"):k==="FOIL"?c1("foil"):k}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
-  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+16}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
+  if(th) th.innerHTML=`<tr><th>${c1("est")}</th><th>${c1("prio")}</th><th>${c1("pide")}</th><th>${c1("fecha")}</th><th>${c1("pn")}</th><th>${c1("mat")}</th><th>${c1("mod")}</th><th>${c1("tipo")}</th><th>${c1("papel")}</th><th>${c1("formas")}</th><th title="${cp1Esc(c1("procT"))}">${c1("proc")}</th>${CP1_COLS.map(k=>`<th>${k==="STK"?c1("stk"):k==="FOIL"?c1("foil"):k}</th>`).join("")}<th>${c1("ruta")}</th><th>${c1("hojas")}</th><th>${c1("pzas")}</th><th></th></tr>`;
+  if(!CODIGOS_P1.length){ tb.innerHTML=`<tr><td colspan="${CP1_MAQS.length+17}" style="color:var(--muted);padding:12px">${c1("empty")}</td></tr>`; document.getElementById("cp1-warn").style.display="none"; return; }
   let rs=document.getElementById("cp1-req");
   if(!rs){ const w0=document.getElementById("cp1-warn"); if(w0){ rs=document.createElement("div"); rs.id="cp1-req"; rs.style.cssText="font-size:.85rem;margin:8px 0"; w0.parentNode.insertBefore(rs,w0); } }
   if(rs){ const ks=Object.keys(CP1_REQ);
@@ -1300,6 +1304,7 @@ function cp1RenderTabla(){
       <td><select onchange="cp1Campo('${c.id}','tipo',this.value)" style="${cp1IN}">${(CP1_TIPOS.includes(c.tipo)?CP1_TIPOS:[c.tipo,...CP1_TIPOS]).map(t=>`<option value="${cp1Esc(t)}" ${t===c.tipo?"selected":""}>${cp1Esc(t)}</option>`).join("")}</select></td>
       <td>${cp1PapelSel(c)}</td>
       <td><input type="number" min="0" step="any" value="${c.formas||""}" onchange="cp1Campo('${c.id}','formas',this.value)" style="${cp1IN}width:64px;text-align:right"></td>
+      <td><input type="number" min="0" step="any" value="${c.hojasProceso||""}" placeholder="0" title="${cp1Esc(c1("procT"))}" onchange="cp1Campo('${c.id}','hojasProceso',this.value)" style="${cp1IN}width:74px;text-align:right"></td>
       ${CP1_COLS.map(k=>k==="STK"?`<td><select onchange="cp1Sticker('${c.id}',this.value)" style="${cp1IN}width:64px">${["","ZP5","ZP6"].map(v=>`<option value="${v}" ${v===(c.stickerEn||"")?"selected":""}>${v||"—"}</option>`).join("")}</select></td>`:k==="FOIL"?`<td><input type="checkbox" ${c.foil?"checked":""} onchange="cp1Foil('${c.id}',this.checked)" style="width:16px;height:16px"></td>`:`<td><input type="checkbox" ${c.maquinas.includes(k)?"checked":""} ${(c.stickerEn&&(k==="GA"||k==="GB"))?"disabled":""} onchange="cp1Chk('${c.id}','${k}',this.checked)" style="width:16px;height:16px"></td>`).join("")}
       <td style="font-size:.75rem;color:var(--muted);white-space:nowrap">${(r.ruta||r.pegado)?(r.ruta?r.ruta+" → ":"")+c1("desb")+(r.pegado?" → "+r.pegado+" ("+c1("pegTxt")+")":"")+" → "+c1("emp"):"—"}</td>
       <td style="text-align:right">${cp1Num(r.hojas)}</td>
@@ -1311,12 +1316,12 @@ function cp1RenderTabla(){
 window.cp1RenderTabla=cp1RenderTabla;
 async function cp1Persist(c){
   try{
-    await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos||"",tipo:c.tipo||"OTRO",papel:c.papel||"",formas:Number(c.formas)||0,sticker:!!c.stickerEn,stickerEn:c.stickerEn||"",foil:!!c.foil,maquinas:c.maquinas||[],actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()});
+    await setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos||"",tipo:c.tipo||"OTRO",papel:c.papel||"",formas:Number(c.formas)||0,hojasProceso:Number(c.hojasProceso)||0,sticker:!!c.stickerEn,stickerEn:c.stickerEn||"",foil:!!c.foil,maquinas:c.maquinas||[],actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()});
     showToast(c1("ok"),"var(--green)");
   }catch(e){ showToast(c1("err")+e.message,"var(--red)"); }
 }
 window.cp1Campo=async(id,campo,val)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return;
-  c[campo]=(campo==="formas")?(parseFloat(val)||0):String(val||"").trim();
+  c[campo]=(campo==="formas"||campo==="hojasProceso")?(parseFloat(val)||0):String(val||"").trim();
   if(campo==="tipo") CODIGOS_P1.sort(cp1Orden);
   await cp1Persist(c); cp1RenderTabla(); };
 window.cp1Chk=async(id,maq,on)=>{ const c=CODIGOS_P1.find(x=>x.id===id); if(!c) return;
@@ -1349,11 +1354,14 @@ window.cp1GuardarCap=async()=>{
   try{
     for(const n of CP1_MAQS){
       const m=MAQUINAS.find(x=>x.nombre===n); if(!m) continue;
-      const el=document.getElementById("cp1-cap-"+n); if(!el||el.value==="") continue;
-      const v=Math.max(0,parseFloat(el.value)||0);
-      if(m._dbId){ await updateDoc(doc(db,"targets_p1",m._dbId),{hojasDia:v,updatedAt:serverTimestamp()}); }
-      else { const ref=await addDoc(TGTS_COL(),{nombre:m.nombre,target:m.target,C2:m.cortes.C2,C3:m.cortes.C3,OT:m.cortes.OT,hojasDia:v,updatedAt:serverTimestamp()}); m._dbId=ref.id; }
-      m.hojasDia=v;
+      const el=document.getElementById("cp1-cap-"+n), ec=document.getElementById("cp1-cam-"+n);
+      const hayCap=!!el&&el.value!=="", hayCam=!!ec&&ec.value!=="";
+      if(!hayCap&&!hayCam) continue;
+      const v=hayCap?Math.max(0,parseFloat(el.value)||0):(Number(m.hojasDia)||0);
+      const cam=hayCam?Math.max(0,parseFloat(ec.value)||0):(Number(m.cambioMin)||0);
+      if(m._dbId){ await updateDoc(doc(db,"targets_p1",m._dbId),{hojasDia:v,cambioModeloMin:cam,updatedAt:serverTimestamp()}); }
+      else { const ref=await addDoc(TGTS_COL(),{nombre:m.nombre,target:m.target,C2:m.cortes.C2,C3:m.cortes.C3,OT:m.cortes.OT,hojasDia:v,cambioModeloMin:cam,updatedAt:serverTimestamp()}); m._dbId=ref.id; }
+      m.hojasDia=v; m.cambioMin=cam;
     }
     showToast(c1("capOk"),"var(--green)"); cp1RenderTabla();
   }catch(e){ showToast(c1("err")+e.message,"var(--red)"); }
@@ -1395,7 +1403,7 @@ window.cp1Subir=async(inp)=>{
     if(!lista.length){ msg.style.color="var(--red)"; msg.textContent=(fuera.length?c1("omit")+fuera.join(", "):c1("noRows")); inp.value=""; return; }
     let n=0;
     for(let k=0;k<lista.length;k+=15){
-      const r=await Promise.all(lista.slice(k,k+15).map(c=>setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:c.papel,formas:c.formas,sticker:!!c.stickerEn,stickerEn:c.stickerEn||"",foil:!!c.foil,maquinas:c.maquinas,actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()}).then(()=>1).catch(()=>0)));
+      const r=await Promise.all(lista.slice(k,k+15).map(c=>setDoc(doc(db,"p1_codigos",c.id),{pn:c.pn,modelos:c.modelos,tipo:c.tipo,papel:c.papel,formas:c.formas,hojasProceso:Number((CODIGOS_P1.find(z=>z.id===c.id)||{}).hojasProceso)||0,sticker:!!c.stickerEn,stickerEn:c.stickerEn||"",foil:!!c.foil,maquinas:c.maquinas,actualizadoPor:CURRENT_USER?.nombre||CURRENT_USER?.email||"",tsLocal:new Date().toISOString()}).then(()=>1).catch(()=>0)));
       n+=r.reduce((a,b)=>a+b,0);
     }
     await loadCodigosP1();
