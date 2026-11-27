@@ -4,6 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1.0">
 <title>Envíos P1 · Shipments · 출하</title>
+<script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-firestore-compat.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-auth-compat.min.js"></script>
@@ -93,7 +94,7 @@ var T={
   okEnv:f=>'Enviado. Remisión '+f,errG:'No se pudo guardar',soloGer:'Solo gerente o supervisor',
   cerrarQ:'¿Cerrar esta orden? Escribe el motivo:',entQ:'¿Marcar como entregados los pallets en camino? (úsalo solo si la planta destino no escanea el QR). Escribe quién recibió:',
   remT:'Remisión de envío · Planta 1',remF:'Folio',remD:'Destino',remFe:'Fecha',remPor:'Envió',remPal:'Pallet',remPn:'N° de parte',remDs:'Descripción',remMd:'Modelo',remQ:'Cantidad',remTot:'Total',remEntrega:'Entrega (P1)',remChofer:'Transporta',remRecibe:'Recibe (planta destino)',
-  sinDatos:'Sin órdenes de envío por ahora',pzs:'pzs',cerradaPor:'cerrada por',auto:'automático',
+  sinDatos:'Sin órdenes de envío por ahora',pzs:'pzs',xls:'📊 Excel',xOrd:'Órdenes',xPal:'Pallets',xMod:'Modelos',xFol:'Folios',xMaq:'Máquina',xEnv:'Enviado',xEntr:'Entregado el',xRec:'Recibió',xGen:'Generado',xSinD:'Sin datos para exportar',cerradaPor:'cerrada por',auto:'automático',
   login:'Inicia sesión',correo:'Correo',pass:'Contraseña',entrar:'Entrar',errLogin:'Correo o contraseña incorrectos',forgot:'¿Olvidaste tu contraseña? Da clic aquí para restablecerla',
   rstT:'Restablecer contraseña',rstS:'Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva.',rstB:'Enviar enlace',rstC:'Cancelar',rstOk:'Listo. Revisa tu correo y también la carpeta de SPAM.',rstErr:'No se pudo enviar. Revisa el correo escrito.',loc:'es-MX'},
  en:{title:'P1 Shipments · to other plants',sub:'Required = BOM Simulator plan · Destination = BOM Destination column · Delivered = destination plant scanned the QR in its IMS',back:'← Pallet Medio P1',
@@ -106,7 +107,7 @@ var T={
   okEnv:f=>'Shipped. Note '+f,errG:'Could not save',soloGer:'Manager or supervisor only',
   cerrarQ:'Close this order? Enter the reason:',entQ:'Mark in-transit pallets as delivered? (only if the destination plant does not scan the QR). Enter who received:',
   remT:'Delivery note · Plant 1',remF:'Folio',remD:'Destination',remFe:'Date',remPor:'Shipped by',remPal:'Pallet',remPn:'Part No.',remDs:'Description',remMd:'Model',remQ:'Qty',remTot:'Total',remEntrega:'Delivered by (P1)',remChofer:'Carrier',remRecibe:'Received by (destination)',
-  sinDatos:'No shipping orders for now',pzs:'pcs',cerradaPor:'closed by',auto:'automatic',
+  sinDatos:'No shipping orders for now',pzs:'pcs',xls:'📊 Excel',xOrd:'Orders',xPal:'Pallets',xMod:'Models',xFol:'Notes',xMaq:'Machine',xEnv:'Shipped',xEntr:'Delivered on',xRec:'Received by',xGen:'Generated',xSinD:'No data to export',cerradaPor:'closed by',auto:'automatic',
   login:'Sign in',correo:'Email',pass:'Password',entrar:'Sign in',errLogin:'Wrong email or password',forgot:'Forgot your password? Click here to reset it',
   rstT:'Reset password',rstS:'Enter your email and we will send you a link to create a new password.',rstB:'Send link',rstC:'Cancel',rstOk:'Done. Check your email and also your SPAM folder.',rstErr:'Could not send. Check the email you typed.',loc:'en-US'},
  ko:{title:'P1 출하 · 타 공장',sub:'필요량 = BOM Simulator 계획 · 목적지 = BOM 목적지 열 · 입고 = 목적지 공장 IMS에서 QR 스캔',back:'← Pallet Medio P1',
@@ -119,7 +120,7 @@ var T={
   okEnv:f=>'출하 완료. 송장 '+f,errG:'저장 실패',soloGer:'관리자 또는 감독자만 가능',
   cerrarQ:'이 오더를 종료하시겠습니까? 사유를 입력하세요:',entQ:'운송 중 팔레트를 입고 처리하시겠습니까? (목적지에서 QR을 스캔하지 않는 경우에만). 수령자를 입력하세요:',
   remT:'출하 송장 · 1공장',remF:'번호',remD:'목적지',remFe:'날짜',remPor:'출하자',remPal:'팔레트',remPn:'품번',remDs:'품명',remMd:'모델',remQ:'수량',remTot:'합계',remEntrega:'출하 (P1)',remChofer:'운송',remRecibe:'수령 (목적지)',
-  sinDatos:'현재 출하 오더 없음',pzs:'pcs',cerradaPor:'종료자',auto:'자동',
+  sinDatos:'현재 출하 오더 없음',pzs:'pcs',xls:'📊 엑셀',xOrd:'오더',xPal:'팔레트',xMod:'모델',xFol:'송장',xMaq:'설비',xEnv:'출하',xEntr:'입고일',xRec:'수령자',xGen:'생성',xSinD:'내보낼 데이터 없음',cerradaPor:'종료자',auto:'자동',
   login:'로그인',correo:'이메일',pass:'비밀번호',entrar:'로그인',errLogin:'이메일 또는 비밀번호가 올바르지 않습니다',forgot:'비밀번호를 잊으셨나요? 여기를 눌러 재설정하세요',
   rstT:'비밀번호 재설정',rstS:'이메일을 입력하면 새 비밀번호를 만들 수 있는 링크를 보내드립니다.',rstB:'링크 보내기',rstC:'취소',rstOk:'완료. 이메일과 스팸 폴더도 확인하세요.',rstErr:'전송하지 못했습니다. 입력한 이메일을 확인하세요.',loc:'ko-KR'}
 };
@@ -203,7 +204,7 @@ function pintar(){
   var K={req:0,l:0,c:0,e:0}; lista.forEach(function(o){ K.req+=o.total; K.l+=o.qL; K.c+=o.qC; K.e+=o.qE; });
   var h='<div class="bar"><button class="btn '+(vista==='abiertas'?'on':'')+'" data-v="abiertas">'+t('abiertas')+'</button><button class="btn '+(vista==='cerradas'?'on':'')+'" data-v="cerradas">'+t('cerradas')+'</button><span style="width:14px"></span>'+
     '<button class="btn '+(!filtro?'on':'')+'" data-f="">'+t('todos')+'</button>'+dests.map(function(d){ return '<button class="btn '+(filtro===d?'on':'')+'" data-f="'+d+'">'+t('a')+d+'</button>'; }).join('')+
-    '<span style="flex:1"></span>'+dests.filter(function(d){ return todas.some(function(o){ return !o.cerrada && o.dest===d && o.qL>0; }); }).map(function(d){ return '<button class="btn go" data-envtodo="'+d+'">'+esc(t('enviarTodo')(d))+'</button>'; }).join(' ')+'</div>';
+    '<span style="flex:1"></span><button class="btn" id="btnXls">'+t('xls')+'</button>'+dests.filter(function(d){ return todas.some(function(o){ return !o.cerrada && o.dest===d && o.qL>0; }); }).map(function(d){ return '<button class="btn go" data-envtodo="'+d+'">'+esc(t('enviarTodo')(d))+'</button>'; }).join(' ')+'</div>';
   h+='<div class="kpis"><div class="kpi"><div class="l">'+t('kReq')+'</div><div class="v">'+n(K.req)+'</div></div><div class="kpi"><div class="l">'+t('kListo')+'</div><div class="v" style="color:var(--yellow)">'+n(K.l)+'</div></div><div class="kpi"><div class="l">'+t('kCam')+'</div><div class="v" style="color:var(--accent)">'+n(K.c)+'</div></div><div class="kpi"><div class="l">'+t('kEnt')+'</div><div class="v" style="color:var(--green)">'+n(K.e)+'</div></div></div>';
   if(!lista.length) h+='<div class="msg">'+t('sinDatos')+'</div>';
   else {
@@ -226,6 +227,7 @@ function pintar(){
     h+='</tbody></table></div>';
   }
   app.innerHTML=h;
+  var bx=$('btnXls'); if(bx) bx.onclick=function(){ exportarExcel(lista); };
   app.querySelectorAll('[data-v]').forEach(function(b){ b.onclick=function(){ vista=b.dataset.v; pintar(); }; });
   app.querySelectorAll('[data-f]').forEach(function(b){ b.onclick=function(){ filtro=b.dataset.f; pintar(); }; });
   app.querySelectorAll('[data-env]').forEach(function(b){ b.onclick=function(){ var o=todas.filter(function(x){ return x.id===b.dataset.env; })[0]; if(o) abrirEnvio(o.dest,o.listo); }; });
@@ -236,6 +238,41 @@ function pintar(){
 }
 function esGerente(){ return USER && ['admin','supervisor'].indexOf(USER.rol)>=0; }
 function nombre(){ return (USER&&(USER.nombre||USER.email))||''; }
+
+// ===== Excel: órdenes (lo que se ve con el filtro actual) + detalle de pallets =====
+function exportarExcel(lista){
+  if(typeof XLSX==='undefined' || !lista || !lista.length){ alert(t('xSinD')); return; }
+  var stTxt={prod:t('stProd'),pend:t('stPend'),proc:t('stProc'),ent:t('stEnt'),cer:t('stCer')}, ahora=new Date();
+  var borde={top:{style:'thin',color:{rgb:'BBBBBB'}},bottom:{style:'thin',color:{rgb:'BBBBBB'}},left:{style:'thin',color:{rgb:'BBBBBB'}},right:{style:'thin',color:{rgb:'BBBBBB'}}};
+  function hoja(titulo, head, filas, anchos, numCols){
+    var ws=XLSX.utils.aoa_to_sheet([[titulo],[t('xGen')+': '+ahora.toLocaleString(t('loc'))],[],head].concat(filas));
+    ws['A1'].s={font:{bold:true,sz:14}};
+    head.forEach(function(_,c){ var r=XLSX.utils.encode_cell({r:3,c:c}); ws[r].s={font:{bold:true},fill:{fgColor:{rgb:'EEEEEE'}},border:borde,alignment:{horizontal:'center',vertical:'center',wrapText:true}}; });
+    filas.forEach(function(f,i){ f.forEach(function(_,c){ var r=XLSX.utils.encode_cell({r:4+i,c:c}); if(!ws[r]) ws[r]={t:'s',v:''}; ws[r].s={border:borde,alignment:{vertical:'center',wrapText:true,horizontal:numCols.indexOf(c)>=0?'right':'left'},numFmt:numCols.indexOf(c)>=0?'#,##0':undefined,font:{bold:c===0}}; }); });
+    ws['!cols']=anchos.map(function(w){ return {wch:w}; });
+    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:3,c:0},e:{r:3+filas.length,c:head.length-1}})};
+    return ws;
+  }
+  var fO=lista.map(function(o){
+    var fol={}; o.cam.concat(o.ent).forEach(function(p){ if(p.envio&&p.envio.folio) fol[p.envio.folio]=1; });
+    return [o.pn,o.desc,Object.keys(o.modelos).join(', '),o.dest||'—',o.total,o.qL,o.qC,o.qE,o.falta,stTxt[o.est],Object.keys(fol).join(', ')];
+  });
+  var wsO=hoja(t('title')+' · '+t('xOrd'),[t('remPn'),t('remDs'),t('xMod'),t('thDest'),t('thReq'),t('thListo'),t('thCam'),t('thEnt'),t('thFalta'),t('thEst'),t('xFol')],fO,[16,30,28,9,11,11,11,11,12,20,24],[4,5,6,7,8]);
+  var fP=[];
+  lista.forEach(function(o){
+    [['listo',o.listo,t('stPend')],['cam',o.cam,t('stProc')],['ent',o.ent,t('kEnt')]].forEach(function(g){
+      g[1].forEach(function(p){
+        var em=p.entregaManual, envEn=p.envio&&p.envio.en?new Date(p.envio.en).toLocaleString(t('loc')):'';
+        var entEn=em&&em.en?new Date(em.en).toLocaleString(t('loc')):(p.recibidoEn||'');
+        fP.push([p.id,p.parte,p.desc||'',p.modelo||'',p.maquina||'',Number(p.qty)||0,o.dest||'—',g[2],(p.envio&&p.envio.folio)||'',envEn,entEn,em?(em.recibio||''):'']);
+      });
+    });
+  });
+  var wsP=hoja(t('title')+' · '+t('xPal'),[t('remPal'),t('remPn'),t('remDs'),t('remMd'),t('xMaq'),t('remQ'),t('thDest'),t('thEst'),t('remF'),t('xEnv'),t('xEntr'),t('xRec')],fP,[22,16,28,20,9,10,9,16,16,20,20,18],[5]);
+  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,wsO,t('xOrd')); XLSX.utils.book_append_sheet(wb,wsP,t('xPal'));
+  var f=ymd(ahora)+'_'+String(ahora.getHours()).padStart(2,'0')+String(ahora.getMinutes()).padStart(2,'0');
+  XLSX.writeFile(wb,'Envios_P1_'+(vista==='cerradas'?'cerradas_':'')+(filtro?filtro+'_':'')+f+'.xlsx');
+}
 
 // ===== Enviar: marca los pallets como "en camino" con folio de remisión =====
 var envSel={}, envDest='', envPals=[];
