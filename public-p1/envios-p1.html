@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Envíos P1 · Shipments · 출하</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-app-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-firestore-compat.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/9.22.2/firebase-auth-compat.min.js"></script>
+<style>
+:root{--bg:#0a0e1a;--card:#111827;--card2:#0d1220;--border:#1f2a3d;--text:#e8edf5;--text2:#8b96a8;--green:#00e676;--red:#ff4d4d;--yellow:#f1c40f;--accent:#4da6ff;--orange:#ffb84d}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,"Segoe UI",Roboto,"Malgun Gothic",sans-serif;padding:14px}
+.wrap{max-width:1300px;margin:0 auto}
+.top{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap;margin-bottom:8px}
+h1{font-size:24px;margin:0}
+.sub{color:var(--text2);font-size:13px;margin:2px 0 10px}
+.langs{display:flex;gap:4px}
+.langs button{background:#0d1220;border:1px solid var(--border);border-radius:6px;padding:4px 7px;cursor:pointer;opacity:.5}
+.langs button.on{opacity:1;border-color:var(--accent)}
+.langs img{width:28px;height:20px;border-radius:3px;display:block}
+.bar{display:flex;gap:8px;flex-wrap:wrap;align-items:center;margin-bottom:12px}
+.btn{background:#0d1220;border:1px solid var(--border);color:var(--text);border-radius:8px;padding:8px 14px;font-weight:700;font-size:14px;cursor:pointer}
+.btn.on{border-color:var(--accent);color:var(--accent);background:#102238}
+.btn.go{background:var(--green);color:#04140c;border:0}
+.btn.sm{padding:5px 10px;font-size:12px;margin:3px 3px 0 0}
+.btn.warn{border-color:var(--red);color:var(--red)}
+.kpis{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:10px;margin-bottom:12px}
+.kpi{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:12px}
+.kpi .l{font-size:13px;color:var(--text2)}.kpi .v{font-size:28px;font-weight:800}
+.tw{overflow-x:auto;border-radius:12px;border:1px solid var(--border)}
+table{width:100%;border-collapse:collapse;min-width:980px;background:var(--card2)}
+th{font-size:12px;text-transform:uppercase;color:var(--text2);text-align:left;padding:10px;border-bottom:2px solid var(--border);background:#151d2e}
+td{padding:10px;border-top:1px solid var(--border);font-size:15px;vertical-align:top}
+td.r,th.r{text-align:right}
+.pn{font-weight:800;color:var(--accent)}.ds{font-size:12px;color:var(--text2)}
+.dest{display:inline-block;font-weight:900;font-size:16px;padding:3px 10px;border-radius:8px;background:#1f2a3d}
+.st{display:inline-block;font-size:12px;font-weight:800;padding:3px 10px;border-radius:999px;white-space:nowrap}
+.st.prod{background:#1f2a3d;color:var(--text2)}.st.pend{background:rgba(241,196,15,.18);color:var(--yellow)}
+.st.proc{background:rgba(77,166,255,.2);color:var(--accent)}.st.ent{background:rgba(0,230,118,.15);color:var(--green)}.st.cer{background:#2a2a2a;color:#aaa}
+.q{font-weight:800}.q.y{color:var(--yellow)}.q.b{color:var(--accent)}.q.g{color:var(--green)}
+.msg{background:var(--card);border:1px solid var(--border);border-radius:12px;padding:26px;text-align:center;color:var(--text2)}
+.modal{position:fixed;inset:0;background:rgba(0,0,0,.75);display:flex;align-items:flex-start;justify-content:center;padding:16px;z-index:50;overflow:auto}
+.box{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:16px;max-width:560px;width:100%}
+.box h3{margin:0 0 4px}.box .s{font-size:13px;color:var(--text2);margin-bottom:10px}
+.pl{display:flex;align-items:center;gap:10px;border:1px solid var(--border);border-radius:8px;padding:8px;margin-bottom:6px;font-size:14px}
+.pl input{width:20px;height:20px}
+.hide{display:none!important}
+.login{max-width:340px;margin:70px auto;background:var(--card);border:1px solid var(--border);border-radius:14px;padding:20px}
+.login input,.box input[type=email],.box input[type=text]{width:100%;margin:6px 0;padding:11px;background:var(--card2);border:1px solid var(--border);border-radius:8px;color:var(--text);font-size:15px}
+.login button.main{width:100%;margin-top:8px;padding:12px;border:0;border-radius:8px;background:var(--accent);color:#04203f;font-weight:800;font-size:15px;cursor:pointer}
+.login a{display:block;margin-top:12px;color:var(--accent);font-size:13px;cursor:pointer;text-align:center}
+.err{color:var(--red);font-size:13px;margin-top:6px}
+#rem{display:none;background:#fff;color:#000;font-family:Arial,sans-serif}
+#rem h2{margin:0;font-size:20px}#rem table{min-width:0;background:#fff}#rem th,#rem td{color:#000;border:1px solid #888;background:#fff;font-size:12px;padding:5px}
+#rem .fir{display:flex;gap:30px;margin-top:40px;font-size:12px}#rem .fir div{flex:1;border-top:1px solid #000;padding-top:4px;text-align:center}
+@media print{body{background:#fff;padding:0}.wrap,.modal{display:none!important}#rem{display:block!important}@page{size:letter portrait;margin:10mm}}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <div class="top">
+    <div><h1 id="tTitle"></h1><div class="sub" id="tSub"></div></div>
+    <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+      <a id="tBack" href="pallet-medio-p1.html" style="color:var(--accent);font-size:13px"></a>
+      <div class="langs" id="langs"></div>
+    </div>
+  </div>
+  <div id="app"><div class="msg" id="loading">…</div></div>
+</div>
+<div class="modal hide" id="mEnv"><div class="box">
+  <h3 id="mEnvT"></h3><div class="s" id="mEnvS"></div>
+  <div id="mEnvL"></div>
+  <div class="err" id="mEnvE"></div>
+  <div style="display:flex;gap:8px;margin-top:10px"><button class="btn go" id="mEnvOk"></button><button class="btn" id="mEnvNo"></button></div>
+</div></div>
+<div class="modal hide" id="rst"><div class="box">
+  <h3 id="rstT"></h3><div class="s" id="rstS"></div>
+  <input id="rstE" type="email">
+  <div style="display:flex;gap:8px;margin-top:8px"><button class="btn go" id="rstB"></button><button class="btn" id="rstC"></button></div>
+  <div id="rstM" style="font-size:13px;margin-top:8px"></div>
+</div></div>
+<div id="rem"></div>
+<script>
+var T={
+ es:{title:'Envíos P1 · a las demás plantas',sub:'Requerido = plan del BOM Simulator · Destino = columna Destino del BOM · Entregado = la planta destino escaneó el QR en su IMS',back:'← Pallet Medio P1',
+  abiertas:'Abiertas',cerradas:'Cerradas',todos:'Todos',a:'A ',enviarTodo:d=>'🚚 Enviar todo lo listo a '+d,
+  kReq:'Requerido',kListo:'Listo para enviar',kCam:'En camino',kEnt:'Entregado',
+  thCod:'Código · descripción',thDest:'Envía a',thReq:'Requerido',thListo:'Listo',thCam:'En camino',thEnt:'Entregado',thFalta:'Falta producir',thEst:'Estado',
+  stProd:'En producción',stPend:'Por enviar',stProc:'En proceso',stEnt:'Entregado · completo',stCer:'Cerrada',
+  bEnviar:q=>'🚚 Enviar '+q,bEntregar:'✓ Marcar entregado',bCerrar:'🔒 Cerrar orden',bRem:'🖨️ Remisión',
+  mEnvT:d=>'Enviar a '+d,mEnvS:'Elige los pallets que salen. Se imprime la remisión con folio.',mOk:'Confirmar envío',mNo:'Cancelar',nada:'Elige al menos un pallet',
+  okEnv:f=>'Enviado. Remisión '+f,errG:'No se pudo guardar',soloGer:'Solo gerente o supervisor',
+  cerrarQ:'¿Cerrar esta orden? Escribe el motivo:',entQ:'¿Marcar como entregados los pallets en camino? (úsalo solo si la planta destino no escanea el QR). Escribe quién recibió:',
+  remT:'Remisión de envío · Planta 1',remF:'Folio',remD:'Destino',remFe:'Fecha',remPor:'Envió',remPal:'Pallet',remPn:'N° de parte',remDs:'Descripción',remMd:'Modelo',remQ:'Cantidad',remTot:'Total',remEntrega:'Entrega (P1)',remChofer:'Transporta',remRecibe:'Recibe (planta destino)',
+  sinDatos:'Sin órdenes de envío por ahora',pzs:'pzs',cerradaPor:'cerrada por',auto:'automático',
+  login:'Inicia sesión',correo:'Correo',pass:'Contraseña',entrar:'Entrar',errLogin:'Correo o contraseña incorrectos',forgot:'¿Olvidaste tu contraseña? Da clic aquí para restablecerla',
+  rstT:'Restablecer contraseña',rstS:'Escribe tu correo y te enviaremos un enlace para crear una contraseña nueva.',rstB:'Enviar enlace',rstC:'Cancelar',rstOk:'Listo. Revisa tu correo y también la carpeta de SPAM.',rstErr:'No se pudo enviar. Revisa el correo escrito.',loc:'es-MX'},
+ en:{title:'P1 Shipments · to other plants',sub:'Required = BOM Simulator plan · Destination = BOM Destination column · Delivered = destination plant scanned the QR in its IMS',back:'← Pallet Medio P1',
+  abiertas:'Open',cerradas:'Closed',todos:'All',a:'To ',enviarTodo:d=>'🚚 Ship everything ready to '+d,
+  kReq:'Required',kListo:'Ready to ship',kCam:'In transit',kEnt:'Delivered',
+  thCod:'Part · description',thDest:'Ships to',thReq:'Required',thListo:'Ready',thCam:'In transit',thEnt:'Delivered',thFalta:'Left to produce',thEst:'Status',
+  stProd:'In production',stPend:'To ship',stProc:'In process',stEnt:'Delivered · complete',stCer:'Closed',
+  bEnviar:q=>'🚚 Ship '+q,bEntregar:'✓ Mark delivered',bCerrar:'🔒 Close order',bRem:'🖨️ Delivery note',
+  mEnvT:d=>'Ship to '+d,mEnvS:'Choose the pallets leaving. A delivery note with folio is printed.',mOk:'Confirm shipment',mNo:'Cancel',nada:'Choose at least one pallet',
+  okEnv:f=>'Shipped. Note '+f,errG:'Could not save',soloGer:'Manager or supervisor only',
+  cerrarQ:'Close this order? Enter the reason:',entQ:'Mark in-transit pallets as delivered? (only if the destination plant does not scan the QR). Enter who received:',
+  remT:'Delivery note · Plant 1',remF:'Folio',remD:'Destination',remFe:'Date',remPor:'Shipped by',remPal:'Pallet',remPn:'Part No.',remDs:'Description',remMd:'Model',remQ:'Qty',remTot:'Total',remEntrega:'Delivered by (P1)',remChofer:'Carrier',remRecibe:'Received by (destination)',
+  sinDatos:'No shipping orders for now',pzs:'pcs',cerradaPor:'closed by',auto:'automatic',
+  login:'Sign in',correo:'Email',pass:'Password',entrar:'Sign in',errLogin:'Wrong email or password',forgot:'Forgot your password? Click here to reset it',
+  rstT:'Reset password',rstS:'Enter your email and we will send you a link to create a new password.',rstB:'Send link',rstC:'Cancel',rstOk:'Done. Check your email and also your SPAM folder.',rstErr:'Could not send. Check the email you typed.',loc:'en-US'},
+ ko:{title:'P1 출하 · 타 공장',sub:'필요량 = BOM Simulator 계획 · 목적지 = BOM 목적지 열 · 입고 = 목적지 공장 IMS에서 QR 스캔',back:'← Pallet Medio P1',
+  abiertas:'진행 중',cerradas:'종료',todos:'전체',a:'',enviarTodo:d=>'🚚 '+d+'로 준비된 전체 출하',
+  kReq:'필요량',kListo:'출하 준비',kCam:'운송 중',kEnt:'입고 완료',
+  thCod:'품번 · 품명',thDest:'출하처',thReq:'필요량',thListo:'준비',thCam:'운송 중',thEnt:'입고',thFalta:'생산 잔량',thEst:'상태',
+  stProd:'생산 중',stPend:'출하 대기',stProc:'진행 중',stEnt:'입고 · 완료',stCer:'종료',
+  bEnviar:q=>'🚚 출하 '+q,bEntregar:'✓ 입고 처리',bCerrar:'🔒 오더 종료',bRem:'🖨️ 송장',
+  mEnvT:d=>d+' 출하',mEnvS:'출하할 팔레트를 선택하세요. 번호가 있는 송장이 출력됩니다.',mOk:'출하 확정',mNo:'취소',nada:'팔레트를 하나 이상 선택하세요',
+  okEnv:f=>'출하 완료. 송장 '+f,errG:'저장 실패',soloGer:'관리자 또는 감독자만 가능',
+  cerrarQ:'이 오더를 종료하시겠습니까? 사유를 입력하세요:',entQ:'운송 중 팔레트를 입고 처리하시겠습니까? (목적지에서 QR을 스캔하지 않는 경우에만). 수령자를 입력하세요:',
+  remT:'출하 송장 · 1공장',remF:'번호',remD:'목적지',remFe:'날짜',remPor:'출하자',remPal:'팔레트',remPn:'품번',remDs:'품명',remMd:'모델',remQ:'수량',remTot:'합계',remEntrega:'출하 (P1)',remChofer:'운송',remRecibe:'수령 (목적지)',
+  sinDatos:'현재 출하 오더 없음',pzs:'pcs',cerradaPor:'종료자',auto:'자동',
+  login:'로그인',correo:'이메일',pass:'비밀번호',entrar:'로그인',errLogin:'이메일 또는 비밀번호가 올바르지 않습니다',forgot:'비밀번호를 잊으셨나요? 여기를 눌러 재설정하세요',
+  rstT:'비밀번호 재설정',rstS:'이메일을 입력하면 새 비밀번호를 만들 수 있는 링크를 보내드립니다.',rstB:'링크 보내기',rstC:'취소',rstOk:'완료. 이메일과 스팸 폴더도 확인하세요.',rstErr:'전송하지 못했습니다. 입력한 이메일을 확인하세요.',loc:'ko-KR'}
+};
+var lang='es'; try{ var l0=localStorage.getItem('mes-lang'); if(T[l0]) lang=l0; }catch(e){}
+function t(k){ return T[lang][k]; }
+function esc(s){ return String(s==null?'':s).replace(/[&<>"']/g,function(c){return {'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c];}); }
+function n(x){ return Math.round(x||0).toLocaleString('en-US'); }
+function norm(x){ return String(x||'').toUpperCase().replace(/\s+/g,' ').trim(); }
+function $(id){ return document.getElementById(id); }
+function ymd(d){ return d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0')+'-'+String(d.getDate()).padStart(2,'0'); }
+
+firebase.initializeApp({apiKey:"AIzaSyDbaC1kFX4ERhndtXDyHg8eCcexP5IjAuI",authDomain:"mes-production-esp.firebaseapp.com",projectId:"mes-production-esp"});
+var db=firebase.firestore(); try{ db.settings({experimentalAutoDetectLongPolling:true,merge:true}); }catch(e){}
+var USER=null, REQ=null, PLAN=null, PALS=[], ORD={}, vista='abiertas', filtro='';
+
+function pintarLangs(){
+  $('langs').innerHTML=['es','en','ko'].map(function(l){ return '<button class="'+(l===lang?'on':'')+'" data-l="'+l+'"><img src="https://flagcdn.com/w40/'+({es:'mx',en:'us',ko:'kr'})[l]+'.png" alt="'+l.toUpperCase()+'"></button>'; }).join('');
+  $('langs').querySelectorAll('button').forEach(function(b){ b.onclick=function(){ lang=b.dataset.l; try{localStorage.setItem('mes-lang',lang);}catch(e){} if(USER) pintar(); else mostrarLogin(); }; });
+  $('tTitle').textContent=t('title'); $('tSub').textContent=t('sub'); $('tBack').textContent=t('back'); document.title=t('title');
+}
+
+// ¿A qué planta se envía? (columna Destino del BOM, publicada por el BOM Simulator en plan_piso_p1). Igual que la etiqueta de Pallet Medio P1.
+function enviarA(pn,desc){
+  var L=(PLAN&&PLAN.destinos)||[], x=L.filter(function(y){ return norm(y.pn)===norm(pn) && norm(y.desc)===norm(desc); })[0];
+  if(/SET PAD|PHONE PAD/.test(norm(desc))) return 'P3';
+  var d=x?String(x.d||'').toUpperCase():'';
+  if(d==='P3') return 'P3'; if(d==='ALIBER') return 'ALIBER'; if(d==='P1'||d==='P4') return 'P4'; return '';
+}
+// Solo se envía lo que sale de la ÚLTIMA etapa de P1 para ese código (no las hojas a medio proceso entre máquinas de P1)
+function ultimasMaqs(){
+  var out={}, mx={};
+  if(!PLAN||!PLAN.colas) return out;
+  Object.keys(PLAN.colas).forEach(function(m){ (PLAN.colas[m]||[]).forEach(function(e){ var k=norm(e.pn), et=Number(e.etapa)||0; if(mx[k]===undefined||et>mx[k]){ mx[k]=et; out[k]={}; } if(et===mx[k]) out[k][m]=1; }); });
+  return out;
+}
+function ordId(pn,desc){ return (norm(pn)+'_'+norm(desc)).replace(/[^A-Z0-9_-]/g,'_').slice(0,120); }
+
+function armar(){
+  var ult=ultimasMaqs(), ords={};
+  function get(pn,desc){ var k=norm(pn)+'||'+norm(desc); return ords[k]||(ords[k]={pn:norm(pn),desc:desc||'',id:ordId(pn,desc),req:0,listo:[],cam:[],ent:[],modelos:{}}); }
+  ((REQ&&REQ.items)||[]).forEach(function(it){ var o=get(it.pn,it.desc); o.req+=Number(it.pide||it.falta)||0; (it.modelos||[]).forEach(function(m){ o.modelos[m.sm]=1; }); o.fecha=it.fecha||''; o.prioridad=it.prioridad||999; });
+  PALS.forEach(function(p){
+    if((p.planta||'P4')!=='P1' || p.status==='VOID') return;
+    var u=ult[norm(p.parte)]; if(u && !u[p.maquina]) return;
+    var o=get(p.parte,p.desc), doc=ORD[o.id];
+    if(doc && doc.abiertaMs && (p.horaMs||0)<doc.abiertaMs) return;   // pallets de una orden anterior ya cerrada
+    if(p.modelo) o.modelos[p.modelo]=1;
+    if(p.status==='RECEIVED' || p.entregaManual) o.ent.push(p);
+    else if(p.envio) o.cam.push(p);
+    else o.listo.push(p);
+  });
+  return Object.keys(ords).map(function(k){
+    var o=ords[k], doc=ORD[o.id]||null, s=function(a){ return a.reduce(function(x,p){ return x+(Number(p.qty)||0); },0); };
+    o.qL=s(o.listo); o.qC=s(o.cam); o.qE=s(o.ent);
+    o.dest=enviarA(o.pn,o.desc) || (o.listo.concat(o.cam,o.ent)[0]||{}).enviarA || '';
+    o.total=o.req+o.qE;                                 // lo pedido = lo que ya llegó + lo que el plan aún pide
+    o.falta=Math.max(0,o.req-o.qL-o.qC);                // falta producir (lo listo y en camino aún no entra al IMS)
+    o.cerrada=!!(doc && doc.estado==='cerrada');
+    o.completa=!o.cerrada && o.req<=0 && o.qL===0 && o.qC===0 && o.qE>0;
+    o.est=o.cerrada?'cer':(o.completa?'ent':(o.qC>0?'proc':(o.qL>0?'pend':'prod')));
+    o.doc=doc;
+    return o;
+  }).filter(function(o){ return o.total>0 || o.qL>0 || o.qC>0 || o.cerrada; });
+}
+var cerrandoAuto={};
+function autoCerrar(lista){
+  if(!REQ || !PLAN) return;   // sin el plan cargado no se cierra nada
+  lista.forEach(function(o){
+    if(!o.completa || cerrandoAuto[o.id]) return; cerrandoAuto[o.id]=1;
+    db.collection('envios_p1_ordenes').doc(o.id).set({pn:o.pn,desc:o.desc,estado:'cerrada',cerradaEn:new Date().toISOString(),cerradaPor:t('auto'),motivo:'auto',entregado:o.qE},{merge:true}).catch(function(e){ console.warn(e); });
+  });
+}
+function pintar(){
+  pintarLangs();
+  var app=$('app');
+  if(!REQ && !PALS.length){ app.innerHTML='<div class="msg">…</div>'; return; }
+  var todas=armar(); autoCerrar(todas);
+  var lista=todas.filter(function(o){ return (vista==='cerradas')===o.cerrada; }).filter(function(o){ return !filtro || o.dest===filtro; })
+    .sort(function(a,b){ var r={pend:0,proc:1,prod:2,ent:3,cer:4}; return (r[a.est]-r[b.est]) || ((a.fecha||'9999')<(b.fecha||'9999')?-1:(a.fecha||'9999')>(b.fecha||'9999')?1:0) || ((a.prioridad||999)-(b.prioridad||999)); });
+  var dests=[]; todas.forEach(function(o){ if(o.dest && dests.indexOf(o.dest)<0) dests.push(o.dest); }); dests.sort();
+  var K={req:0,l:0,c:0,e:0}; lista.forEach(function(o){ K.req+=o.total; K.l+=o.qL; K.c+=o.qC; K.e+=o.qE; });
+  var h='<div class="bar"><button class="btn '+(vista==='abiertas'?'on':'')+'" data-v="abiertas">'+t('abiertas')+'</button><button class="btn '+(vista==='cerradas'?'on':'')+'" data-v="cerradas">'+t('cerradas')+'</button><span style="width:14px"></span>'+
+    '<button class="btn '+(!filtro?'on':'')+'" data-f="">'+t('todos')+'</button>'+dests.map(function(d){ return '<button class="btn '+(filtro===d?'on':'')+'" data-f="'+d+'">'+t('a')+d+'</button>'; }).join('')+
+    '<span style="flex:1"></span>'+dests.filter(function(d){ return todas.some(function(o){ return !o.cerrada && o.dest===d && o.qL>0; }); }).map(function(d){ return '<button class="btn go" data-envtodo="'+d+'">'+esc(t('enviarTodo')(d))+'</button>'; }).join(' ')+'</div>';
+  h+='<div class="kpis"><div class="kpi"><div class="l">'+t('kReq')+'</div><div class="v">'+n(K.req)+'</div></div><div class="kpi"><div class="l">'+t('kListo')+'</div><div class="v" style="color:var(--yellow)">'+n(K.l)+'</div></div><div class="kpi"><div class="l">'+t('kCam')+'</div><div class="v" style="color:var(--accent)">'+n(K.c)+'</div></div><div class="kpi"><div class="l">'+t('kEnt')+'</div><div class="v" style="color:var(--green)">'+n(K.e)+'</div></div></div>';
+  if(!lista.length) h+='<div class="msg">'+t('sinDatos')+'</div>';
+  else {
+    var stTxt={prod:t('stProd'),pend:t('stPend'),proc:t('stProc'),ent:t('stEnt'),cer:t('stCer')};
+    h+='<div class="tw"><table><thead><tr><th>'+t('thCod')+'</th><th>'+t('thDest')+'</th><th class="r">'+t('thReq')+'</th><th class="r">'+t('thListo')+'</th><th class="r">'+t('thCam')+'</th><th class="r">'+t('thEnt')+'</th><th class="r">'+t('thFalta')+'</th><th>'+t('thEst')+'</th></tr></thead><tbody>';
+    lista.forEach(function(o){
+      var mods=Object.keys(o.modelos);
+      var acc='';
+      if(!o.cerrada){
+        if(o.qL>0) acc+='<button class="btn sm go" data-env="'+esc(o.id)+'">'+esc(t('bEnviar')(n(o.qL)))+'</button>';
+        if(o.qC>0) acc+='<button class="btn sm" data-ent="'+esc(o.id)+'">'+t('bEntregar')+'</button>';
+        acc+='<button class="btn sm warn" data-cer="'+esc(o.id)+'">'+t('bCerrar')+'</button>';
+      }
+      var fol={}; o.cam.concat(o.ent).forEach(function(p){ if(p.envio&&p.envio.folio) fol[p.envio.folio]=1; });
+      Object.keys(fol).forEach(function(f){ acc+='<button class="btn sm" data-rem="'+esc(f)+'">'+t('bRem')+' '+esc(f)+'</button>'; });
+      h+='<tr><td><div class="pn">'+esc(o.pn)+'</div><div>'+esc(o.desc)+'</div><div class="ds">'+esc(mods.slice(0,3).join(', '))+(mods.length>3?' +'+(mods.length-3):'')+'</div></td>'+
+        '<td><span class="dest">'+(o.dest?'→ '+esc(o.dest):'—')+'</span></td><td class="r q">'+n(o.total)+'</td><td class="r q y">'+n(o.qL)+'</td><td class="r q b">'+n(o.qC)+'</td><td class="r q g">'+n(o.qE)+'</td><td class="r">'+n(o.falta)+'</td>'+
+        '<td><span class="st '+o.est+'">'+stTxt[o.est]+'</span>'+(o.cerrada&&o.doc?'<div class="ds">'+t('cerradaPor')+' '+esc(o.doc.cerradaPor||'—')+(o.doc.motivo&&o.doc.motivo!=='auto'?' · '+esc(o.doc.motivo):'')+'</div>':'')+'<div>'+acc+'</div></td></tr>';
+    });
+    h+='</tbody></table></div>';
+  }
+  app.innerHTML=h;
+  app.querySelectorAll('[data-v]').forEach(function(b){ b.onclick=function(){ vista=b.dataset.v; pintar(); }; });
+  app.querySelectorAll('[data-f]').forEach(function(b){ b.onclick=function(){ filtro=b.dataset.f; pintar(); }; });
+  app.querySelectorAll('[data-env]').forEach(function(b){ b.onclick=function(){ var o=todas.filter(function(x){ return x.id===b.dataset.env; })[0]; if(o) abrirEnvio(o.dest,o.listo); }; });
+  app.querySelectorAll('[data-envtodo]').forEach(function(b){ b.onclick=function(){ var d=b.dataset.envtodo, ps=[]; todas.forEach(function(o){ if(!o.cerrada && o.dest===d) ps=ps.concat(o.listo); }); abrirEnvio(d,ps); }; });
+  app.querySelectorAll('[data-ent]').forEach(function(b){ b.onclick=function(){ var o=todas.filter(function(x){ return x.id===b.dataset.ent; })[0]; if(o) marcarEntregado(o); }; });
+  app.querySelectorAll('[data-cer]').forEach(function(b){ b.onclick=function(){ var o=todas.filter(function(x){ return x.id===b.dataset.cer; })[0]; if(o) cerrarOrden(o); }; });
+  app.querySelectorAll('[data-rem]').forEach(function(b){ b.onclick=function(){ imprimirRemision(b.dataset.rem); }; });
+}
+function esGerente(){ return USER && ['admin','supervisor'].indexOf(USER.rol)>=0; }
+function nombre(){ return (USER&&(USER.nombre||USER.email))||''; }
+
+// ===== Enviar: marca los pallets como "en camino" con folio de remisión =====
+var envSel={}, envDest='', envPals=[];
+function abrirEnvio(dest,pals){
+  envDest=dest; envPals=pals.slice().sort(function(a,b){ return (a.horaMs||0)-(b.horaMs||0); }); envSel={}; envPals.forEach(function(p){ envSel[p.id]=true; });
+  $('mEnvT').textContent=t('mEnvT')(dest||'—'); $('mEnvS').textContent=t('mEnvS'); $('mEnvOk').textContent=t('mOk'); $('mEnvNo').textContent=t('mNo'); $('mEnvE').textContent='';
+  $('mEnvL').innerHTML=envPals.map(function(p){ return '<label class="pl"><input type="checkbox" checked data-p="'+esc(p.id)+'"><span><b>'+esc(p.id)+'</b> · '+esc(p.parte)+' · '+esc(p.desc)+' · '+esc(p.modelo||'')+'</span><span style="margin-left:auto;font-weight:800">'+n(p.qty)+'</span></label>'; }).join('');
+  $('mEnvL').querySelectorAll('input').forEach(function(i){ i.onchange=function(){ envSel[i.dataset.p]=i.checked; }; });
+  $('mEnv').classList.remove('hide');
+}
+$('mEnvNo').onclick=function(){ $('mEnv').classList.add('hide'); };
+$('mEnvOk').onclick=async function(){
+  var sel=envPals.filter(function(p){ return envSel[p.id]; });
+  if(!sel.length){ $('mEnvE').textContent=t('nada'); return; }
+  $('mEnvOk').disabled=true;
+  try{
+    var hoy=ymd(new Date()), base='P1-'+hoy.replace(/-/g,'')+'-', k=1, folio;
+    while(true){ folio=base+String(k).padStart(2,'0'); var ex=await db.collection('envios_p1').doc(folio).get(); if(!ex.exists) break; k++; }
+    var ahora=new Date().toISOString(), envio={folio:folio,en:ahora,por:nombre(),destino:envDest};
+    var b=db.batch();
+    sel.forEach(function(p){ b.update(db.collection('pallets_medio').doc(p.id),{envio:envio}); });
+    b.set(db.collection('envios_p1').doc(folio),{folio:folio,fecha:hoy,en:ahora,por:nombre(),destino:envDest,pallets:sel.map(function(p){ return {id:p.id,parte:p.parte,desc:p.desc||'',modelo:p.modelo||'',qty:Number(p.qty)||0}; }),total:sel.reduce(function(s,p){ return s+(Number(p.qty)||0); },0)});
+    sel.forEach(function(p){ var id=ordId(p.parte,p.desc); if(!ORD[id]) b.set(db.collection('envios_p1_ordenes').doc(id),{pn:norm(p.parte),desc:p.desc||'',estado:'abierta',abiertaMs:0,abiertaEn:ahora},{merge:true}); });
+    await b.commit();
+    $('mEnv').classList.add('hide'); alert(t('okEnv')(folio)); imprimirRemision(folio);
+  }catch(e){ console.error(e); $('mEnvE').textContent=t('errG')+': '+(e.message||e); }
+  $('mEnvOk').disabled=false;
+};
+// Respaldo manual (gerente): solo si la planta destino no escanea el QR en su IMS
+async function marcarEntregado(o){
+  if(!esGerente()){ alert(t('soloGer')); return; }
+  var quien=prompt(t('entQ'),''); if(quien===null||!quien.trim()) return;
+  try{ var b=db.batch(), ahora=new Date().toISOString(); o.cam.forEach(function(p){ b.update(db.collection('pallets_medio').doc(p.id),{entregaManual:{por:nombre(),recibio:quien.trim(),en:ahora}}); }); await b.commit(); }
+  catch(e){ alert(t('errG')+': '+(e.message||e)); }
+}
+async function cerrarOrden(o){
+  if(!esGerente()){ alert(t('soloGer')); return; }
+  var m=prompt(t('cerrarQ'),''); if(m===null||m.trim().length<3) return;
+  try{ await db.collection('envios_p1_ordenes').doc(o.id).set({pn:o.pn,desc:o.desc,estado:'cerrada',cerradaEn:new Date().toISOString(),cerradaPor:nombre(),motivo:m.trim(),entregado:o.qE},{merge:true}); }
+  catch(e){ alert(t('errG')+': '+(e.message||e)); }
+}
+// Una orden cerrada se vuelve a abrir sola (orden nueva) cuando el plan pide más o hay pallets nuevos listos
+function reabrir(){
+  var ahora=Date.now();
+  Object.keys(ORD).forEach(function(id){
+    var d=ORD[id]; if(d.estado!=='cerrada') return;
+    var cerMs=Date.parse(d.cerradaEn||'')||0;
+    var pide=((REQ&&REQ.items)||[]).some(function(it){ return ordId(it.pn,it.desc)===id && (Number(it.pide||it.falta)||0)>0; }) && REQ && (REQ.publicadoMs||0)>cerMs;
+    var nuevos=PALS.some(function(p){ return (p.planta||'P4')==='P1' && p.status!=='VOID' && ordId(p.parte,p.desc)===id && (p.horaMs||0)>cerMs && !p.envio; });
+    if(pide||nuevos) db.collection('envios_p1_ordenes').doc(id).set({estado:'abierta',abiertaMs:ahora,abiertaEn:new Date(ahora).toISOString(),reabierta:(d.reabierta||0)+1},{merge:true}).catch(function(){});
+  });
+}
+async function imprimirRemision(folio){
+  var d; try{ d=await db.collection('envios_p1').doc(folio).get(); }catch(e){ alert(t('errG')); return; }
+  if(!d.exists) return; var r=d.data();
+  var h='<div style="display:flex;justify-content:space-between;align-items:flex-start;border-bottom:2px solid #000;padding-bottom:6px;margin-bottom:8px"><div><h2>'+t('remT')+'</h2><div>ESP · Eunsung</div></div><div style="text-align:right;font-size:13px"><b>'+t('remF')+': '+esc(r.folio)+'</b><br>'+t('remFe')+': '+new Date(r.en).toLocaleString(t('loc'))+'<br>'+t('remPor')+': '+esc(r.por||'')+'</div></div>'+
+    '<div style="font-size:26px;font-weight:900;margin:6px 0 10px">'+t('remD')+': → '+esc(r.destino||'—')+'</div>'+
+    '<table><tr><th>#</th><th>'+t('remPal')+'</th><th>'+t('remPn')+'</th><th>'+t('remDs')+'</th><th>'+t('remMd')+'</th><th style="text-align:right">'+t('remQ')+'</th></tr>'+
+    (r.pallets||[]).map(function(p,i){ return '<tr><td>'+(i+1)+'</td><td>'+esc(p.id)+'</td><td><b>'+esc(p.parte)+'</b></td><td>'+esc(p.desc)+'</td><td>'+esc(p.modelo)+'</td><td style="text-align:right"><b>'+n(p.qty)+'</b></td></tr>'; }).join('')+
+    '<tr><td colspan="5" style="text-align:right"><b>'+t('remTot')+'</b></td><td style="text-align:right"><b>'+n(r.total)+'</b></td></tr></table>'+
+    '<div class="fir"><div>'+t('remEntrega')+'</div><div>'+t('remChofer')+'</div><div>'+t('remRecibe')+'</div></div>';
+  $('rem').innerHTML=h; setTimeout(function(){ window.print(); },200);
+}
+
+// ===== Datos en vivo =====
+function escuchar(){
+  db.collection('bom_simulator_p4').doc('plan_p1_requerido').onSnapshot(function(s){ REQ=s.exists?s.data():null; reabrir(); pintar(); },function(e){ console.warn(e); });
+  db.collection('bom_simulator_p4').doc('plan_piso_p1').onSnapshot(function(s){ PLAN=s.exists?s.data():null; pintar(); },function(e){ console.warn(e); });
+  db.collection('envios_p1_ordenes').onSnapshot(function(s){ ORD={}; s.forEach(function(d){ ORD[d.id]=d.data(); }); pintar(); },function(e){ console.warn(e); });
+  var d=new Date(); d.setDate(d.getDate()-45);
+  db.collection('pallets_medio').where('fecha','>=',ymd(d)).onSnapshot(function(s){ PALS=s.docs.map(function(x){ return Object.assign({id:x.id},x.data()); }).filter(function(p){ return (p.planta||'P4')==='P1'; }); reabrir(); pintar(); },function(e){ console.warn(e); });
+}
+
+// ===== Login (con recuperación de contraseña) =====
+function mostrarLogin(){
+  pintarLangs();
+  $('app').innerHTML='<div class="login"><b>'+t('login')+'</b><input id="lgE" type="email" placeholder="'+t('correo')+'"><input id="lgP" type="password" placeholder="'+t('pass')+'"><button class="main" id="lgB">'+t('entrar')+'</button><div class="err" id="lgErr"></div><a id="lgF">'+t('forgot')+'</a></div>';
+  $('lgB').onclick=function(){ firebase.auth().signInWithEmailAndPassword($('lgE').value.trim(),$('lgP').value).catch(function(){ $('lgErr').textContent=t('errLogin'); }); };
+  $('lgF').onclick=function(){ $('rstT').textContent=t('rstT'); $('rstS').textContent=t('rstS'); $('rstB').textContent=t('rstB'); $('rstC').textContent=t('rstC'); $('rstE').placeholder=t('correo'); $('rstE').value=$('lgE').value; $('rstM').textContent=''; $('rst').classList.remove('hide'); };
+}
+$('rstC').onclick=function(){ $('rst').classList.add('hide'); };
+$('rstB').onclick=function(){ var e=$('rstE').value.trim(), m=$('rstM'); if(!e){ m.style.color='var(--red)'; m.textContent=t('rstErr'); return; }
+  firebase.auth().sendPasswordResetEmail(e).then(function(){ m.style.color='var(--green)'; m.textContent=t('rstOk'); }).catch(function(){ m.style.color='var(--red)'; m.textContent=t('rstErr'); }); };
+var arrancado=false;
+firebase.auth().onAuthStateChanged(async function(u){
+  if(!u){ USER=null; mostrarLogin(); return; }
+  try{ var q=await db.collection('usuarios_p1').where('uid','==',u.uid).get(); USER=q.empty?{uid:u.uid,email:u.email}:Object.assign({uid:u.uid,email:u.email},q.docs[0].data()); }catch(e){ USER={uid:u.uid,email:u.email}; }
+  if(!arrancado){ arrancado=true; escuchar(); }
+  pintar();
+});
+pintarLangs();
+</script>
+</body>
+</html>

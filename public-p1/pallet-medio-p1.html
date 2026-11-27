@@ -112,6 +112,7 @@ details.card[open]>summary{margin-bottom:8px;color:var(--text)}
     <div><h1 id="t-title"></h1><small id="t-sub"></small></div>
     <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap">
       <a class="link" href="index.html" id="t-back"></a>
+      <a class="link" href="envios-p1.html" id="t-envios" style="font-weight:700">📦 Envíos</a>
       <div class="flags">
         <button id="f-es" onclick="setLang('es')" title="Español" aria-label="Español"><img src="https://flagcdn.com/w80/mx.png" alt="ES"></button>
         <button id="f-en" onclick="setLang('en')" title="English" aria-label="English"><img src="https://flagcdn.com/w80/us.png" alt="EN"></button>
@@ -253,6 +254,7 @@ Object.assign(T.ko,{pxT:'라벨 필요',pxSub:'MES에 등록되었지만 아직 
 Object.assign(T.es,{restore:'Restaurar',confirmRestore:'¿Restaurar este pallet? Volverá a Pendiente y podrá recibirse en IMS con la misma etiqueta.',restoreDup:(a,b,c)=>`⚠ Ojo: ya hay ${a} pzs en pallets vigentes de esta parte y el MES registró ${b} pzs. Al restaurar quedarían ${c} pzs en pallets (posible duplicado).\n\n¿Restaurar de todas formas?`,restored:'Pallet restaurado',onlyMgrRestore:'Solo el gerente o supervisor puede restaurar un pallet',voidBy:'Anulado por'});
 Object.assign(T.en,{restore:'Restore',confirmRestore:'Restore this pallet? It goes back to Pending and can be received in IMS with the same label.',restoreDup:(a,b,c)=>`⚠ Warning: there are already ${a} pcs in active pallets for this part and MES logged ${b} pcs. Restoring would leave ${c} pcs in pallets (possible duplicate).\n\nRestore anyway?`,restored:'Pallet restored',onlyMgrRestore:'Only the manager or supervisor can restore a pallet',voidBy:'Voided by'});
 Object.assign(T.ko,{restore:'복원',confirmRestore:'이 팔레트를 복원하시겠습니까? 대기 상태로 돌아가며 동일한 라벨로 IMS에서 입고할 수 있습니다.',restoreDup:(a,b,c)=>`⚠ 주의: 이 품번의 유효 팔레트에 이미 ${a} pcs가 있고 MES 기록은 ${b} pcs입니다. 복원하면 팔레트가 ${c} pcs가 됩니다 (중복 가능).\n\n그래도 복원하시겠습니까?`,restored:'팔레트 복원됨',onlyMgrRestore:'관리자 또는 감독자만 팔레트를 복원할 수 있습니다',voidBy:'취소자'});
+Object.assign(T.es,{shipTo:'ENVIAR A:'}); Object.assign(T.en,{shipTo:'SHIP TO:'}); Object.assign(T.ko,{shipTo:'출하처:'});
 Object.assign(T.es,{voidReason:'Motivo de la anulación (obligatorio):',voidReasonReq:'Escribe el motivo para anular el pallet',reasonLbl:'Motivo'});
 Object.assign(T.en,{voidReason:'Reason for voiding (required):',voidReasonReq:'Enter the reason to void the pallet',reasonLbl:'Reason'});
 Object.assign(T.ko,{voidReason:'취소 사유 (필수):',voidReasonReq:'팔레트를 취소하려면 사유를 입력하세요',reasonLbl:'사유'});
@@ -280,7 +282,7 @@ const esc = s => String(s??'').replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>
 function pintarTextos(){
   document.documentElement.lang = LANG;
   ['es','en','ko'].forEach(l=>$('f-'+l).classList.toggle('on',l===LANG));
-  $('t-title').textContent=t('title')+' · '+PLANTA; $('t-sub').textContent=t('sub'); $('t-back').textContent=t('back');
+  $('t-title').textContent=t('title')+' · '+PLANTA; if($('t-envios')) $('t-envios').style.display = PLANTA==='P1' ? '' : 'none'; $('t-sub').textContent=t('sub'); $('t-back').textContent=t('back');
   $('s-n').textContent=t('sNum'); $('s-pz').textContent=t('sPz'); $('s-pe').textContent=t('sPend');
   $('c-close').textContent=t('cClose'); $('l-model').textContent=t('lModel'); $('l-part').textContent=t('lPart'); $('l-qty').textContent=t('lQty'); $('l-dest').textContent=t('lDest');
   $('btnClose').textContent=t('btnClose'); $('c-list').textContent=t('cList'); $('l-date').textContent=t('lDate'); $('legend').textContent=t('legend');
@@ -352,15 +354,44 @@ function partesDe(m, sm){
   // 1) Partes del BOM para este modelo en esta máquina
   filasDeMaquina(m).filter(igual).forEach(r=>add(r.pn, r.desc, r.familia));
   // 2) La parte que el plan manda correr para este modelo siempre debe aparecer
+  //    [2026-11-27] código + descripción: si el plan trae descripción se usa esa (un mismo código puede ser Sheet Top y Gift Box)
   colaDe(m).filter(c=>(c.modelos||[c.sm]).map(norm).includes(norm(sm))).forEach(c=>{
-    if (!c.pn || out.some(p=>p.pn===norm(c.pn))) return;
-    const fila = BOM.find(r=>r.pn && norm(r.pn)===norm(c.pn));
-    add(c.pn, fila ? fila.desc : (c.desc||''), fila ? fila.familia : '');
+    if (!c.pn) return;
+    const fila = c.desc ? BOM.find(r=>r.pn && norm(r.pn)===norm(c.pn) && norm(r.desc)===norm(c.desc)) : BOM.find(r=>r.pn && norm(r.pn)===norm(c.pn));
+    add(c.pn, c.desc || (fila ? fila.desc : ''), fila ? fila.familia : '');
   });
   // 3) Respaldo: si aún no hay nada, buscar el modelo en todo el BOM
   if (!out.length) BOM.filter(r=>r.pn && r.sm && igual(r)).forEach(r=>add(r.pn, r.desc, r.familia));
-  return out;
+  // Lo que el plan le pide a esta máquina va primero en la lista
+  const enPlan = p => colaDe(m).some(c=>norm(c.pn)===p.pn && (!c.desc || norm(c.desc)===norm(p.desc)));
+  return out.map((p,i)=>({p,i,k:enPlan(p)?0:1})).sort((a,b)=>a.k-b.k||a.i-b.i).map(x=>x.p);
 }
+
+// [2026-11-27] Un mismo N° de parte puede tener varias descripciones (ej. GH69-46504A Sheet Top Box / Gift Box (Top)).
+// Se elige la que el plan de esta máquina pide (código + descripción); si no hay plan, la primera.
+function parteDe(m, sm, pn){
+  const norm = x => String(x||'').trim().toUpperCase();
+  const ps = partesDe(m, sm).filter(p=>p.pn===norm(pn));
+  if (ps.length <= 1) return ps[0] || null;
+  const c = colaDe(m).find(x=>norm(x.pn)===norm(pn) && x.desc && (x.modelos||[x.sm]).map(norm).includes(norm(sm))) || colaDe(m).find(x=>norm(x.pn)===norm(pn) && x.desc);
+  return (c && ps.find(p=>norm(p.desc)===norm(c.desc))) || ps[0];
+}
+const keyParte = p => p.pn+'||'+p.desc;
+// [2026-11-27] ¿A qué planta se envía? Sale de la columna "Destino" del BOM (la publica el BOM Simulator en el plan de P1),
+// ligada por código + descripción. Lo que se fabrica en P1 (Destino P1: Sheet, Chip Board, Strip…) va a P4;
+// lo que cuelga del Bundle (Destino P3) va a P3; Set Pad / Phone Pad va a P3 (flujo P1 → P3 → P4).
+function enviarA(pn, desc){
+  const norm = x => String(x||'').toUpperCase().replace(/\s+/g,' ').trim();
+  const L = (PLAN && PLAN.destinos) || [];
+  const x = L.find(y=>norm(y.pn)===norm(pn) && norm(y.desc)===norm(desc));
+  if (/SET PAD|PHONE PAD/.test(norm(desc))) return 'P3';
+  const d = x ? String(x.d||'').toUpperCase() : '';
+  if (d==='P3') return 'P3';
+  if (d==='ALIBER') return 'ALIBER';
+  if (d==='P1' || d==='P4') return 'P4';
+  return '';
+}
+function parteSel(){ const v=$('selParte').value||''; const i=v.indexOf('||'); return i<0 ? {pn:v, desc:''} : {pn:v.slice(0,i), desc:v.slice(i+2)}; }
 
 /* ───────── Pantalla ───────── */
 function pintarChips(){
@@ -383,13 +414,14 @@ function llenarPartes(prefPn, conservar){
   if (sm && !ps.length) toast(t('noParts'));
   const cola = colaDe(maq).find(c=>(c.modelos||[c.sm]).includes(sm));
   const actual = conservar ? $('selParte').value : '';
-  const pref = (actual && ps.find(p=>p.pn===actual) ? actual : '') || prefPn || (cola && ps.find(p=>p.pn===cola.pn) ? cola.pn : (ps.length===1 ? ps[0].pn : ''));
-  $('selParte').innerHTML = `<option value="">${t('selPart')}</option>` + ps.map(p=>`<option value="${esc(p.pn)}" ${p.pn===pref?'selected':''}>${esc(p.pn)} · ${esc(p.desc)}</option>`).join('');
+  const pP = prefPn ? parteDe(maq, sm, prefPn) : null, pC = (cola && cola.pn) ? parteDe(maq, sm, cola.pn) : null;
+  const pref = (actual && ps.find(p=>keyParte(p)===actual) ? actual : '') || (pP ? keyParte(pP) : '') || (pC ? keyParte(pC) : (ps.length===1 ? keyParte(ps[0]) : ''));
+  $('selParte').innerHTML = `<option value="">${t('selPart')}</option>` + ps.map(p=>`<option value="${esc(keyParte(p))}" ${keyParte(p)===pref?'selected':''}>${esc(p.pn)} · ${esc(p.desc)}</option>`).join('');
   onParte();
 }
 window.onModelo = () => llenarPartes(null);
 window.onParte = () => {
-  const sm = $('selModelo').value, pn = $('selParte').value;
+  const sm = $('selModelo').value, pn = parteSel().pn;
   const cap = REGS.filter(r=>(r.maqNombre||r.maquina)===maq && (r.modelo||'').toUpperCase()===sm.toUpperCase() && (r.parte||'').trim().toUpperCase()===pn).reduce((s,r)=>s+(Number(r.prod!=null?r.prod:r.qty)||0),0);
   const pal = PALLETS.filter(p=>p.maquina===maq && p.modelo===sm && p.parte===pn && p.status!=='VOID').reduce((s,p)=>s+(Number(p.qty)||0),0);
   const sin = Math.max(0, cap-pal);
@@ -509,7 +541,7 @@ function pintarLista(){
   $('tbody').innerHTML = filas.map(p=>{
     const est = p.status==='RECEIVED' ? `<span class="tag rec">${t('rec')}${p.recibidoEn?' '+esc(p.recibidoEn):''}</span>` : p.status==='VOID' ? `<span class="tag void" title="${esc(t('voidBy'))}: ${esc(p.anuladoPor||'—')}">${t('void')}</span><div class="note" style="margin:3px 0 0">${esc(p.anuladoPor||'—')}${(p.anuladoEn&&p.anuladoEn.toDate)?' · '+p.anuladoEn.toDate().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}):''}${p.motivoAnulacion?`<br>${esc(t('reasonLbl'))}: ${esc(p.motivoAnulacion)}`:''}</div>` : `<span class="tag pend">${t('pend')}</span>`;
     const acc = p.status==='VOID' ? (esGerente() ? `<button class="btn sec" onclick="restaurar('${esc(p.id)}')">${t('restore')}</button>` : '') : `<button class="btn sec" onclick="reimprimir('${esc(p.id)}')">${t('reprint')}</button>` + (p.status==='PENDING' ? ` <button class="btn sec warn" onclick="anular('${esc(p.id)}')">${t('anular')}</button>` : '');
-    return `<tr style="${p.maquina===maq?'':'opacity:.85'}"><td><b>${esc(p.id)}</b></td><td>${esc(p.maquina)}</td><td>${esc(p.modelo)}</td><td class="pn">${esc(p.parte)}</td><td>${esc(p.desc)}</td><td class="r"><b>${fmt(p.qty)}</b></td><td>${esc(p.horaTxt||'')}</td><td>${est}</td><td>${acc}</td></tr>`;
+    return `<tr style="${p.maquina===maq?'':'opacity:.85'}"><td><b>${esc(p.id)}</b></td><td>${esc(p.maquina)}</td><td>${esc(p.modelo)}</td><td class="pn">${esc(p.parte)}</td><td>${esc(p.desc)}${p.enviarA?` <span class="tag ok">→ ${esc(p.enviarA)}</span>`:''}</td><td class="r"><b>${fmt(p.qty)}</b></td><td>${esc(p.horaTxt||'')}</td><td>${est}</td><td>${acc}</td></tr>`;
   }).join('') || `<tr><td colspan="9" class="note" style="padding:14px">—</td></tr>`;
 }
 window.onVerTodas = () => pintarLista();
@@ -577,12 +609,13 @@ function pintarPorEtiquetar(){
     if (!sm) { const q=colaDe(maq).find(c=>norm(c.pn)===x.pn); sm=q?(q.modelos||[q.sm])[0]:''; }
     if (!sm) { const b=BOM.find(r=>r.pn && norm(r.pn)===x.pn); sm=b?b.sm:''; }
     x._sm=sm;
-    const parte=sm?partesDe(maq,sm).find(p=>p.pn===x.pn):null;
-    const bom=BOM.find(r=>r.pn && norm(r.pn)===x.pn);
+    const parte=sm?parteDe(maq,sm,x.pn):null;
+    const qd=colaDe(maq).find(c=>norm(c.pn)===x.pn && c.desc);
+    const bom=(qd && BOM.find(r=>r.pn && norm(r.pn)===x.pn && norm(r.desc)===norm(qd.desc))) || BOM.find(r=>r.pn && norm(r.pn)===x.pn);
     x._desc=parte?parte.desc:(bom?bom.desc:''); x._fam=parte?parte.familia:(bom?bom.familia:'');
     const ant = x.f!==hoy;
     return `<div class="pe ${ant?'ant':''}">
-      <div class="info"><b>${esc(x.pn)}</b><span>${esc(x._desc)}${sm?' · '+esc(sm):''}</span>${ant?`<em>${t('pxAnt')} (${esc(x.f)})</em>`:''}${sm?'':`<em>${t('pxSinModelo')}</em>`}</div>
+      <div class="info"><b>${esc(x.pn)}${enviarA(x.pn,x._desc)?` <span class="tag ok">→ ${esc(enviarA(x.pn,x._desc))}</span>`:''}</b><span>${esc(x._desc)}${sm?' · '+esc(sm):''}</span>${ant?`<em>${t('pxAnt')} (${esc(x.f)})</em>`:''}${sm?'':`<em>${t('pxSinModelo')}</em>`}</div>
       <input class="qty" id="pe-q-${i}" type="number" min="1" inputmode="numeric" value="${x.falta}" aria-label="${t('pxCant')}">
       <button class="btn" id="pe-b-${i}" ${sm?'':'disabled'} onclick="cerrarPorEtiquetar(${i})">${t('pxBtn')}</button>
     </div>`;
@@ -601,10 +634,10 @@ window.cerrarPorEtiquetar = async i => {
 function qrTexto(p){ return [p.parte, p.desc, p.familia, p.qty, p.id].map(x=>String(x??'').replace(/\|/g,'/')).join('|'); }
 
 window.cerrarPallet = async () => {
-  const sm = $('selModelo').value, pn = $('selParte').value, qty = parseInt($('qty').value)||0;
+  const ps0 = parteSel(), sm = $('selModelo').value, pn = ps0.pn, qty = parseInt($('qty').value)||0;
   if (!sm || !pn) { toast(t('pickAll')); return; }
   if (qty<=0) { toast(t('qtyBad')); return; }
-  const parte = partesDe(maq, sm).find(p=>p.pn===pn);
+  const parte = partesDe(maq, sm).find(p=>p.pn===pn && p.desc===ps0.desc) || parteDe(maq, sm, pn);
   const btn = $('btnClose'); btn.disabled = true;
   const ok = await crearPallet({sm, pn, qty, dest:$('selDest').value, desc:parte?parte.desc:'', familia:parte?parte.familia:''});
   if (ok) $('qty').value = '';
@@ -619,7 +652,7 @@ async function crearPallet(d){
     let id = `${ymd}-${pre}${maq}-${n}`;
     while ((await getDoc(doc(db,'pallets_medio',id))).exists()) { n++; id = `${ymd}-${pre}${maq}-${n}`; }
     const ahora = new Date();
-    const p = { id, planta:PLANTA, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:d.desc||'', familia:d.familia||'', qty,
+    const p = { id, planta:PLANTA, fecha:f, palletNo:n, maquina:maq, modelo:sm, parte:pn, desc:d.desc||'', familia:d.familia||'', qty, enviarA:enviarA(pn, d.desc||''),
       destino:d.dest, status:'PENDING', operador:(USER&&USER.nombre)||'', uid:(USER&&USER.uid)||'',
       horaMs:ahora.getTime(), horaTxt:ahora.toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'}), creadoEn:serverTimestamp() };
     p.qr = qrTexto(p);
@@ -671,6 +704,7 @@ function mostrarHoja(p){
     <div class="row"><div>DESC:</div><div style="font-size:12px">${esc(p.desc)}<br>${esc(p.modelo)}</div></div>
     <div class="row"><div>PLANT:</div><div style="font-size:15px">${esc(p.planta||'P4')} · ${esc(p.maquina)}</div></div>
     <div class="row"><div>QTY:</div><div style="font-size:22px">${fmt(p.qty)}</div></div>
+    ${(p.enviarA || enviarA(p.parte, p.desc)) ? `<div class="row" style="background:#111;color:#fff"><div style="color:#fff">${esc(t('shipTo'))}</div><div style="font-size:26px;letter-spacing:1px">→ ${esc(p.enviarA || enviarA(p.parte, p.desc))}</div></div>` : ''}
     <div class="row" style="border-bottom:1px solid #111"><div>DATE:</div><div style="font-size:15px">${d}.${m}.${y.slice(2)} · ${esc(p.horaTxt||'')}</div></div>
     <div class="qrw"><img alt="QR" src="${qrDataUrl(p.qr || qrTexto(p))}"><span class="idt">${esc(p.id)}</span></div>`;
   $('modal').classList.remove('hide');
