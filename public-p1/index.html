@@ -2904,7 +2904,7 @@ const TRANSLATIONS = {
     menu_breaks:   '⏸ Breaks',
     menu_escaneo:  '📷 Escaneo QR',
     menu_pallet:   '📦 Pallet ASSY',
-    menu_palletmedio: '🏷️ Pallet Medio',
+    menu_palletmedio: '🏷️ Pallet Medio', menu_envios: '🚚 Envíos',
     btn_logout:    '⏏ Salir',
     // Operator form
     lbl_info:      '📅 Información del Registro',
@@ -3040,7 +3040,7 @@ const TRANSLATIONS = {
     menu_breaks:   '⏸ Breaks',
     menu_escaneo:  '📷 QR Scan',
     menu_pallet:   '📦 ASSY Pallet',
-    menu_palletmedio: '🏷️ In-process Pallet',
+    menu_palletmedio: '🏷️ In-process Pallet', menu_envios: '🚚 Shipments',
     btn_logout:    '⏏ Logout',
     lbl_info:      '📅 Record Information',
     lbl_fecha:     'Date',
@@ -3167,7 +3167,7 @@ const TRANSLATIONS = {
     menu_breaks:   '⏸ 휴식',
     menu_escaneo:  '📷 QR 스캔',
     menu_pallet:   '📦 ASSY 팔레트',
-    menu_palletmedio: '🏷️ 공정 팔레트',
+    menu_palletmedio: '🏷️ 공정 팔레트', menu_envios: '🚚 출하',
     btn_logout:    '⏏ 로그아웃',
     lbl_info:      '📅 기록 정보',
     lbl_fecha:     '날짜',
@@ -3315,6 +3315,7 @@ function applyTranslations(){
     'mb-escaneo':   t('menu_escaneo'),
     'mb-pallet':    t('menu_pallet'),
     'mb-palletmedio': t('menu_palletmedio'),
+    'mb-enviosp1':  t('menu_envios'),
     'logout-lbl':   t('btn_logout'),
     // Operator form
     'lbl-info':     t('lbl_info'),
@@ -3644,7 +3645,7 @@ body.tv-mode .dw{max-width:100%;padding:8px 16px;}
     <div class="tright"><span id="clk"></span><div class="user-chip"><span id="user-name"></span><span class="role-badge" id="user-role-badge"></span></div><div style="display:flex;gap:4px;align-items:center"><button class="lang-btn" id="lang-mx" onclick="setLang('es')" title="Español"><img src="https://flagcdn.com/w40/mx.png" width="28" height="20" style="border-radius:3px;display:block" alt="MX"></button><button class="lang-btn active" id="lang-us" onclick="setLang('en')" title="English"><img src="https://flagcdn.com/w40/us.png" width="28" height="20" style="border-radius:3px;display:block" alt="US"></button><button class="lang-btn" id="lang-kr" onclick="setLang('ko')" title="한국어"><img src="https://flagcdn.com/w40/kr.png" width="28" height="20" style="border-radius:3px;display:block" alt="KR"></button></div><button class="logout-btn" onclick="logout()"><span id="logout-lbl">⏏ Salir</span></button></div>
   </div>
   <div class="modebar"><button class="mbtn active" id="mb-op" onclick="setMode('op')">📱 Operador</button><button class="mbtn" id="mb-dash" onclick="setMode('dash')">🖥️ Dashboard</button><button class="mbtn" id="mb-admin" onclick="setMode('admin');renderAdminTargets();renderAdminMaquinas();">⚙️ Admin</button><a class="mbtn" id="mb-breaks" href="break-management.html" target="_blank" style="text-decoration:none">⏸ Breaks</a><a class="mbtn" id="mb-escaneo" href="escaneo-qr.html" target="_blank" style="text-decoration:none">📷 Escaneo QR</a><a class="mbtn" id="mb-pallet" href="pallet-assy-p1.html" target="_blank" style="text-decoration:none;display:none">📦 Pallet ASSY</a><a class="mbtn" id="mb-palletmedio" href="pallet-medio-p1.html" target="_blank" style="text-decoration:none">🏷️ Pallet Medio</a>
-<a class="mbtn" id="mb-pisop1" href="piso-p1.html" target="_blank" style="text-decoration:none">🏭 Piso P1</a></div>
+<a class="mbtn" id="mb-pisop1" href="piso-p1.html" target="_blank" style="text-decoration:none">🏭 Piso P1</a><a class="mbtn" id="mb-enviosp1" href="envios-p1.html" target="_blank" style="text-decoration:none">🚚 Envíos</a></div>
   <div class="toast" id="toast"></div><div id="alp"></div>
 
   <!-- OPERADOR -->
