@@ -239,38 +239,87 @@ function pintar(){
 function esGerente(){ return USER && ['admin','supervisor'].indexOf(USER.rol)>=0; }
 function nombre(){ return (USER&&(USER.nombre||USER.email))||''; }
 
-// ===== Excel: órdenes (lo que se ve con el filtro actual) + detalle de pallets =====
+// ===== Excel: mismo formato que el Plan por día (título azul, franja verde, encabezados azul marino en ES + EN · KO,
+// bandas de color por planta destino, bordes, cantidades en azul claro, estados en color y renglón de total) =====
 function exportarExcel(lista){
   if(typeof XLSX==='undefined' || !lista || !lista.length){ alert(t('xSinD')); return; }
-  var stTxt={prod:t('stProd'),pend:t('stPend'),proc:t('stProc'),ent:t('stEnt'),cer:t('stCer')}, ahora=new Date();
-  var borde={top:{style:'thin',color:{rgb:'BBBBBB'}},bottom:{style:'thin',color:{rgb:'BBBBBB'}},left:{style:'thin',color:{rgb:'BBBBBB'}},right:{style:'thin',color:{rgb:'BBBBBB'}}};
-  function hoja(titulo, head, filas, anchos, numCols){
-    var ws=XLSX.utils.aoa_to_sheet([[titulo],[t('xGen')+': '+ahora.toLocaleString(t('loc'))],[],head].concat(filas));
-    ws['A1'].s={font:{bold:true,sz:14}};
-    head.forEach(function(_,c){ var r=XLSX.utils.encode_cell({r:3,c:c}); ws[r].s={font:{bold:true},fill:{fgColor:{rgb:'EEEEEE'}},border:borde,alignment:{horizontal:'center',vertical:'center',wrapText:true}}; });
-    filas.forEach(function(f,i){ f.forEach(function(_,c){ var r=XLSX.utils.encode_cell({r:4+i,c:c}); if(!ws[r]) ws[r]={t:'s',v:''}; ws[r].s={border:borde,alignment:{vertical:'center',wrapText:true,horizontal:numCols.indexOf(c)>=0?'right':'left'},numFmt:numCols.indexOf(c)>=0?'#,##0':undefined,font:{bold:c===0}}; }); });
-    ws['!cols']=anchos.map(function(w){ return {wch:w}; });
-    ws['!autofilter']={ref:XLSX.utils.encode_range({s:{r:3,c:0},e:{r:3+filas.length,c:head.length-1}})};
+  var ahora=new Date();
+  function h3(k){ var es=T.es[k], en=T.en[k], ko=T.ko[k]; return es+'\n'+en+' · '+ko; }
+  function tr3(k){ return T.es[k]+' · '+T.en[k]+' · '+T.ko[k]; }
+  var EST={prod:['stProd','FF666666'],pend:['stPend','FF946200'],proc:['stProc','FF1A4F9C'],ent:['stEnt','FF0A7A3E'],cer:['stCer','FF666666']};
+  var BANDA={P4:'FF0F6B3C',P3:'FF7A4A00',ALIBER:'FF1A4F9C'};
+  var L={style:'thin',color:{rgb:'FF9AA6BF'}}, BORDE={top:L,left:L,bottom:L,right:L};
+  var F=function(o){ return Object.assign({name:'Calibri',sz:11},o||{}); };
+  function libro(titulo, head, anchos, filasPorGrupo, numCols, colEst){
+    var nC=head.length, aoa=[], st={}, merges=[], alto={};
+    function put(r,c,v,s){ (aoa[r]=aoa[r]||[])[c]=v; st[r+','+c]=s; }
+    function unir(r,txt,s,h){ put(r,0,txt,s); for(var c=1;c<nC;c++) put(r,c,'',s); merges.push({s:{r:r,c:0},e:{r:r,c:nC-1}}); if(h) alto[r]=h; }
+    var r=0;
+    unir(r++,titulo,{font:F({sz:18,bold:true,color:{rgb:'FF1A3A6B'}}),alignment:{vertical:'center'}},30);
+    unir(r++,'MES P1 · '+tr3('remFe')+': '+ahora.toLocaleString(T.es.loc),{font:F({bold:true,color:{rgb:'FF0A5C30'}}),fill:{patternType:'solid',fgColor:{rgb:'FFE3F6EA'}},alignment:{vertical:'center'}},20);
+    unir(r++,'Requerido = plan del BOM Simulator · Destino = columna Destino del BOM · Entregado = escaneado en el IMS de la planta destino',{font:F({sz:10,color:{rgb:'FF555555'}})},18);
+    r++;
+    var totG={}; numCols.forEach(function(c){ totG[c]=0; });
+    filasPorGrupo.forEach(function(g){
+      unir(r++,g.titulo,{font:F({sz:12,bold:true,color:{rgb:'FFFFFFFF'}}),fill:{patternType:'solid',fgColor:{rgb:BANDA[g.dest]||'FF1A4F9C'}},alignment:{vertical:'center'}},22);
+      head.forEach(function(h,c){ put(r,c,h,{font:F({sz:10,bold:true,color:{rgb:'FFFFFFFF'}}),fill:{patternType:'solid',fgColor:{rgb:'FF1A3A6B'}},border:BORDE,alignment:{vertical:'center',horizontal:c<=2?'left':'center',wrapText:true}}); });
+      alto[r]=46; r++;
+      var tot={}; numCols.forEach(function(c){ tot[c]=0; });
+      g.filas.forEach(function(f){
+        var lineas=1;
+        f.v.forEach(function(v,c){
+          var esNum=numCols.indexOf(c)>=0, s={border:BORDE,font:F({bold:c===0}),alignment:{vertical:'center',wrapText:true,horizontal:esNum?'right':(c===colEst||c<=2?'left':'center')}};
+          if(esNum){ s.numFmt='#,##0'; if(v>0){ s.font=F({bold:true}); s.fill={patternType:'solid',fgColor:{rgb:'FFEAF3FF'}}; } tot[c]+=Number(v)||0; }
+          if(c===colEst){ s.font=F({bold:true,color:{rgb:(EST[f.est]||EST.prod)[1]}}); }
+          if(c===f.destCol){ s.font=F({bold:true,sz:12}); }
+          if(typeof v==='string') lineas=Math.max(lineas,v.split('\n').length);
+          put(r,c,(esNum && !(v>0))?'–':v,esNum && !(v>0)?Object.assign({},s,{font:F({color:{rgb:'FFB0B6C4'}}),alignment:{horizontal:'center',vertical:'center'}}):s);
+        });
+        alto[r]=Math.max(22,15*lineas+6); r++;
+      });
+      head.forEach(function(_,c){ var v=c===0?tr3('remTot'):(numCols.indexOf(c)>=0?tot[c]:''); put(r,c,v,{font:F({bold:true}),fill:{patternType:'solid',fgColor:{rgb:'FFF2F4F9'}},border:BORDE,numFmt:numCols.indexOf(c)>=0?'#,##0':undefined,alignment:{vertical:'center',horizontal:numCols.indexOf(c)>=0?'right':'left'}}); });
+      alto[r]=22; r+=2;
+      numCols.forEach(function(c){ totG[c]+=tot[c]; });
+    });
+    var ws=XLSX.utils.aoa_to_sheet(aoa.map(function(x){ var o=[]; for(var c=0;c<nC;c++) o[c]=(x&&x[c]!==undefined)?x[c]:''; return o; }));
+    Object.keys(st).forEach(function(k){ var p=k.split(','), ref=XLSX.utils.encode_cell({r:+p[0],c:+p[1]}); if(ws[ref]) ws[ref].s=st[k]; });
+    ws['!merges']=merges; ws['!cols']=anchos.map(function(w){ return {wch:w}; });
+    ws['!rows']=[]; Object.keys(alto).forEach(function(k){ ws['!rows'][+k]={hpt:alto[k]}; });
+    ws['!views']=[{showGridLines:false}];
     return ws;
   }
-  var fO=lista.map(function(o){
-    var fol={}; o.cam.concat(o.ent).forEach(function(p){ if(p.envio&&p.envio.folio) fol[p.envio.folio]=1; });
-    return [o.pn,o.desc,Object.keys(o.modelos).join(', '),o.dest||'—',o.total,o.qL,o.qC,o.qE,o.falta,stTxt[o.est],Object.keys(fol).join(', ')];
+  // Agrupar por planta destino (una banda por planta, igual que las secciones del plan por día)
+  var dests=[]; lista.forEach(function(o){ var d=o.dest||'—'; if(dests.indexOf(d)<0) dests.push(d); }); dests.sort();
+  var gruposO=dests.map(function(d){
+    return { dest:d, titulo:'→ '+d+' · '+T.es.thDest+' · '+T.en.thDest+' · '+T.ko.thDest, filas:lista.filter(function(o){ return (o.dest||'—')===d; }).map(function(o){
+      var fol={}; o.cam.concat(o.ent).forEach(function(p){ if(p.envio&&p.envio.folio) fol[p.envio.folio]=1; });
+      var stE=EST[o.est]||EST.prod, txt=T.es[stE[0]]+' · '+T.en[stE[0]]+' · '+T.ko[stE[0]];
+      return { est:o.est, destCol:3, v:[o.pn,o.desc,Object.keys(o.modelos).join('\n'),'→ '+(o.dest||'—'),o.total,o.qL,o.qC,o.qE,o.falta,txt+(Object.keys(fol).length?'\n'+T.es.xFol+': '+Object.keys(fol).join(', '):'')] };
+    }) };
   });
-  var wsO=hoja(t('title')+' · '+t('xOrd'),[t('remPn'),t('remDs'),t('xMod'),t('thDest'),t('thReq'),t('thListo'),t('thCam'),t('thEnt'),t('thFalta'),t('thEst'),t('xFol')],fO,[16,30,28,9,11,11,11,11,12,20,24],[4,5,6,7,8]);
-  var fP=[];
-  lista.forEach(function(o){
-    [['listo',o.listo,t('stPend')],['cam',o.cam,t('stProc')],['ent',o.ent,t('kEnt')]].forEach(function(g){
-      g[1].forEach(function(p){
-        var em=p.entregaManual, envEn=p.envio&&p.envio.en?new Date(p.envio.en).toLocaleString(t('loc')):'';
-        var entEn=em&&em.en?new Date(em.en).toLocaleString(t('loc')):(p.recibidoEn||'');
-        fP.push([p.id,p.parte,p.desc||'',p.modelo||'',p.maquina||'',Number(p.qty)||0,o.dest||'—',g[2],(p.envio&&p.envio.folio)||'',envEn,entEn,em?(em.recibio||''):'']);
+  var wsO=libro(T.es.title+' · '+T.en.title+' · '+T.ko.title,
+    [h3('remPn'),h3('remDs'),h3('xMod'),h3('thDest'),h3('thReq'),h3('thListo'),h3('thCam'),h3('thEnt'),h3('thFalta'),h3('thEst')],
+    [16,28,24,10,12,12,12,12,13,46], gruposO, [4,5,6,7,8], 9);
+  var gruposP=dests.map(function(d){
+    var filas=[];
+    lista.filter(function(o){ return (o.dest||'—')===d; }).forEach(function(o){
+      [['pend',o.listo],['proc',o.cam],['ent',o.ent]].forEach(function(g){
+        g[1].forEach(function(p){
+          var em=p.entregaManual, envEn=p.envio&&p.envio.en?new Date(p.envio.en).toLocaleString(T.es.loc):'';
+          var entEn=em&&em.en?new Date(em.en).toLocaleString(T.es.loc):(p.recibidoEn||'');
+          var stE=EST[g[0]], txt=T.es[stE[0]]+' · '+T.en[stE[0]]+' · '+T.ko[stE[0]];
+          filas.push({ est:g[0], destCol:-1, v:[p.id,p.parte,(p.desc||'')+(p.modelo?'\n'+p.modelo:''),p.maquina||'',Number(p.qty)||0,(p.envio&&p.envio.folio)||'',envEn,entEn+(em&&em.recibio?'\n'+T.es.xRec+': '+em.recibio:''),txt] });
+        });
       });
     });
-  });
-  var wsP=hoja(t('title')+' · '+t('xPal'),[t('remPal'),t('remPn'),t('remDs'),t('remMd'),t('xMaq'),t('remQ'),t('thDest'),t('thEst'),t('remF'),t('xEnv'),t('xEntr'),t('xRec')],fP,[22,16,28,20,9,10,9,16,16,20,20,18],[5]);
-  var wb=XLSX.utils.book_new(); XLSX.utils.book_append_sheet(wb,wsO,t('xOrd')); XLSX.utils.book_append_sheet(wb,wsP,t('xPal'));
-  var f=ymd(ahora)+'_'+String(ahora.getHours()).padStart(2,'0')+String(ahora.getMinutes()).padStart(2,'0');
+    return { dest:d, titulo:'→ '+d+' · '+T.es.xPal+' · '+T.en.xPal+' · '+T.ko.xPal, filas:filas };
+  }).filter(function(g){ return g.filas.length; });
+  var wb=XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb,wsO,'Ordenes · Orders');
+  if(gruposP.length) XLSX.utils.book_append_sheet(wb,libro(T.es.title+' · '+T.en.title+' · '+T.ko.title+' — '+T.es.xPal,
+    [h3('remPal'),h3('remPn'),h3('remDs'),h3('xMaq'),h3('remQ'),h3('remF'),h3('xEnv'),h3('xEntr'),h3('thEst')],
+    [22,16,30,10,12,18,20,22,40], gruposP, [4], 8),'Pallets');
+  var f=ymd(ahora)+'_'+String(ahora.getHours()).padStart(2,'0')+'h'+String(ahora.getMinutes()).padStart(2,'0');
   XLSX.writeFile(wb,'Envios_P1_'+(vista==='cerradas'?'cerradas_':'')+(filtro?filtro+'_':'')+f+'.xlsx');
 }
 
