@@ -315,16 +315,18 @@ function _rawP1(m,pn){ const l=(PLAN&&PLAN.colas&&PLAN.colas[m])||[]; return l.f
 // Los registros de P1 vienen en piezas: en las etapas de hojas se divide entre las formas por hoja
 function _prodP1(m,pn,soloHoy){ const e=_rawP1(m,pn); let q=_regsP1(m,String(pn).toUpperCase(),soloHoy); if(e && e.un==='hojas' && e.formas>0) q=q/e.formas; return Math.round(q); }
 function adaptarP1(m,e){
-  const pap=e.papel||{}; const hecho=_prodP1(m,e.pn,false); const req=Math.max(0,e.target-hecho);
+  const pap=e.papel||{}; const hecho=_prodP1(m,e.pn,false); let tEff=e.target, req=Math.max(0,e.target-hecho);
   let ok;
   if (e.primera) ok = !!pap.asignado && pap.e!=='no';
   else {
     let prev=0; (e.viene||[]).forEach(v=>{ prev+=_prodP1(v,e.pn,false); });
     if (e.un==='pzas' && e.formas>0) prev=prev*e.formas;
+    // Se procesa todo lo que salió de la etapa anterior, aunque sea más de lo pedido
+    if (Math.round(prev)>e.target){ tEff=Math.round(prev); req=Math.max(0,tEff-hecho); }
     ok = req>0 && Math.max(0,Math.round(prev-hecho))>0;
   }
   return { pn:e.pn, desc:e.desc, sm:(e.modelos&&e.modelos[0])||'', modelos:e.modelos||[], prioridad:e.prioridad, fecha:e.fecha, orden:e.orden,
-    pendiente:Math.max(0,e.target-_prodP1(m,e.pn,true)), listo:ok, materiales:[], dias:e.dias, un:e.un };
+    pendiente:Math.max(0,tEff-_prodP1(m,e.pn,true)), listo:ok, materiales:[], dias:e.dias, un:e.un };
 }
 function colaDe(m){
   if (PLANTA==='P1') return (PLAN && PLAN.colas && PLAN.colas[m]) ? PLAN.colas[m].map(e=>adaptarP1(m,e)) : [];

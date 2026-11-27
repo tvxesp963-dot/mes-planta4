@@ -145,6 +145,7 @@ body.vista-pick #pick{display:block!important;max-width:1000px;margin:16px auto;
 .swoos{display:inline-block;margin-top:4px;margin-right:6px;font-size:12px;font-weight:800;padding:2px 10px;border-radius:999px;background:rgba(255,184,77,.22);color:#ffb84d}
 .swadel{display:inline-block;margin-top:4px;margin-right:6px;font-size:12px;font-weight:800;padding:2px 10px;border-radius:999px;background:rgba(77,166,255,.2);color:var(--accent)}
 .swpb{background:#1f2a3d;height:8px;border-radius:5px;margin-top:6px;max-width:260px}.swpb div{height:8px;border-radius:5px;background:var(--green)}
+.exb{display:inline-block;background:var(--yellow);color:#241c00;font-weight:800;font-size:12px;border-radius:10px;padding:2px 8px;white-space:nowrap}
 .fmtxt{font-size:11px;font-weight:600;color:var(--text2);margin-top:2px;white-space:nowrap}
 .swpt{font-size:12px;font-weight:700;color:var(--text2);margin-top:4px}.swpt b{color:var(--text)}
 .swalert{background:rgba(255,184,77,.14);border:2px solid #ffb84d;color:#ffb84d;border-radius:12px;padding:10px 14px;margin-bottom:10px;font-size:15px;font-weight:700}
@@ -286,6 +287,9 @@ Object.assign(SEMT.ko,{cutSin:'🟡 컷 생산, 미적재: ',plAll:'🖨️ 전�
 Object.assign(SEMT.es,{resBtn:'📝 Resumen del día',resTit:'Resumen del día · Medio proceso',resS1:'1. Etiquetas por cerrar (cortes sin pallet)',resS2:'2. Pallets por escanear en IMS',resS3:'3. Avance por línea (hoy)',resFecha:'Fecha',resCortes:'Cortes',resPals:'Pallets',resFalta:'Falta etiquetar',resPallet:'Pallet',resCant:'Cant.',resHora:'Hora',resItems:'Partes',resOk:'✓ Nada pendiente',resCarga:'Cargando días anteriores…',resErr:'No se pudieron leer los días anteriores',resNota:'Cortes = capturas del MES. Pallets = etiquetas cerradas (sin anular). Falta etiquetar = Cortes − Pallets. Últimos 3 días. Solo S1–S5 y Zhongke (VC y ASSY1 no llevan etiqueta de pallet).',resAnt:'⚠ día anterior',resTotal:'Total',resQR:'🔳 QR para escanear en IMS',resQRtit:'QR de pallets por escanear en IMS',resVolver:'← Volver al resumen',resQRnota:'Escanea cada QR en IMS (Mov IN) para dar la entrada. Un pallet solo se puede escanear una vez.'});
 Object.assign(SEMT.en,{resBtn:'📝 Daily summary',resTit:'Daily summary · Mid process',resS1:'1. Labels to close (cuts without pallet)',resS2:'2. Pallets to scan in IMS',resS3:'3. Progress per line (today)',resFecha:'Date',resCortes:'Cuts',resPals:'Pallets',resFalta:'Left to label',resPallet:'Pallet',resCant:'Qty',resHora:'Time',resItems:'Parts',resOk:'✓ Nothing pending',resCarga:'Loading previous days…',resErr:'Could not read previous days',resNota:'Cuts = MES entries. Pallets = closed labels (not voided). Left to label = Cuts − Pallets. Last 3 days. Only S1–S5 and Zhongke (VC and ASSY1 have no pallet label).',resAnt:'⚠ earlier day',resTotal:'Total',resQR:'🔳 QR to scan in IMS',resQRtit:'QR of pallets to scan in IMS',resVolver:'← Back to summary',resQRnota:'Scan each QR in IMS (Mov IN) to receive it. A pallet can only be scanned once.'});
 Object.assign(SEMT.ko,{resBtn:'📝 일일 요약',resTit:'일일 요약 · 중간 공정',resS1:'1. 마감할 라벨 (팔레트 없는 컷)',resS2:'2. IMS에서 스캔할 팔레트',resS3:'3. 라인별 진행 (오늘)',resFecha:'날짜',resCortes:'컷',resPals:'팔레트',resFalta:'라벨 필요',resPallet:'팔레트',resCant:'수량',resHora:'시간',resItems:'부품',resOk:'✓ 대기 항목 없음',resCarga:'이전 날짜 불러오는 중…',resErr:'이전 날짜를 읽을 수 없습니다',resNota:'컷 = MES 입력. 팔레트 = 마감된 라벨(취소 제외). 라벨 필요 = 컷 − 팔레트. 최근 3일. S1–S5와 Zhongke만 포함 (VC와 ASSY1은 팔레트 라벨 없음).',resAnt:'⚠ 이전 날짜',resTotal:'합계',resQR:'🔳 IMS 스캔용 QR',resQRtit:'IMS 스캔 대기 팔레트 QR',resVolver:'← 요약으로 돌아가기',resQRnota:'IMS(Mov IN)에서 각 QR을 스캔하여 입고하세요. 팔레트는 한 번만 스캔할 수 있습니다.'});
+Object.assign(SEMT.es,{deMas:function(x){ return '+'+_num(x)+' de más'; },deMasK:'De más',carryTxt:function(x,v){ return '+'+_num(x)+' excedente de '+v; }});
+Object.assign(SEMT.en,{deMas:function(x){ return '+'+_num(x)+' extra'; },deMasK:'Extra',carryTxt:function(x,v){ return '+'+_num(x)+' extra from '+v; }});
+Object.assign(SEMT.ko,{deMas:function(x){ return '+'+_num(x)+' 초과'; },deMasK:'초과',carryTxt:function(x,v){ return '+'+_num(x)+' '+v+' 초과분'; }});
 Object.assign(SEMT.es,{formasTxt:function(f,p){ return f+' formas · pide '+_num(p)+' pzs'; }});
 Object.assign(SEMT.en,{formasTxt:function(f,p){ return f+' shapes · needs '+_num(p)+' pcs'; }});
 Object.assign(SEMT.ko,{formasTxt:function(f,p){ return f+'개/매 · 요청 '+_num(p)+' pcs'; }});
@@ -468,20 +472,22 @@ function noContadoDe(){ return 0; }
 function cutTxt(){ return ''; }
 function vivosDe(m){ return pallets.filter(function(p){ return (p.maqNombre||p.maquina)===m; }); }
 function adaptar(m,e){
-  var pap=e.papel||{}, hecho=prodSem(m,e.pn), req=Math.max(0,e.target-hecho), mats=[];
+  var pap=e.papel||{}, hecho=prodSem(m,e.pn), tEff=e.target, carry=0, req=Math.max(0,e.target-hecho), mats=[];
   var lblPapel='Papel'+(pap.dim?' '+pap.dim:'')+(pap.asignado?'':' ('+ts('sinAsigP')+')');
   if(e.primera){
     mats.push({k:'PAPEL',lbl:lblPapel,pn:pap.pn||'—',desc:pap.desc||'',disp:pap.disp||0,req:Math.round(e.target),e:(pap.asignado?pap.e:'no')});
   } else {
     var prev=0; (e.viene||[]).forEach(function(v){ prev+=prodSem(v,e.pn); });
     if(e.un==='pzas' && e.formas>0) prev=prev*e.formas;
+    // Se procesa todo lo que salió de la etapa anterior, aunque sea más de lo pedido
+    if(Math.round(prev)>e.target){ tEff=Math.round(prev); carry=tEff-e.target; req=Math.max(0,tEff-hecho); }
     var disp=Math.max(0,Math.round(prev-hecho));
     mats.push({k:'PREV',lbl:(e.un==='pzas'?ts('pzs'):ts('hojasL'))+' '+t('de')+' '+(e.viene||[]).join('/'),pn:(e.viene||[]).join('/'),disp:disp,req:Math.round(req),e:(req>0&&disp>=req)?'ok':(disp>0?'parcial':'no')});
     if(pap.pn) mats.push({k:'PAPEL',lbl:lblPapel,pn:pap.pn,desc:pap.desc||'',disp:pap.disp||0,req:Math.round(e.target),e:pap.e,info:true});
   }
   var gate=mats[0];
   return { pn:e.pn, desc:e.desc, sm:(e.modelos&&e.modelos[0])||'', modelos:e.modelos||[], prioridad:e.prioridad, fecha:e.fecha, orden:e.orden,
-    pendiente:Math.max(0,e.target-prodDe(m,e.pn)), listo:(gate.e!=='no'), materiales:mats, porDia:e.porDia||[], dias:e.dias, capDia:e.capDia||0,
+    pendiente:Math.max(0,tEff-prodDe(m,e.pn)), tEff:tEff, carry:carry, listo:(gate.e!=='no'), materiales:mats, porDia:e.porDia||[], dias:e.dias, capDia:e.capDia||0,
     primera:!!e.primera, etapaTxt:e.etapaTxt||'', un:e.un, formas:e.formas, pide:e.pide, viene:e.viene||[] };
 }
 function colaDe(m){ var raw=(plan && plan.colas && plan.colas[m]) ? plan.colas[m] : []; return raw.map(function(e){ return adaptar(m,e); }); }
@@ -577,8 +583,8 @@ function razonDe(f){ return t('envio')+' '+fechaEnvio(f.c.fecha)+' · '+t('prio'
 function calcMaq(m){
   var cola=colaDe(m);
   var filas=cola.map(function(c){
-    var prod=prodDe(m,c.pn), pend=Math.max(0,(c.pendiente||0)-noContadoDe(m,c.pn)), target=pend+prod;
-    return { c:c, prod:prod, target:target, pend:pend, pct: target ? Math.min(100,Math.round(prod*100/target)) : 0, cap:capDe(c), corre:false, confirmado:false };
+    var prod=prodDe(m,c.pn), pend=Math.max(0,(c.pendiente||0)-noContadoDe(m,c.pn)), target=c.tEff||(pend+prod), exc=Math.max(0,prod-target);
+    return { c:c, prod:prod, exc:exc, target:target, pend:pend, pct: target ? Math.min(100,Math.round(prod*100/target)) : 0, cap:capDe(c), corre:false, confirmado:false };
   });
   var runL=filas.filter(function(f){ return f.pend>0 && f.c.listo; });
   var waitL=filas.filter(function(f){ return f.pend>0 && !f.c.listo; });
@@ -646,12 +652,12 @@ function pintar(){
   var cm=calcMaq(selMaq), filas=cm.filas, runL=cm.runL, waitL=cm.waitL, doneL=cm.doneL;
 
   var tT=0,tP=0; filas.forEach(function(f){ tT+=f.target; tP+=Math.min(f.prod,f.target); });
-  var av=tT?Math.round(tP*100/tT):0;
+  var av=tT?Math.round(tP*100/tT):0, tX=0; filas.forEach(function(f){ tX+=f.exc||0; });
   var planHoy=0, sinPapel=0, hoyK=hoyISO();
   colaDe(selMaq).forEach(function(c){ var f=(c.porDia||[]).filter(function(x){ return x.f===hoyK; })[0]; if(f) planHoy+=f.q; if(c.primera && c.materiales[0] && c.materiales[0].e==='no') sinPapel++; });
   var kp=function(l,v,color){ return '<div class="kpi"><div class="l">'+l+'</div><div class="v"'+(color?' style="color:'+color+'"':'')+'>'+v+'</div></div>'; };
   var html='<div class="kpis">'+kp(t('target'),n(tT))+kp(t('prod'),n(tP))+kp(t('pend'),n(tT-tP))+kp(t('avance'),av+'%',av>=100?'var(--green)':'')+
-    kp(t('pallets'),n(planHoy),'var(--accent)')+kp(t('pendIMS'),sinPapel,sinPapel?'#ffb84d':'var(--green)')+'</div>';
+    kp(t('pallets'),n(planHoy),'var(--accent)')+kp(t('pendIMS'),sinPapel,sinPapel?'#ffb84d':'var(--green)')+(tX>0?kp(ts('deMasK'),'+'+n(tX),'var(--yellow)'):'')+'</div>';
   var sinA=plan.sinAsignar||[];
   if(sinA.length) html+='<div class="swalert">⚠ '+ts('sinAsig')+': '+sinA.slice(0,14).map(function(x){ return esc(x.pn)+' ('+ts('mot_'+x.motivo)+')'; }).join(', ')+(sinA.length>14?' +'+(sinA.length-14):'')+'</div>';
 
@@ -678,7 +684,7 @@ function pintar(){
     }
     return '<tr'+(f.corre?' class="run-now"':'')+'><td>'+num+'</td><td><div class="mdl">'+esc(modTxt(c))+(MV_MAQS.indexOf(selMaq)>=0?'<button class="mvbtn" data-pn="'+esc(c.pn)+'" data-mdl="'+esc(modTxt(c))+'">'+ts('mvBtn')+'</button>':'')+'</div><div class="code">'+esc(c.pn)+'</div><div style="font-size:13px;color:var(--text2)">'+esc(c.desc||'')+(c.etapaTxt?' · '+esc(c.etapaTxt):'')+'</div>'+cutTxt(selMaq,c.pn)+
       (f.corre?'<span class="runtag">▶ '+(f.confirmado?t('corriendo'):t('porCorrer'))+'</span>':'')+'</td>'+
-      '<td style="white-space:nowrap">'+fechaEnvio(c.fecha)+'</td><td class="r">'+n(f.target)+((c.un==='hojas'&&c.formas>0)?'<div class="fmtxt">'+ts('formasTxt')(c.formas,c.pide||(f.target*c.formas))+'</div>':'')+'</td><td class="r">'+n(f.prod)+'</td><td class="r" style="font-weight:800">'+n(f.pend)+'</td>'+
+      '<td style="white-space:nowrap">'+fechaEnvio(c.fecha)+'</td><td class="r">'+n(f.target)+((c.un==='hojas'&&c.formas>0)?'<div class="fmtxt">'+ts('formasTxt')(c.formas,c.pide||(f.target*c.formas))+'</div>':'')+(c.carry>0?'<div class="fmtxt" style="color:var(--yellow)">'+ts('carryTxt')(c.carry,(c.viene||[]).join('/'))+'</div>':'')+'</td><td class="r">'+n(f.prod)+'</td><td class="r" style="font-weight:800">'+n(f.pend)+'</td>'+
       '<td>'+planDia(c)+'</td><td style="width:14%">'+bar(f.pct,tipo==='run'?'var(--green)':'#5c6678')+'</td><td>'+chips(c,selMaq)+'</td><td>'+est+'</td></tr>';
   };
   html+='<div class="tblwrap tblmain" id="tblMain"><table class="tbl"><thead><tr><th style="width:60px">'+t('orden')+'</th><th>'+t('modelo')+'</th><th>'+t('envio')+'</th><th class="r">'+t('target')+'</th><th class="r">'+t('prod')+
@@ -687,8 +693,8 @@ function pintar(){
   if(waitL.length) html+='<tr class="sep"><td colspan="10">⏳ '+t('wait')+'</td></tr>'+waitL.map(function(f){ return fila(f,'wait'); }).join('');
   if(doneL.length) html+='<tr class="sep sepdone"><td colspan="10">✓ '+t('done')+'</td></tr>'+doneL.map(function(f){
     return '<tr class="done"><td><span class="num ok">✓</span></td><td><div class="mdl">'+esc(modTxt(f.c))+'</div><div class="code">'+esc(f.c.pn)+'</div></td><td style="white-space:nowrap">'+fechaEnvio(f.c.fecha)+'</td>'+
-      '<td class="r">'+n(f.target)+'</td><td class="r"><span class="prodok">'+n(f.prod)+'</span></td><td class="r" style="color:var(--green);font-weight:800">0</td><td></td><td>'+bar(100,'var(--green)')+'</td><td></td>'+
-      '<td><span class="est" style="color:var(--green)">✓ '+t('completo')+'</span></td></tr>';
+      '<td class="r">'+n(f.target)+'</td><td class="r"><span class="prodok">'+n(f.prod)+'</span>'+(f.exc>0?'<div class="fmtxt" style="color:var(--yellow)">'+ts('deMas')(f.exc)+'</div>':'')+'</td><td class="r" style="color:var(--green);font-weight:800">0</td><td></td><td>'+bar(100,'var(--green)')+'</td><td></td>'+
+      '<td><span class="est" style="color:var(--green)">✓ '+t('completo')+'</span>'+(f.exc>0?' <span class="exb">'+ts('deMas')(f.exc)+'</span>':'')+'</td></tr>';
   }).join('');
   html+='</tbody></table></div>';
   var prev=document.getElementById('tblMain'), top0=prev?prev.scrollTop:0;
@@ -847,16 +853,16 @@ function resHtml(){
   h+='<div class="mh"><span>'+ts('resS3')+'</span><span></span></div>';
   if(!plan||!plan.colas) h+='<div style="font-size:12px;padding:6px 8px">'+ts('plNada')+'</div>';
   else {
-    h+='<table><tr><th>'+t('maq')+'</th><th class="r">'+ts('resItems')+'</th><th class="r">'+t('target')+'</th><th class="r">'+t('prod')+'</th><th class="r">'+t('pend')+'</th><th class="r">'+t('avance')+'</th></tr>';
-    var tT=0,tP=0,tN=0,tI=0;
+    h+='<table><tr><th>'+t('maq')+'</th><th class="r">'+ts('resItems')+'</th><th class="r">'+t('target')+'</th><th class="r">'+t('prod')+'</th><th class="r">'+t('pend')+'</th><th class="r">'+ts('deMasK')+'</th><th class="r">'+t('avance')+'</th></tr>';
+    var tT=0,tP=0,tN=0,tI=0,tXX=0;
     MAQS.forEach(function(m){
-      var cm=calcMaq(m), T=0,P=0,N=0;
-      cm.filas.forEach(function(f){ T+=f.target; P+=f.prod; N+=f.pend; });
+      var cm=calcMaq(m), T=0,P=0,N=0,X=0;
+      cm.filas.forEach(function(f){ T+=f.target; P+=f.prod; N+=f.pend; X+=f.exc||0; });
       if(!cm.filas.length) return;
-      tT+=T; tP+=P; tN+=N; tI+=cm.filas.length;
-      h+='<tr><td><b>'+esc(m)+'</b></td><td class="r">'+cm.filas.length+'</td><td class="r">'+n(T)+'</td><td class="r">'+n(P)+'</td><td class="r"><b>'+n(N)+'</b></td><td class="r">'+(T?Math.min(100,Math.round(P*100/T)):0)+'%</td></tr>';
+      tT+=T; tP+=P; tN+=N; tI+=cm.filas.length; tXX+=X;
+      h+='<tr><td><b>'+esc(m)+'</b></td><td class="r">'+cm.filas.length+'</td><td class="r">'+n(T)+'</td><td class="r">'+n(P)+'</td><td class="r"><b>'+n(N)+'</b></td><td class="r">'+(X>0?'+'+n(X):'—')+'</td><td class="r">'+(T?Math.min(100,Math.round(P*100/T)):0)+'%</td></tr>';
     });
-    h+='<tr><td><b>'+ts('resTotal')+'</b></td><td class="r"><b>'+tI+'</b></td><td class="r"><b>'+n(tT)+'</b></td><td class="r"><b>'+n(tP)+'</b></td><td class="r"><b>'+n(tN)+'</b></td><td class="r"><b>'+(tT?Math.min(100,Math.round(tP*100/tT)):0)+'%</b></td></tr></table>';
+    h+='<tr><td><b>'+ts('resTotal')+'</b></td><td class="r"><b>'+tI+'</b></td><td class="r"><b>'+n(tT)+'</b></td><td class="r"><b>'+n(tP)+'</b></td><td class="r"><b>'+n(tN)+'</b></td><td class="r"><b>'+(tXX>0?'+'+n(tXX):'—')+'</b></td><td class="r"><b>'+(tT?Math.min(100,Math.round(tP*100/tT)):0)+'%</b></td></tr></table>';
   }
   h+='<div class="pfoot">'+ts('resNota')+'</div>';
   return h;
@@ -888,7 +894,7 @@ function exportarExcel(){
         var c=f.c, est;
         if(g[0]==='run') est=t('listo')+' '+(f.cap>=f.pend?f.pend:f.cap+' '+t('de')+' '+f.pend);
         else if(g[0]==='wait'){ var fl=faltantes(c); est=fl.length?t('falta')+' '+fl.join(', '):t('sinDatos'); }
-        else est=t('completo');
+        else est=t('completo')+(f.exc>0?' · '+ts('deMas')(f.exc):'');
         filas.push([m,g[0]==='run'?f.orden:(g[0]==='done'?'✓':'—'),(c.modelos||[c.sm]).join(', '),c.pn,fechaEnvio(c.fecha),f.target,f.prod,f.pend,f.pct,matTxt(c),est,t(g[0])]);
         tipos.push(g[0]);
       });
